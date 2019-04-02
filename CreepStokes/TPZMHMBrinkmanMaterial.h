@@ -16,8 +16,8 @@
 #include "TPZMaterial.h"
 
 
-#ifndef TPZMHMBrinkmanMaterial
-#define TPZMHMBrinkmanMaterial
+#ifndef TPZMHMBrinkmanMATERIAL
+#define TPZMHMBrinkmanMATERIAL
 
 
 
