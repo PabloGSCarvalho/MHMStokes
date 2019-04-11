@@ -22,6 +22,7 @@
 #include "pzanalysis.h"
 #include "pzbndcond.h"
 #include "TPZMHMBrinkmanMaterial.h"
+#include "TPZMultiphysicsCompMesh.h"
 
 #include <pzgeoel.h>
 #include "pzgeoelbc.h"
@@ -32,6 +33,7 @@
 #include "pzbuildmultiphysicsmesh.h"
 #include "TPZInterfaceEl.h"
 #include "TPZMultiphysicsInterfaceEl.h"
+#include "pzmat1dlin.h"
 #include "pzmat2dlin.h"
 #include "pzfstrmatrix.h"
 #include "pzskylstrmatrix.h"
@@ -62,7 +64,9 @@ private:
     int fmatBCright;
     
     //Material do elemento de interface
+    int fmatLambda; //Multiplier material
     int fmatInterface;
+    int fmatWrap;
     
     //Materiais das condições de contorno (elementos de interface)
     int fmatIntBCbott;
@@ -99,6 +103,8 @@ private:
     
     bool fTriang;
     
+    TPZVec<TPZCompMesh * > f_mesh_vector;
+    
 public:
 
     MHMBrinkmanTest();
@@ -119,7 +125,8 @@ public:
     
     TPZCompMesh *CMesh_v(TPZGeoMesh *gmesh, int Space, int pOrder);
     TPZCompMesh *CMesh_p(TPZGeoMesh *gmesh, int Space, int pOrder);
-    TPZCompMesh *CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STATE visco, STATE theta, STATE sigma);
+    //TPZCompMesh *CMesh_St(TPZGeoMesh *gmesh, int Space, int pOrder);
+    TPZMultiphysicsCompMesh *CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STATE visco, STATE theta, STATE sigma);
     
     void SetHdivPlus(){
         f_hdivPlus = true;
@@ -141,13 +148,17 @@ public:
     static void F_source(const TPZVec<REAL> &x, TPZVec<STATE> &f, TPZFMatrix<STATE>& gradu);
     
     // static void AddMultiphysicsInterfaces(TPZCompMesh &cmesh, int matfrom, int mattarget);
-    static void AddMultiphysicsInterfaces(TPZCompMesh &cmesh, int matfrom, int mattarget);
+    void AddMultiphysicsInterfaces(TPZMultiphysicsCompMesh &cmesh);
+    
+    void AddMultiphysicsInterfaces(TPZMultiphysicsCompMesh &cmesh, int matfrom, int mattarget);
+    
+    void AddMultiphysicsInterfacesLeftNRight(TPZMultiphysicsCompMesh &cmesh, int matfrom);
     
     // Rotate function
     void Rotate(TPZVec<REAL> &co, TPZVec<REAL> &co_r, bool rotate);
     
-    
-    
+    // Insere interfaces na malha multifísica
+    void InsertInterfaces(TPZMultiphysicsCompMesh *cmesh);
 };
 
 

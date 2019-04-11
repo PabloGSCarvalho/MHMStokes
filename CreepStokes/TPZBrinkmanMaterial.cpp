@@ -72,6 +72,7 @@ void TPZBrinkmanMaterial::FillBoundaryConditionDataRequirement(int type,TPZVec<T
         datavec[idata].SetAllRequirements(false);
         datavec[idata].fNeedsSol = true;
         datavec[idata].fNeedsNormal = true;
+        datavec[idata].fNeedsNeighborSol = true;
     }
 }
 
@@ -80,6 +81,17 @@ void TPZBrinkmanMaterial::FillBoundaryConditionDataRequirement(int type,TPZVec<T
 void TPZBrinkmanMaterial::FillDataRequirementsInterface(TPZMaterialData &data)
 {
     data.fNeedsNormal = true;
+}
+
+////////////////////////////////////////////////////////////////////
+
+void TPZBrinkmanMaterial::FillDataRequirementsInterface(TPZMaterialData &data, TPZVec<TPZMaterialData > &datavec_left, TPZVec<TPZMaterialData > &datavec_right)
+{
+    int nref_left = datavec_left.size();
+    for(int iref = 0; iref<nref_left; iref++){
+        datavec_left[iref].SetAllRequirements(false);
+        datavec_left[iref].fNeedsNormal = true;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////

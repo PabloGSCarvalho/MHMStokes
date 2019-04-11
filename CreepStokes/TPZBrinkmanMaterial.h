@@ -78,6 +78,8 @@ public:
     
     virtual void FillDataRequirementsInterface(TPZMaterialData &data);
     
+    virtual void FillDataRequirementsInterface(TPZMaterialData &data, TPZVec<TPZMaterialData > &datavec_left, TPZVec<TPZMaterialData > &datavec_right);
+    
     void SetPermeability(REAL perm) {
         fk = perm;
     }

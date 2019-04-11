@@ -14,6 +14,7 @@
 #include "DarcyPTest.h"
 #include "StokesTest.h"
 #include "BrinkmanTest.h"
+#include "MHMBrinkmanTest.h"
 
 #include "HStokesTest.h"
 #include "CoupledTest.h"
@@ -56,7 +57,9 @@ const REAL Pi=M_PI;
 
 const REAL visco=1., permeability=1., theta=-1.; //Coeficientes: viscosidade, permeabilidade, fator simetria
 
-bool DarcyDomain = false, HStokesDomain = false , StokesDomain = false , BrinkmanDomain = true, CoupledDomain = false;
+bool DarcyDomain = false, HStokesDomain = false , StokesDomain = false , BrinkmanDomain = false, CoupledDomain = false;
+
+bool MHMBrinkmanDomain = true;
 
 int main(int argc, char *argv[])
 {
@@ -76,7 +79,37 @@ int main(int argc, char *argv[])
     int nx=nelx+1 ,ny=nely+1; //Número de nos em x  y
     int pOrder = 1; //Ordem polinomial de aproximação
     
-    if (HStokesDomain) {
+    
+    if (MHMBrinkmanDomain)
+    {
+        pOrder = 1;
+        hx=2.,hy=2.;
+        
+//        HDivPiola = 0;
+        for (int it=0; it<=0; it++) {
+            //h_level = pow(2., 2+it);
+            h_level = 2.;
+            
+            //Coeficiente estabilização (Stokes)
+            STATE hE=hx/h_level;
+            STATE s0=24.;
+            STATE sigma=s0*(pOrder*pOrder)/hE;
+            
+            
+            nx=h_level+1 ,ny=h_level+1;
+            hE=hx/h_level;
+            sigma=s0*(pOrder*pOrder)/hE;
+            
+            REAL visc = 1.0; //->Darcy
+            
+            MHMBrinkmanTest  * Test2 = new MHMBrinkmanTest();
+            //Test2->SetTriangularMesh();
+            //Test2->SetHdivPlus();
+            Test2->Run(SpaceHDiv, pOrder, nx, ny, hx, hy,visc,theta,sigma);
+            
+        }
+        
+    }  else if (HStokesDomain) {
 
         //Coeficiente estabilização (Stokes)
         STATE hE=hx/h_level;
