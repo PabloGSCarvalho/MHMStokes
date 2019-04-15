@@ -1567,7 +1567,8 @@ void TPZBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZM
         
     }
     
-
+    std::ofstream plotfileM("ekInterface.txt");
+    ek.Print("Kint = ",plotfileM,EMathematicaInput);
 
     
 }

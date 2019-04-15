@@ -18,6 +18,7 @@
 TPZInterfaceInsertion::TPZInterfaceInsertion(){
     m_id_flux_wrap = 0;
     m_interface_id = 0;
+    m_interfaceVector_ids.Resize(0);
     m_multiplier_id = 0;
     m_cmesh = NULL;
     m_geometry = NULL;
@@ -32,9 +33,10 @@ TPZInterfaceInsertion::~TPZInterfaceInsertion(){
 
 /// Copy constructor
 TPZInterfaceInsertion::TPZInterfaceInsertion(TPZInterfaceInsertion & other){
-    m_interface_id         = other.m_interface_id;
-    m_id_flux_wrap         = other.m_id_flux_wrap;
-    m_multiplier_id        = other.m_multiplier_id;
+    m_interface_id       = other.m_interface_id;
+    m_interfaceVector_ids     = other.m_interfaceVector_ids;
+    m_id_flux_wrap       = other.m_id_flux_wrap;
+    m_multiplier_id      = other.m_multiplier_id;
     m_geometry           = other.m_geometry;
     m_boundaries_ids     = other.m_boundaries_ids;
 }
@@ -46,17 +48,27 @@ TPZInterfaceInsertion::TPZInterfaceInsertion(TPZCompMesh *cmesh, int mat_multipl
     m_multiplier_id = mat_multiplier;
     m_boundaries_ids = boundaries_ids;
     m_interface_id = 0;
+    m_interfaceVector_ids.Resize(0);
 }
 
-
 /// Set Interface Identifier (interfaces between multiplier and volumetric materials)
-void TPZInterfaceInsertion::SetInterfaceIdentifier(int Interface_id){
+void TPZInterfaceInsertion::SetInterfaceId(int Interface_id){
     m_interface_id = Interface_id;
 }
 
 /// Get Interface Identifier
-int & TPZInterfaceInsertion::GetInterfaceMaterialId(){
+int & TPZInterfaceInsertion::GetInterfaceId(){
     return m_interface_id;
+}
+
+/// Set Interface Identifier (interfaces between multiplier and volumetric materials)
+void TPZInterfaceInsertion::SetInterfaceVectorId(TPZManVector<int64_t,3> interfaceVector_ids){
+    m_interfaceVector_ids = interfaceVector_ids;
+}
+
+/// Get Interface Identifier
+TPZManVector<int64_t,3> & TPZInterfaceInsertion::GetInterfaceVectorId(){
+    return m_interfaceVector_ids;
 }
 
 /// Set wrap Identifier
@@ -191,7 +203,8 @@ void TPZInterfaceInsertion::AddMultiphysicsInterfacesLeftNRight(int matfrom)
     if (! (m_geometry) ) {
         DebugStop();
     }
-    if (m_interface_id==0) {
+    
+    if (m_interfaceVector_ids.size()==0) {
         DebugStop();
     }
     
@@ -230,13 +243,8 @@ void TPZInterfaceInsertion::AddMultiphysicsInterfacesLeftNRight(int matfrom)
             if (neigh.Element()->Dimension()!=2){
                 continue;
             }
-            //                TPZGeoElSide wrap_neigh = neigh.Neighbour();
-            //                if (wrap_neigh.Element()->Dimension() != 1){
-            //                    continue;
-            //                }
-            //                TPZCompElSide Comp_wrapneigh = wrap_neigh.Reference();
             
-            TPZGeoElBC gbc(gelside,m_interface_id);
+            TPZGeoElBC gbc(gelside,m_interfaceVector_ids[stack_i]);
             int64_t index;
            
             TPZMultiphysicsInterfaceElement *elem_inter = new TPZMultiphysicsInterfaceElement(*cmesh,gbc.CreatedElement(),index,celneigh,celside);

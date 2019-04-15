@@ -27,9 +27,12 @@ private:
     /// Wrap flux id
     int m_id_flux_wrap;
     
-    /// Interface id
-    int m_interface_id;
+    /// Interfaces ids
 
+    int m_interface_id;
+    
+    TPZManVector<int64_t,3> m_interfaceVector_ids;
+    
     /// Multiplier material id
     int m_multiplier_id;
     
@@ -54,11 +57,17 @@ public:
     TPZInterfaceInsertion(TPZCompMesh *m_cmesh, int Interface_id, std::set<int> & boundaries_ids);
     
     /// Set Interface Identifier
-    void SetInterfaceIdentifier(int Interface_id);
+    void SetInterfaceId(int Interface_id);
     
     /// Get Interface material Identifier
-    int & GetInterfaceMaterialId();
+    int & GetInterfaceId();
 
+    /// Set Interface Vector Ids
+    void SetInterfaceVectorId(TPZManVector<int64_t,3> interfaceVector_ids);
+
+    /// Get Interface Vector Ids
+    TPZManVector<int64_t,3> & GetInterfaceVectorId();
+    
     /// Set wrap Identifier
     void SetWrapFluxIdentifier(int wrapFlux);
     
@@ -71,11 +80,13 @@ public:
     /// Get multiplier material id
     int & GetMultiplierMatId();
     
-    /// Add multiphysics interfaces
+    /// Add multiphysics interfaces for all boundaries and internal elements
     void AddMultiphysicsInterfaces();
     
+    /// Add interface from a reference material, only one side
     void AddMultiphysicsInterfaces(int matfrom, int mattarget);
     
+    /// Add interfaces in left and right sides of a reference material, it should be given an interface vector (left and right materials)
     void AddMultiphysicsInterfacesLeftNRight(int matfrom);
     
     /// Open the connects of a Interface, create dim-1 Interface elements (Hdiv version)

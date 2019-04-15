@@ -103,11 +103,10 @@ void TPZMHMBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<T
                 lambda_j(e,0)= datavecright[pindex].phi(j1,0)*tangent[e];
             }
             
-            STATE fact = weight * InnerVec(phiVi,lambda_j);
-            ek(i1,j1) +=fact;
-            ek(j1,i1) +=fact;
+            STATE fact = weight * fMultiplier * InnerVec(phiVi,lambda_j);
+            ek(i1,j1+nshapeV) +=fact;
+            ek(j1+nshapeV,i1) +=-fact;
         }
-        
 
     }
     

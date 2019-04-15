@@ -1111,7 +1111,6 @@ TPZCompMesh *BrinkmanTest::CMesh_p(TPZGeoMesh *gmesh, int Space, int pOrder)
     if (Space==2||Space==3) {
         pOrder--;
     }
-    pOrder--;
     
     //Criando malha computacional:
     
