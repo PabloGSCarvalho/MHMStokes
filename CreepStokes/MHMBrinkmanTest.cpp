@@ -145,8 +145,10 @@ void MHMBrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, doub
 //    AddMultiphysicsInterfaces(*cmesh_m);
     
 #ifdef PZDEBUG
-    std::ofstream fileg1("MalhaGeo2.txt"); //Impressão da malha geométrica (formato txt)
+    std::ofstream fileg1("MalhaGeo.txt"); //Impressão da malha geométrica (formato txt)
+    std::ofstream filegvtk1("MalhaGeo.vtk"); //Impressão da malha geométrica (formato vtk)
     gmesh->Print(fileg1);
+    TPZVTKGeoMesh::PrintGMeshVTK(gmesh, filegvtk1,true);
     
     std::ofstream filecm("MalhaC_m.txt"); //Impressão da malha computacional multifísica (formato txt)
     cmesh_m->Print(filecm);
@@ -541,7 +543,7 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
             for(j = 0; j < nx; j++){
                 id = i*nx + j;
                 coord[0] = (j)*hx/(nx - 1);
-                coord[1] = -1 + (i)*hy/(ny - 1);
+                coord[1] = (i)*hy/(ny - 1);
                 //using the same coordinate x for z
                 coord[2] = 0.;
                 //cout << coord << endl;
@@ -566,7 +568,7 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
         
         //Conectividade dos elementos:
         
-        for(i = 0; i < (ny - 1); i++){
+        for(i = 0; i < (ny - 1) ; i++){
             for(j = 0; j < (nx - 1); j++){
                 index = (i)*(nx - 1)+ (j);
                 connect[0] = (i)*ny + (j);
@@ -612,13 +614,13 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
             {
                 Nodefinder[i] = gmesh->NodeVec()[TopolPlate[i]];
                 Nodefinder[i].GetCoordinates(nodecoord);
-                if (nodecoord[1] == -1.)
+                if (nodecoord[1] == 0.)
                 {
                     sizeOfbottVec++;
                     ncoordzbottVec.Resize(sizeOfbottVec);
                     ncoordzbottVec[sizeOfbottVec-1] = TopolPlate[i];
                 }
-                if (nodecoord[1] == -1.+hy)
+                if (nodecoord[1] == 0.+hy)
                 {
                     sizeOftopVec++;
                     ncoordztopVec.Resize(sizeOftopVec);
@@ -1241,7 +1243,7 @@ TPZMultiphysicsCompMesh *MHMBrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Space, 
     cmesh->InsertMaterialObject(matInterfaceLeft);
 
     TPZMHMBrinkmanMaterial *matInterfaceRight = new TPZMHMBrinkmanMaterial(fmatInterfaceRight,fdim-1,Space,visco,theta,sigma);
-    matInterfaceRight->SetMultiplier(-1.);
+    matInterfaceRight->SetMultiplier(1.);
     cmesh->InsertMaterialObject(matInterfaceRight);
     
     

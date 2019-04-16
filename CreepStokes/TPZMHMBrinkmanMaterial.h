@@ -63,9 +63,9 @@ public:
         fMultiplier = mult;
     }
     
-    virtual void FillDataRequirementsInterface(TPZMaterialData &data, TPZVec<TPZMaterialData > &datavec_left, TPZVec<TPZMaterialData > &datavec_right);
+    virtual void FillDataRequirementsInterface(TPZMaterialData &data, TPZVec<TPZMaterialData > &datavec_left, TPZVec<TPZMaterialData > &datavec_right) override;
     
-    virtual TPZMaterial *NewMaterial()
+    virtual TPZMaterial *NewMaterial() override
     {
         return new TPZMHMBrinkmanMaterial(*this);
     }
@@ -102,6 +102,9 @@ public:
      * @since April 16, 2007
      */
     virtual void ContributeInterface(TPZMaterialData &data, TPZVec<TPZMaterialData> &datavecleft, TPZVec<TPZMaterialData> &datavecright, REAL weight, TPZFMatrix<STATE> &ek,TPZFMatrix<STATE> &ef);
+    
+    
+    TPZManVector<REAL,3> ComputeNormal(TPZMaterialData &data, TPZVec<TPZMaterialData> &datavecleft, TPZVec<TPZMaterialData> &datavecright);
     
 };
 

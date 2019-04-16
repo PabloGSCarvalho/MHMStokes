@@ -12,6 +12,7 @@
 #include "pzaxestools.h"
 #include "TPZMatWithMem.h"
 #include "pzfmatrix.h"
+#include "pzlog.h"
 
 using namespace std;
 
@@ -81,6 +82,7 @@ void TPZBrinkmanMaterial::FillBoundaryConditionDataRequirement(int type,TPZVec<T
 void TPZBrinkmanMaterial::FillDataRequirementsInterface(TPZMaterialData &data)
 {
     data.fNeedsNormal = true;
+    data.fNeedsNeighborCenter = true;
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -565,7 +567,7 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
     
     for (int i = 0; i < nshapeP; i++) {
         
-        STATE factf= -weight * phiP(i,0)*f[2];
+        STATE factf= -weight * phiP(i,0)*f[2]*0.;
         ef(nshapeV+i,0) += factf;
  
     }
@@ -574,6 +576,19 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
         std::ofstream fileEK("FileEKContribute.txt");
         ek.Print("stiff = ",fileEK,EMathematicaInput);
     }
+    
+//#ifdef LOG4CXX
+////    if (elastoplasticLogger->isDebugEnabled()) {
+//        std::stringstream sout;
+//        sout << "<<< TPZPoroElastoPlasticDFN<T,TMEM>::Contribute ***";
+//        sout << " Resultant rhs vector:\n" << ef;
+//        sout << " Resultant stiff vector:\n" << ek;
+////        ek.Print("ek = ",plotElasticEK,EMathematicaInput);
+////        ef.Print("ef = ",plotElasticEF,EMathematicaInput);
+//        LOGPZ_DEBUG(elastoplasticLogger, sout.str().c_str());
+////    }
+//#endif
+
     
     
 }
@@ -1653,9 +1668,6 @@ void TPZBrinkmanMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TP
                 
             }
             
-            
-            
-            
             //Componente tangencial -> imposta fracamente:
             
             for(int i = 0; i < nshapeV; i++ )
@@ -1724,8 +1736,10 @@ void TPZBrinkmanMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TP
                 
                 if(fSpace==1||fSpace==3){
                     
-                    
-                    REAL vh_t = v_h[1];
+                    REAL vh_t = 0.;
+                    if(v_h.size()>1){
+                    vh_t = v_h[1];
+                    }
                     
                     REAL v_t = t[0] * v_2[0] + t[1] * v_2[1];
                     

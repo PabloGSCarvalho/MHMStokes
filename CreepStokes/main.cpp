@@ -64,7 +64,7 @@ bool MHMBrinkmanDomain = true;
 int main(int argc, char *argv[])
 {
     
-    TPZMaterial::gBigNumber = 1.e16;
+    TPZMaterial::gBigNumber = 1.e12;
     
 #ifdef LOG4CXX
     InitializePZLOG();
@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
     if (MHMBrinkmanDomain)
     {
         pOrder = 1;
-        hx=2.,hy=2.;
+        hx=4.,hy=2.;
         
 //        HDivPiola = 0;
         for (int it=0; it<=0; it++) {
@@ -92,11 +92,11 @@ int main(int argc, char *argv[])
             
             //Coeficiente estabilização (Stokes)
             STATE hE=hx/h_level;
-            STATE s0=24.;
+            STATE s0=0.;
             STATE sigma=s0*(pOrder*pOrder)/hE;
             
             
-            nx=h_level+1 ,ny=h_level+1;
+            nx=h_level+1 ,ny=2;
             hE=hx/h_level;
             sigma=s0*(pOrder*pOrder)/hE;
             
@@ -200,8 +200,7 @@ int main(int argc, char *argv[])
 //            Test3->SetTriangularMesh();
 //            Test3->Run(SpaceDiscontinuous, pOrder, nx, ny, hx, hy,visc,theta,sigma);
 
-            
-            
+   
             //h_level = h_level*2;
         }
         

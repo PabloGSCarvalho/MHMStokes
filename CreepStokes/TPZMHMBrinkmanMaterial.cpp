@@ -17,12 +17,10 @@ using namespace std;
 
 void TPZMHMBrinkmanMaterial::FillDataRequirementsInterface(TPZMaterialData &data, TPZVec<TPZMaterialData > &datavec_left, TPZVec<TPZMaterialData > &datavec_right)
 {
+    TPZMaterial::FillDataRequirementsInterface(data, datavec_left, datavec_right);
     int nref_left = datavec_left.size();
-    for(int iref = 0; iref<nref_left; iref++){
-        datavec_left[iref].SetAllRequirements(false);
-        datavec_left[iref].fNeedsNormal = true;
-        datavec_right[iref].fNeedsNormal = true;
-    }
+    datavec_left[0].fNeedsNormal = true;
+    
 }
 
 void TPZMHMBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMaterialData> &datavecleft, TPZVec<TPZMaterialData> &datavecright, REAL weight, TPZFMatrix<STATE> &ek,TPZFMatrix<STATE> &ef){
@@ -54,31 +52,26 @@ void TPZMHMBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<T
         FillVecShapeIndex(datavecleft[vindex]);
     }
     
+    int dim = 2;
+    
     // Setting the phis
     // V - left
     TPZFMatrix<REAL> &dphiV1 = datavecleft[vindex].dphix;
-    TPZManVector<REAL, 3>  &normalLeft = datavecleft[vindex].normal;
     
-    data.fNeedsNormal = true;
     //Normal
-    TPZManVector<REAL,3> &normal = data.normal;
-    
-    TPZFNMatrix<3, STATE> normalM(fDimension,1,0.);
-    for (int e=0; e<fDimension; e++) {
-        normalM(e,0)=normal[e];
+    TPZManVector<REAL, 3>  &normalVec = datavecleft[vindex].normal;
+    TPZFNMatrix<3, STATE> normalM(3,1,0.);
+    for (int e=0; e<dim; e++) {
+        normalM(e,0)=normalVec[e];
     }
     
-    TPZFNMatrix<220,REAL> dphiVx1(fDimension,dphiV1.Cols());
+    TPZFNMatrix<220,REAL> dphiVx1(dim,dphiV1.Cols());
     TPZAxesTools<REAL>::Axes2XYZ(dphiV1, dphiVx1, datavecleft[vindex].axes);
     
-    TPZManVector<REAL, 3> tangent(fDimension,0.);
-    TPZFNMatrix<3, STATE> tangentV(fDimension,1,0.);
-    for(int i=0; i<fDimension; i++) tangent[i] = data.axes(0,i);
-    for(int i=0; i<fDimension; i++) tangentV(i,0) = data.axes(0,i);
-    
-    int nshapeV , nshapeLambda;
+    int nshapeV , nshapeP , nshapeLambda;
     
     nshapeV = datavecleft[vindex].fVecShapeIndex.NElements();
+    nshapeP = datavecleft[pindex].phi.Rows();
     nshapeLambda = datavecright[pindex].phi.Rows();
     
     for(int i1 = 0; i1 < nshapeV; i1++)
@@ -86,26 +79,29 @@ void TPZMHMBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<T
         int iphi1 = datavecleft[vindex].fVecShapeIndex[i1].second;
         int ivec1 = datavecleft[vindex].fVecShapeIndex[i1].first;
         
-        TPZFNMatrix<9, STATE> phiVi(fDimension,1);
-        for (int e=0; e<fDimension; e++) {
+        TPZFNMatrix<9, STATE> phiVi(dim,1);
+        for (int e=0; e< dim ; e++) {
             phiVi(e,0)=datavecleft[vindex].fNormalVec(e,ivec1)*datavecleft[vindex].phi(iphi1,0);
         }
         
-        TPZFNMatrix<3, STATE> phiV1tti(fDimension,1,0.),normalM(fDimension,1,0.);
+        TPZFNMatrix<3, STATE> phiV1tti(dim,1,0.),normalM(dim,1,0.);
         
         // K12 e K21 - (test V left) * (trial Lambda right)
         for(int j1 = 0; j1 < nshapeLambda; j1++)
         {
             // Var. Sigma, Sn :
-            TPZFNMatrix<9, STATE> lambda_j(fDimension,1,0.);
+            TPZFNMatrix<9, STATE> lambda_j(dim,1,0.);
+            TPZFNMatrix<9, STATE> phiLamb(dim,1);
+            phiLamb = datavecright[pindex].phi;
+            
             // Tangencial comp. vector (t x t)Sn :
-            for (int e=0; e<fDimension; e++) {
-                lambda_j(e,0)= datavecright[pindex].phi(j1,0)*tangent[e];
+            for (int e=0; e< dim ; e++) {
+                lambda_j(e,0)= phiLamb(j1,0)-InnerVec(phiLamb, normalM)*normalVec[e];
             }
             
             STATE fact = weight * fMultiplier * InnerVec(phiVi,lambda_j);
-            ek(i1,j1+nshapeV) +=fact;
-            ek(j1+nshapeV,i1) +=-fact;
+            ek(i1,j1+nshapeV) +=-fact;
+            ek(j1+nshapeV,i1) +=fact;
         }
 
     }
@@ -316,5 +312,31 @@ void TPZMHMBrinkmanMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec
     
     return;
     DebugStop();
+    
+}
+
+
+TPZManVector<REAL,3> TPZMHMBrinkmanMaterial::ComputeNormal(TPZMaterialData &data, TPZVec<TPZMaterialData> &datavecleft, TPZVec<TPZMaterialData> &datavecright){
+
+    int vindex = VIndex();
+    int pindex = PIndex();
+    
+    TPZManVector<REAL,3> xcenterL = datavecleft[vindex].XCenter;
+    TPZManVector<REAL,3> xcenterR = datavecright[pindex].XCenter;
+    TPZManVector<REAL,3> normalV = data.normal;
+    
+    if(xcenterR[0]>xcenterL[0]){
+        normalV[0]=1.;
+
+    }else if(xcenterR[0]>xcenterL[0]){
+        normalV[0]=-1.;
+    }
+    return normalV;
+    
+    if(xcenterR[1]>xcenterL[1]){
+        
+    }
+    
+    return normalV;
     
 }
