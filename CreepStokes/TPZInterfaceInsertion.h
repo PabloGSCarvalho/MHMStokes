@@ -33,9 +33,12 @@ private:
     
     TPZManVector<int64_t,3> m_interfaceVector_ids;
     
-    /// Multiplier material id
+    /// Multiplier material id (interior)
     int m_multiplier_id;
     
+    /// Multiplier material id (BC)
+    int m_multiplierBC_id;
+
     /// Set of boundary material ids
     std::set<int> m_boundaries_ids;
 
@@ -75,16 +78,25 @@ public:
     int & GetWrapFluxId();
 
     /// Set multiplier material id
-    void SetMultiplierMatId(int wrapFlux);
+    void SetMultiplierMatId(int multiplier);
     
     /// Get multiplier material id
     int & GetMultiplierMatId();
+    
+    /// Set multiplier material id - BC
+    void SetMultiplierBCMatId(int multiplier_BC);
+    
+    /// Get multiplier material id - BC
+    int & GetMultiplierBCMatId();
     
     /// Add multiphysics interfaces for all boundaries and internal elements
     void AddMultiphysicsInterfaces();
     
     /// Add interface from a reference material, only one side
     void AddMultiphysicsInterfaces(int matfrom, int mattarget);
+    
+    /// Add BC interface from a reference material, only one side
+    void AddMultiphysicsBCInterface(int matfrom, int mattarget);
     
     /// Add interfaces in left and right sides of a reference material, it should be given an interface vector (left and right materials)
     void AddMultiphysicsInterfacesLeftNRight(int matfrom);

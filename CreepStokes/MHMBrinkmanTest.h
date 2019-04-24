@@ -65,6 +65,7 @@ private:
     
     //Material do elemento de interface
     int fmatLambda; //Multiplier material
+    int fmatLambdaBC;
     int fmatInterfaceLeft;
     int fmatInterfaceRight;
     int fmatWrap;

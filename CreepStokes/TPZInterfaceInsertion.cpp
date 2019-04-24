@@ -20,6 +20,7 @@ TPZInterfaceInsertion::TPZInterfaceInsertion(){
     m_interface_id = 0;
     m_interfaceVector_ids.Resize(0);
     m_multiplier_id = 0;
+    m_multiplierBC_id = 0;
     m_cmesh = NULL;
     m_geometry = NULL;
     m_boundaries_ids.clear();
@@ -37,6 +38,7 @@ TPZInterfaceInsertion::TPZInterfaceInsertion(TPZInterfaceInsertion & other){
     m_interfaceVector_ids     = other.m_interfaceVector_ids;
     m_id_flux_wrap       = other.m_id_flux_wrap;
     m_multiplier_id      = other.m_multiplier_id;
+    m_multiplierBC_id      = other.m_multiplierBC_id;
     m_geometry           = other.m_geometry;
     m_boundaries_ids     = other.m_boundaries_ids;
 }
@@ -89,6 +91,16 @@ void TPZInterfaceInsertion::SetMultiplierMatId(int multiId){
 /// Get multiplier material id
 int & TPZInterfaceInsertion::GetMultiplierMatId(){
     return m_multiplier_id;
+}
+
+/// Set multiplier material id (BC)
+void TPZInterfaceInsertion::SetMultiplierBCMatId(int multiBCId){
+    m_multiplierBC_id  = multiBCId;
+}
+
+/// Get multiplier material id (BC)
+int & TPZInterfaceInsertion::GetMultiplierBCMatId(){
+    return m_multiplierBC_id;
 }
 
 /// Open the connects of a Interface, create dim-1 Interface elements (Hdiv version)
@@ -337,6 +349,47 @@ void TPZInterfaceInsertion::AddMultiphysicsInterfaces(int matfrom, int mattarget
         gel->SetMaterialId(mattarget);
         int64_t index;
         new TPZMultiphysicsInterfaceElement(*m_cmesh,gel,index,celstack[1],celstack[0]);
+    }
+    
+}
+
+void TPZInterfaceInsertion::AddMultiphysicsBCInterface(int matfrom, int mattarget)
+{
+    if (!(m_geometry&&m_cmesh)) {
+        DebugStop();
+    }
+    if (m_multiplierBC_id==0) {
+        DebugStop();
+    }
+    
+    TPZGeoMesh *gmesh = m_geometry;
+    int64_t nel = gmesh->NElements();
+    for (int64_t el = 0; el<nel; el++) {
+        TPZGeoEl *gel = gmesh->Element(el);
+        if (gel->MaterialId() != matfrom) {
+            continue;
+        }
+        
+        int nsides= gel->NSides();
+        
+        TPZGeoElSide gelside(gel,nsides-1);
+        TPZStack<TPZCompElSide> celstack;
+        gelside.EqualLevelCompElementList(celstack, 0, 0);
+        if (celstack.size() != 3) {
+            DebugStop();
+        }
+        int i_mult_BC = 0;
+        for (int i_stack = 0; i_stack<3; i_stack++) {
+            if (m_multiplierBC_id == celstack[i_stack].Element()->Material()->Id()) {
+                i_mult_BC = i_stack;
+            }
+        }
+        
+        gel->SetMaterialId(mattarget);
+        
+        
+        int64_t index;
+        new TPZMultiphysicsInterfaceElement(*m_cmesh,gel,index,celstack[1],celstack[i_mult_BC]);
     }
     
 }
