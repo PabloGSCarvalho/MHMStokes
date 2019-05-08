@@ -93,7 +93,7 @@ public:
     int Dimension() const {return 2;}
     
     /** returns the number of state variables associated with the material */
-    int NStateVariables() {
+    virtual int NStateVariables() const override {
         
         if(fSpace==1){
             return 1;

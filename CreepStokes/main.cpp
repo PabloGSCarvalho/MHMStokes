@@ -71,24 +71,24 @@ int main(int argc, char *argv[])
 #endif
     //Dados do problema:
     
-    int h_level = 1;
+    int h_level = 4;
     
-    double hx=1.,hy=1.; //Dimensões em x e y do domínio
+    double hx=2.,hy=2.; //Dimensões em x e y do domínio
     //double hx=Pi,hy=2.; //Dimensões em x e y do domínio (acoplamento)
     int nelx=h_level, nely=h_level; //Número de elementos em x e y
     int nx=nelx+1 ,ny=nely+1; //Número de nos em x  y
-    int pOrder = 1; //Ordem polinomial de aproximação
+    int pOrder = 2; //Ordem polinomial de aproximação
     
     
     if (MHMBrinkmanDomain)
     {
-        pOrder = 2;
+//        pOrder = 1;
         hx=1.,hy=1.;
         
-//        HDivPiola = 0;
+        HDivPiola = 1;
         for (int it=0; it<=0; it++) {
             //h_level = pow(2., 2+it);
-            h_level = 16.;
+            h_level = 1.;
             
             //Coeficiente estabilização (Stokes)
             STATE hE=hx/h_level;
@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
         HDivPiola = 0;
         
         hx=2., hy=2.;
-//
+
 //        for (int it=0; it<=12; it++) {
 //            //h_level = pow(2., 2+it);
 //            h_level = 8;

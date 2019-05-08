@@ -444,9 +444,10 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
         
     STATE jac_det;
     if (fSpace==1) {
-        this->ComputeDivergenceOnMaster(datavec, div_on_master);
+        datavec[0].ComputeFunctionDivergence();
+//        this->ComputeDivergenceOnMaster(datavec, div_on_master);
     }
-
+//    datavec[0].divphi.Print("divphi");
     
     jac_det = datavec[vindex].detjac;
     
@@ -464,7 +465,7 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
                 GradVit(f,e) = datavec[vindex].fNormalVec(e,ivec)*dphiVx(f,iphi);
             }
         }
-        
+
         //Du = 0.5(GradU+GradU^T)
         for (int e=0; e<fDimension; e++) {
             for (int f=0; f<fDimension; f++) {
@@ -544,7 +545,8 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
                 ///p*div(U)
             STATE fact = 0.;
             if (fSpace==1) {
-                fact = (-1.) * weight * phiP(j,0) * div_on_master(i);
+//                fact = (-1.) * weight * phiP(j,0) * div_on_master(i);
+                fact = (-1.) * weight * phiP(j,0) * datavec[0].divphi(i)/datavec[0].detjac;
             }else{
                 fact = (-1.) * weight * phiP(j,0) * divui;
             }

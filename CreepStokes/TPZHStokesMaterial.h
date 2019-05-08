@@ -52,10 +52,10 @@ public:
     {
     }
     
-    virtual TPZMaterial *NewMaterial()
-    {
-      return new TPZHStokesMaterial(*this);
-    }
+//    virtual TPZMaterial *NewMaterial()
+//    {
+//      return new TPZHStokesMaterial(*this);
+//    }
     
         /**
      * It computes a contribution to the stiffness matrix and load vector at one BC integration point.

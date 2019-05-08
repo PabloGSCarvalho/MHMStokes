@@ -67,10 +67,10 @@ public:
     
     virtual void FillDataRequirementsInterface(TPZMaterialData &data, TPZVec<TPZMaterialData > &datavec_left, TPZVec<TPZMaterialData > &datavec_right) override;
     
-    virtual TPZMaterial *NewMaterial() override
-    {
-        return new TPZMHMBrinkmanBC(*this);
-    }
+//    virtual TPZMaterial *NewMaterial() override
+//    {
+//        return new TPZMHMBrinkmanBC(*this);
+//    }
     
     /**
      * It computes a contribution to the stiffness matrix and load vector at one BC integration point.

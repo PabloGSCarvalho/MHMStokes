@@ -165,7 +165,7 @@ void MHMBrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, doub
     //Resolvendo o Sistema:
     int numthreads = 0;
     
-    bool optimizeBandwidth = true; //Impede a renumeração das equacoes do problema (para obter o mesmo resultado do Oden)
+    bool optimizeBandwidth = false; //Impede a renumeração das equacoes do problema (para obter o mesmo resultado do Oden)
     TPZAnalysis an(cmesh_m, optimizeBandwidth); //Cria objeto de análise que gerenciará a analise do problema
     
 //            TPZSpStructMatrix struct_mat(cmesh_m);
@@ -175,19 +175,19 @@ void MHMBrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, doub
     
     //TPZParSkylineStructMatrix matskl(cmesh_m, numthreads);
 
-    TPZSkylineNSymStructMatrix matskl(cmesh_m); //OK para Hdiv
-    matskl.SetNumThreads(numthreads);
-    an.SetStructuralMatrix(matskl);
-//    
-//    if (Space==1) {
-//        TPZFStructMatrix matsklD(cmesh_m); //caso nao simetrico *** //OK para discont.
-//        matsklD.SetNumThreads(numthreads);
-//        an.SetStructuralMatrix(matsklD);
-//    }
+//    TPZSkylineNSymStructMatrix matskl(cmesh_m); //OK para Hdiv
+//    matskl.SetNumThreads(numthreads);
+//    an.SetStructuralMatrix(matskl);
+//
+    if (Space==1) {
+        TPZFStructMatrix matsklD(cmesh_m); //caso nao simetrico *** //OK para discont.
+        matsklD.SetNumThreads(numthreads);
+        an.SetStructuralMatrix(matsklD);
+    }
 
 
     TPZStepSolver<STATE> step;
-    step.SetDirect(ELU);
+    step.SetDirect(ELDLt);
     an.SetSolver(step);
     
     
