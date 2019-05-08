@@ -211,7 +211,7 @@ void TPZInterfaceInsertion::AddMultiphysicsInterfacesLeftNRight(int matfrom)
     // create interface elements between the tangent velocity element and the volumetric elements
     
     TPZCompMesh *cmesh = m_cmesh;
-    
+
     if (! (m_geometry) ) {
         DebugStop();
     }
@@ -258,13 +258,13 @@ void TPZInterfaceInsertion::AddMultiphysicsInterfacesLeftNRight(int matfrom)
             
             TPZGeoElBC gbc(gelside,m_interfaceVector_ids[stack_i]);
             int64_t index;
-           
+            
             TPZMultiphysicsInterfaceElement *elem_inter = new TPZMultiphysicsInterfaceElement(*cmesh,gbc.CreatedElement(),index,celneigh,celside);
             elem_inter->SetLeftRightElementIndices(LeftElIndices,RightElIndices);
             
-            std::cout << "Created an element between volumetric element " << neigh.Element()->Index() <<
+            std::cout << "Created an interface element between volumetric element " << neigh.Element()->Index() <<
             " side " << neigh.Side() <<
-            " and interface element " << gelside.Element()->Index() << std::endl;
+            " and interior 1D element " << gelside.Element()->Index() << std::endl;
             
         }
     }
@@ -353,43 +353,68 @@ void TPZInterfaceInsertion::AddMultiphysicsInterfaces(int matfrom, int mattarget
     
 }
 
-void TPZInterfaceInsertion::AddMultiphysicsBCInterface(int matfrom, int mattarget)
+void TPZInterfaceInsertion::AddMultiphysicsBCInterface(int matfrom, int matBCinterface)
 {
-    if (!(m_geometry&&m_cmesh)) {
-        DebugStop();
-    }
-    if (m_multiplierBC_id==0) {
+
+    TPZCompMesh *cmesh = m_cmesh;
+    
+    if (! (m_geometry) ) {
         DebugStop();
     }
     
-    TPZGeoMesh *gmesh = m_geometry;
-    int64_t nel = gmesh->NElements();
-    for (int64_t el = 0; el<nel; el++) {
-        TPZGeoEl *gel = gmesh->Element(el);
-        if (gel->MaterialId() != matfrom) {
+    if (m_interfaceVector_ids.size()==0) {
+        DebugStop();
+    }
+    
+    int64_t nel = m_geometry->NElements();
+    for (int64_t el=0; el<nel; el++) {
+        TPZGeoEl *gel = m_geometry->Element(el);
+        int matid = gel->MaterialId();
+        
+        if (matid != matfrom) {
             continue;
         }
         
-        int nsides= gel->NSides();
-        
+        int nsides = gel->NSides();
         TPZGeoElSide gelside(gel,nsides-1);
-        TPZStack<TPZCompElSide> celstack;
-        gelside.EqualLevelCompElementList(celstack, 0, 0);
-        if (celstack.size() != 3) {
+        TPZCompElSide celside = gelside.Reference();
+        
+        TPZStack<TPZGeoElSide> neighbourset;
+        gelside.AllNeighbours(neighbourset);
+        
+        int nneighs = neighbourset.size();
+        if(nneighs!=2){
             DebugStop();
         }
-        int i_mult_BC = 0;
-        for (int i_stack = 0; i_stack<3; i_stack++) {
-            if (m_multiplierBC_id == celstack[i_stack].Element()->Material()->Id()) {
-                i_mult_BC = i_stack;
+        
+        TPZManVector<int64_t,3> LeftElIndices(1,0.),RightElIndices(1,0.);
+        LeftElIndices[0]=0;
+        RightElIndices[0]=1;
+        
+        for(int stack_i=0; stack_i <nneighs; stack_i++){
+            TPZGeoElSide neigh = neighbourset[stack_i];
+            
+            TPZCompElSide celneigh = neigh.Reference();
+            if (!celside || !celneigh) {
+         //       DebugStop();    // Verificat paapapapapapapapapapappa
             }
+            int64_t neigh_index = neigh.Element()->Index();
+            if (neigh.Element()->Dimension()!=2){
+                continue;
+            }
+            
+            TPZGeoElBC gbc(gelside,matBCinterface);
+            int64_t index;
+            
+            TPZMultiphysicsInterfaceElement *elem_inter = new TPZMultiphysicsInterfaceElement(*cmesh,gbc.CreatedElement(),index,celneigh,celside);
+            elem_inter->SetLeftRightElementIndices(LeftElIndices,RightElIndices);
+            
+            std::cout << "Created an BC interface element between volumetric element " << neigh.Element()->Index() <<
+            " side " << neigh.Side() <<
+            " and boundary 1D element " << gelside.Element()->Index() << std::endl;
+            
         }
-        
-        gel->SetMaterialId(mattarget);
-        
-        
-        int64_t index;
-        new TPZMultiphysicsInterfaceElement(*m_cmesh,gel,index,celstack[1],celstack[i_mult_BC]);
     }
+    
     
 }

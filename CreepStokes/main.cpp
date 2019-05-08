@@ -64,7 +64,7 @@ bool MHMBrinkmanDomain = true;
 int main(int argc, char *argv[])
 {
     
-    TPZMaterial::gBigNumber = 1.e12;
+    TPZMaterial::gBigNumber = 1.e16;
     
 #ifdef LOG4CXX
     InitializePZLOG();
@@ -82,13 +82,13 @@ int main(int argc, char *argv[])
     
     if (MHMBrinkmanDomain)
     {
-        pOrder = 1;
-        hx=4.,hy=2.;
+        pOrder = 2;
+        hx=1.,hy=1.;
         
 //        HDivPiola = 0;
         for (int it=0; it<=0; it++) {
             //h_level = pow(2., 2+it);
-            h_level = 2.;
+            h_level = 16.;
             
             //Coeficiente estabilização (Stokes)
             STATE hE=hx/h_level;
@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
             STATE sigma=s0*(pOrder*pOrder)/hE;
             
             
-            nx=h_level+1 ,ny=2;
+            nx=h_level+1 ,ny=h_level+1;
             hE=hx/h_level;
             sigma=s0*(pOrder*pOrder)/hE;
             
@@ -170,11 +170,11 @@ int main(int argc, char *argv[])
         HDivPiola = 0;
         for (int it=0; it<=0; it++) {
             //h_level = pow(2., 2+it);
-            h_level = 2.;
+            h_level = 1.;
             
             //Coeficiente estabilização (Stokes)
             STATE hE=hx/h_level;
-            STATE s0=24.;
+            STATE s0=0.;
             STATE sigma=s0*(pOrder*pOrder)/hE;
             
             

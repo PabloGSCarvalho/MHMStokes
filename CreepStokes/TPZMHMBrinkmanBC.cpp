@@ -1,5 +1,5 @@
 /*
- *  TPZMHMBrinkmanMaterial.cpp
+ *  TPZMHMBrinkmanBC.cpp
  *  PZ
  *
  *  Created by Pablo Carvalho on 10/05/2016.
@@ -7,7 +7,7 @@
  *
  */
 
-#include "TPZMHMBrinkmanMaterial.h"
+#include "TPZMHMBrinkmanBC.h"
 #include "pzbndcond.h"
 #include "pzaxestools.h"
 #include "TPZMatWithMem.h"
@@ -15,7 +15,7 @@
 
 using namespace std;
 
-void TPZMHMBrinkmanMaterial::FillDataRequirementsInterface(TPZMaterialData &data, TPZVec<TPZMaterialData > &datavec_left, TPZVec<TPZMaterialData > &datavec_right)
+void TPZMHMBrinkmanBC::FillDataRequirementsInterface(TPZMaterialData &data, TPZVec<TPZMaterialData > &datavec_left, TPZVec<TPZMaterialData > &datavec_right)
 {
     TPZMaterial::FillDataRequirementsInterface(data, datavec_left, datavec_right);
     int nref_left = datavec_left.size();
@@ -23,12 +23,10 @@ void TPZMHMBrinkmanMaterial::FillDataRequirementsInterface(TPZMaterialData &data
     
 }
 
-void TPZMHMBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMaterialData> &datavecleft, TPZVec<TPZMaterialData> &datavecright, REAL weight, TPZFMatrix<STATE> &ek,TPZFMatrix<STATE> &ef){
+void TPZMHMBrinkmanBC::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMaterialData> &datavecleft, TPZVec<TPZMaterialData> &datavecright, REAL weight, TPZFMatrix<STATE> &ek,TPZFMatrix<STATE> &ef){
     //DebugStop();
-    //return;
     // Verificar que
     // os termos mistos devem estar sem viscosidade!
-    
     
     //2 = 1 Vel space + 1 Press space for datavecleft
     int nrefleft =  datavecleft.size();
@@ -60,6 +58,7 @@ void TPZMHMBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<T
     
     //Normal e tangente
     TPZManVector<REAL, 3>  &normalVec = datavecleft[vindex].normal;
+    
     TPZFNMatrix<9,REAL>  &tan = data.axes;
     
     TPZFNMatrix<3, STATE> normalM(3,1,0.),tangent(3,1,0.);
@@ -69,7 +68,6 @@ void TPZMHMBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<T
     
     tangent(0,0) = normalVec[1];
     tangent(1,0) = normalVec[0];
-
     
     TPZFNMatrix<220,REAL> dphiVx1(dim,dphiV1.Cols());
     TPZAxesTools<REAL>::Axes2XYZ(dphiV1, dphiVx1, datavecleft[vindex].axes);
@@ -89,8 +87,35 @@ void TPZMHMBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<T
         for (int e=0; e< dim ; e++) {
             phiVi(e,0)=datavecleft[vindex].fNormalVec(e,ivec1)*datavecleft[vindex].phi(iphi1,0);
         }
+
+        TPZFNMatrix<9,STATE> phiVti(1,1,0.);
+        phiVti(0,0)= tan(0,0) * phiVi(0,0) + tan(0,1) * phiVi(1,0);
+
+
+        // K12 e K21 - (test V left) * (trial Lambda right)
+        for(int j1 = 0; j1 < nshapeV; j1++)
+        {
+            int jphi1 = datavecleft[vindex].fVecShapeIndex[j1].second;
+            int jvec1 = datavecleft[vindex].fVecShapeIndex[j1].first;
+            
+            TPZFNMatrix<9, STATE> phiVj(dim,1);
+            for (int e=0; e< dim ; e++) {
+                phiVj(e,0)=datavecleft[vindex].fNormalVec(e,jvec1)*datavecleft[vindex].phi(jphi1,0);
+            }
+            
+            TPZFNMatrix<9,STATE> phiVtj(1,1,0.);
+            phiVtj(0,0)= tan(0,0) * phiVj(0,0) + tan(0,1) * phiVj(1,0);
+
+            
+            STATE fact = 0. * weight * phiVtj(0,0) * phiVti(0,0);
+            ek(i1,j1) += fact;
+        }
         
-        TPZFNMatrix<3, STATE> phiV1tti(dim,1,0.),normalM(dim,1,0.);
+        
+        
+//        TPZFNMatrix<9,STATE> phiVtit(2,1,0.);
+//        phiVtit(0,0)=phiVti(0,0)*tan(0,0);
+//        phiVtit(1,0)=phiVti(0,0)*tan(0,1);
         
         // K12 e K21 - (test V left) * (trial Lambda right)
         for(int j1 = 0; j1 < nshapeLambda; j1++)
@@ -101,27 +126,117 @@ void TPZMHMBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<T
             
             // Tangencial comp. vector (t x t)Sn :
             for (int e=0; e< dim ; e++) {
-                //lambda_j(e,0)= phiLamb(j1,0)-InnerVec(phiLamb, normalM)*normalVec[e];
+//                lambda_j(e,0)= phiLamb(e,0)-InnerVec(phiLamb, normalM)*normalVec[e];
                 lambda_j(e,0) = phiLamb(j1,0)*tan(0,e);
             }
             
-            STATE fact = weight * fMultiplier * InnerVec(phiVi,lambda_j);
+            STATE fact = fMultiplier * weight * InnerVec(phiVi,lambda_j);
             ek(i1,j1+nshapeV) += fact;
             ek(j1+nshapeV,i1) += fact;
         }
 
     }
+
+//    int matid = fBC->Material()->Id();
     
-    std::ofstream plotfileM("ekInterfaceH.txt");
-    ek.Print("KintH = ",plotfileM,EMathematicaInput);
+    if(fBC->Type()==0){
+   //     ek(0,0)= 1000000000000.;
+   //     ek(2,2)= 1000000000000.;
+   //     ek(4,4)= 1000000000000.;
+   //     ek(6,6)= 1000000000000.;
+   //     ek(8,8)= 1000000000000.;
+    }
+    
+    TPZFNMatrix<9, STATE> u_D(dim,1);
+    STATE p_D =0.;
+    if(fBC->HasBCForcingFunction())
+    {
+        TPZManVector<STATE> vbc(3);
+        TPZFMatrix<STATE> gradu;
+        fBC->BCForcingFunction()->Execute(datavecleft[vindex].x,vbc,gradu);
+        u_D(0,0) = vbc[0];
+        u_D(1,0) = vbc[1];
+        p_D = vbc[2];
+    }
+
+    
+    switch (fBC->Type()) {
+        case 0: //Dirichlet for continuous formulation
+        {
+            for(int j1 = 0; j1 < nshapeLambda; j1++)
+            {
+                TPZFNMatrix<9, STATE> lambda_j(dim,1,0.);
+                TPZFNMatrix<9, STATE> phiLamb = datavecright[pindex].phi;
+                
+                for (int e=0; e< dim ; e++) {
+                    lambda_j(e,0) = phiLamb(j1,0)*tan(0,e);
+                }
+                
+                STATE fact = weight * InnerVec(u_D,lambda_j);
+                
+                ef(j1+nshapeV) += fact;
+            }
+            
+        }
+            break;
+           
+            
+        case 1: //Neumann for continuous formulation
+        {
+            for(int i1 = 0; i1 < nshapeV; i1++)
+            {
+                int iphi1 = datavecleft[vindex].fVecShapeIndex[i1].second;
+                int ivec1 = datavecleft[vindex].fVecShapeIndex[i1].first;
+                
+                TPZFNMatrix<9, STATE> phiVi(dim,1);
+                for (int e=0; e< dim ; e++) {
+                    phiVi(e,0)=datavecleft[vindex].fNormalVec(e,ivec1)*datavecleft[vindex].phi(iphi1,0);
+                }
+                
+                //TPZFNMatrix<9,STATE> phiVti(1,1,0.);
+                //phiVti(0,0)= tan(0,0) * phiVi(0,0) + tan(0,1) * phiVi(1,0);
+                
+                TPZFNMatrix<9, STATE> p_Dnormal(dim,1);
+                
+                for (int e=0; e<dim; e++) {
+                    p_Dnormal(e,0)=-p_D*normalM(e,0);
+                }
+                
+                STATE detjac_v = datavecleft[vindex].detjac;
+                STATE fact = weight * detjac_v * InnerVec(phiVi,p_Dnormal);
+                
+                ef(i1) += fact;
+            }
+        }
+            break;
+            
+            
+        default:
+        {
+            std::cout << "Boundary not implemented " << std::endl;
+            DebugStop();
+        }
+            break;
+    }
+            
+    
+
+    //ContributeBC(datavecleft,weight,ek,ef,*fBC);
+
+    
+    ek(nshapeLambda+nshapeV-2,nshapeLambda+nshapeV-2)=0.;
+    ek(nshapeLambda+nshapeV-1,nshapeLambda+nshapeV-1)=0.;
+    
+    std::ofstream plotfileM("ekBCInterfaceH.txt");
+    ek.Print("KBCintH = ",plotfileM,EMathematicaInput);
     
     
 }
 
 
 
-void TPZMHMBrinkmanMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef, TPZBndCond &bc){
-    
+void TPZMHMBrinkmanBC::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef, TPZBndCond &bc){
+    //return;
     STATE rhsnorm = Norm(ef);
     if(isnan(rhsnorm))
     {
@@ -182,7 +297,7 @@ void TPZMHMBrinkmanMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL
     switch (bc.Type()) {
         case 0: //Dirichlet for continuous formulation
         {
-        
+            
             if(bc.HasBCForcingFunction())
             {
                 TPZManVector<STATE> vbc(3);
@@ -217,10 +332,42 @@ void TPZMHMBrinkmanMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL
                     
                     
                 }
-                
-                
-            
 
+                
+
+                
+//                for(int i = 0; i < nshapeV; i++ )
+//                {
+//                    int iphi = datavec[vindex].fVecShapeIndex[i].second;
+//                    int ivec = datavec[vindex].fVecShapeIndex[i].first;
+//                    
+//                    for (int e=0; e<fDimension; e++) {
+//                        phiVi(e,0)=datavec[vindex].fNormalVec(e,ivec)*phiV(iphi,0);
+//                    }
+//                    
+//                    TPZManVector<REAL> n = datavec[vindex].normal;
+//                    
+//                    TPZFNMatrix<9,STATE> pn(fDimension,1);
+//                    
+//                    
+//                    for (int f=0; f<fDimension; f++) {
+//                        pn(f,0)=n[f]*v_1(0,0);
+//                    }
+//                    
+//                    //Adaptação para Hdiv
+//                    
+//                    STATE factef=0.0;
+//                    for(int is=0; is<gy ; is++){
+//                        factef += (pn(is,0))* phiVi(is,0);
+//                    }
+//                    
+//                    ef(i,0) = weight * factef;
+//                    
+//                }
+                
+                
+        
+                
                 
                 
             }else{
@@ -272,80 +419,47 @@ void TPZMHMBrinkmanMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL
         case 1: //Neumann for continuous formulation
         {
             
-//            if(bc.HasBCForcingFunction())
-//            {
-//                TPZManVector<STATE> vbc(3);
-//                TPZFMatrix<STATE> gradu;
-//                bc.BCForcingFunction()->Execute(datavec[vindex].x,vbc,gradu);
-//                v_2(0,0) = vbc[0];
-//                v_2(1,0) = vbc[1];
-//                p_D = vbc[2];
-//            }
-//            
-//            if(fSpace==1){
-//                
-//                
-//                for(int i = 0; i < nshapeV; i++ )
-//                {
-//                    
-//                    //Adaptação para Hdiv
-//                    
-//                    TPZManVector<REAL> n = datavec[0].normal;
-//                    
-//                    REAL vh_n = v_h[0];
-//                    REAL v_n = n[0] * v_2[0] + n[1] * v_2[1];
-//                    
-//                    ef(i,0) += -weight * (vh_n - v_n) * phiV(i,0);
-//                    
-//                    for(int j = 0; j < nshapeV; j++){
-//                        
-//                        ek(i,j) += weight * phiV(j,0) * phiV(i,0);
-//                        
-//                    }
-//                    
-//                    
-//                    
-//                }
-//            }
             
-            TPZFMatrix<STATE> gradu(2,2,0.);
             if(bc.HasBCForcingFunction())
             {
                 TPZManVector<STATE> vbc(3);
+                TPZFMatrix<STATE> gradu;
                 bc.BCForcingFunction()->Execute(datavec[vindex].x,vbc,gradu);
                 v_2(0,0) = vbc[0];
                 v_2(1,0) = vbc[1];
                 p_D = vbc[2];
             }
-
+            
+            
+            
             for(int i = 0; i < nshapeV; i++ )
             {
                 int iphi = datavec[vindex].fVecShapeIndex[i].second;
                 int ivec = datavec[vindex].fVecShapeIndex[i].first;
-
+                
                 for (int e=0; e<fDimension; e++) {
                     phiVi(e,0)=datavec[vindex].fNormalVec(e,ivec)*phiV(iphi,0);
                 }
-
+                
                 TPZManVector<REAL> n = datavec[vindex].normal;
-
+                
                 TPZFNMatrix<9,STATE> pn(fDimension,1);
-
-
+                
+                
                 for (int f=0; f<fDimension; f++) {
-                    pn(f,0)=n[f]*p_D;
+                    pn(f,0)=n[f]*v_1(0,0);
                 }
+                
+                
                 //Adaptação para Hdiv
                 
                 STATE factef=0.0;
-                for(int i=0; i<2 ; i++){
-                    factef += -p_D* phiV(i,0);
+                for(int is=0; is<gy ; is++){
+                    factef += (pn(is,0))* phiVi(is,0);
                 }
-
-                //factef = -p_D* phiV(i,0);
                 
-                //ef(i,0) = weight * factef;
-
+                ef(i,0) = weight * factef;
+                
             }
             
             
@@ -548,7 +662,7 @@ void TPZMHMBrinkmanMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL
 }
 
 
-void TPZMHMBrinkmanMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZMaterialData> &datavec, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef, TPZBndCond &bc){
+void TPZMHMBrinkmanBC::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZMaterialData> &datavec, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef, TPZBndCond &bc){
     
     
     
@@ -1259,7 +1373,7 @@ void TPZMHMBrinkmanMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec
 }
 
 
-TPZManVector<REAL,3> TPZMHMBrinkmanMaterial::ComputeNormal(TPZMaterialData &data, TPZVec<TPZMaterialData> &datavecleft, TPZVec<TPZMaterialData> &datavecright){
+TPZManVector<REAL,3> TPZMHMBrinkmanBC::ComputeNormal(TPZMaterialData &data, TPZVec<TPZMaterialData> &datavecleft, TPZVec<TPZMaterialData> &datavecright){
 
     int vindex = VIndex();
     int pindex = PIndex();

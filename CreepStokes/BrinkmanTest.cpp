@@ -179,7 +179,11 @@ void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double 
     an.Assemble();//Assembla a matriz de rigidez (e o vetor de carga) global
     
     
-
+    {
+        std::ofstream filestiff("stiffness_before.txt");
+        an.Solver().Matrix()->Print("K1 = ",filestiff,EMathematicaInput);
+        
+    }
     
     std::cout << "Solving Matrix " << std::endl;
     
@@ -778,6 +782,32 @@ TPZCompEl *BrinkmanTest::CreateInterfaceEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64
 
 void BrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFMatrix<STATE> &dsol){
 
+    dsol.Resize(3,2);
+    sol.Resize(3);
+    
+    REAL x1 = x[0];
+    REAL x2 = x[1];
+    
+    STATE v_1 = x2;
+    STATE v_2 = 0.;
+    STATE pressure= 1.;
+    
+    sol[0]=v_1;
+    sol[1]=v_2;
+    sol[2]=pressure;
+    
+    // vx direction
+    dsol(0,0)= 0.;
+    dsol(0,1)= 1.;
+    
+    // vy direction
+    dsol(1,0)= 0.;
+    dsol(1,1)= 0.;
+    
+    // Gradiente pressão
+    dsol(2,0)= 0.;
+    dsol(2,1)= 0.;
+    
     
     // General form : : Artigo Botti, Di Pietro, Droniou
 
@@ -844,33 +874,33 @@ void BrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFMatr
 
     // Stokes : : Artigo Botti, Di Pietro, Droniou
     
-    dsol.Resize(3,2);
-    sol.Resize(3);
-
-    REAL x1 = x[0];
-    REAL x2 = x[1];
-
-    REAL e = exp(1.);
-
-    STATE v_1 = -1.*sin(x1)*sin(x2);
-    STATE v_2 = -1.*cos(x1)*cos(x2);
-    STATE pressure= cos(x1)*sin(x2);
-
-    sol[0]=v_1;
-    sol[1]=v_2;
-    sol[2]=pressure;
-
-    // vx direction
-    dsol(0,0)= -1.*cos(x1)*sin(x2);
-    dsol(0,1)= cos(x2)*sin(x1);
-
-    // vy direction
-    dsol(1,0)= -1.*cos(x2)*sin(x1);
-    dsol(1,1)= cos(x1)*sin(x2);
-
-    // Gradiente pressão
-    dsol(2,0)= -sin(x1)*sin(x2);
-    dsol(2,1)= cos(x1)*cos(x2);
+//    dsol.Resize(3,2);
+//    sol.Resize(3);
+//
+//    REAL x1 = x[0];
+//    REAL x2 = x[1];
+//
+//    REAL e = exp(1.);
+//
+//    STATE v_1 = -1.*sin(x1)*sin(x2);
+//    STATE v_2 = -1.*cos(x1)*cos(x2);
+//    STATE pressure= cos(x1)*sin(x2);
+//
+//    sol[0]=v_1;
+//    sol[1]=v_2;
+//    sol[2]=pressure;
+//
+//    // vx direction
+//    dsol(0,0)= -1.*cos(x1)*sin(x2);
+//    dsol(0,1)= cos(x2)*sin(x1);
+//
+//    // vy direction
+//    dsol(1,0)= -1.*cos(x2)*sin(x1);
+//    dsol(1,1)= cos(x1)*sin(x2);
+//
+//    // Gradiente pressão
+//    dsol(2,0)= -sin(x1)*sin(x2);
+//    dsol(2,1)= cos(x1)*cos(x2);
     
 
     // Darcy : : Artigo Botti, Di Pietro, Droniou
@@ -911,6 +941,9 @@ void BrinkmanTest::F_source(const TPZVec<REAL> &x, TPZVec<STATE> &f, TPZFMatrix<
     REAL x2 = x[1];
     STATE f_1 =0., f_2=0.;
 
+    f[0] = f_1; // x direction
+    f[1] = f_2; // y direction
+    f[2] = 0.;
     
     // General form : : Artigo Botti, Di Pietro, Droniou
     
@@ -945,12 +978,12 @@ void BrinkmanTest::F_source(const TPZVec<REAL> &x, TPZVec<STATE> &f, TPZFMatrix<
     // Stokes : : Artigo Botti, Di Pietro, Droniou
     
 
-    f_1 = -3.*sin(x1)*sin(x2);
-    f_2 = -1.*cos(x1)*cos(x2);
-
-    f[0] = f_1; // x direction
-    f[1] = f_2; // y direction
-    f[2] = 0.;
+//    f_1 = -3.*sin(x1)*sin(x2);
+//    f_2 = -1.*cos(x1)*cos(x2);
+//
+//    f[0] = f_1; // x direction
+//    f[1] = f_2; // y direction
+//    f[2] = 0.;
 
     
     // Darcy : : Artigo Botti, Di Pietro, Droniou
@@ -1257,8 +1290,9 @@ TPZCompMesh *BrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STA
         
         TPZFMatrix<STATE> val3(1,1,0.), val4(1,1,0.);
     
-        val4(0,0)=-cos(2.)*sin(1.);
-        
+       // val4(0,0)=-cos(2.)*sin(1.);
+    
+        val4(0,0)=1;
         
         TPZMaterial * BCPoint = material->CreateBC(material, fmatPoint, fpointtype, val3, val4); //Cria material que implementa um ponto para a pressão
         cmesh->InsertMaterialObject(BCPoint); //Insere material na malha

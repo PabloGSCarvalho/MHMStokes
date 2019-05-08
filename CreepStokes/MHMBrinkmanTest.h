@@ -22,6 +22,7 @@
 #include "pzanalysis.h"
 #include "pzbndcond.h"
 #include "TPZMHMBrinkmanMaterial.h"
+#include "TPZMHMBrinkmanBC.h"
 #include "TPZMultiphysicsCompMesh.h"
 
 #include <pzgeoel.h>
@@ -66,6 +67,13 @@ private:
     //Material do elemento de interface
     int fmatLambda; //Multiplier material
     int fmatLambdaBC;
+    
+    int fmatLambdaBC_bott;
+    int fmatLambdaBC_top;
+    int fmatLambdaBC_left;
+    int fmatLambdaBC_right;
+    
+    
     int fmatInterfaceLeft;
     int fmatInterfaceRight;
     int fmatWrap;
