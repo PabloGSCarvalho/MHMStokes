@@ -137,16 +137,6 @@ void TPZMHMBrinkmanBC::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMate
 
     }
 
-//    int matid = fBC->Material()->Id();
-    
-    if(fBC->Type()==0){
-   //     ek(0,0)= 1000000000000.;
-   //     ek(2,2)= 1000000000000.;
-   //     ek(4,4)= 1000000000000.;
-   //     ek(6,6)= 1000000000000.;
-   //     ek(8,8)= 1000000000000.;
-    }
-    
     TPZFNMatrix<9, STATE> u_D(dim,1);
     STATE p_D =0.;
     if(fBC->HasBCForcingFunction())
@@ -159,32 +149,6 @@ void TPZMHMBrinkmanBC::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMate
         p_D = vbc[2];
     }
 
-    
-    for(int i1 = 0; i1 < nshapeV; i1++)
-    {
-        int iphi1 = datavecleft[vindex].fVecShapeIndex[i1].second;
-        int ivec1 = datavecleft[vindex].fVecShapeIndex[i1].first;
-        
-        TPZFNMatrix<9, STATE> phiVi(dim,1);
-        for (int e=0; e< dim ; e++) {
-            phiVi(e,0)=datavecleft[vindex].fNormalVec(e,ivec1)*datavecleft[vindex].phi(iphi1,0);
-        }
-        
-        //TPZFNMatrix<9,STATE> phiVti(1,1,0.);
-        //phiVti(0,0)= tan(0,0) * phiVi(0,0) + tan(0,1) * phiVi(1,0);
-        
-        TPZFNMatrix<9, STATE> p_Dnormal(dim,1);
-        
-        for (int e=0; e<dim; e++) {
-            p_Dnormal(e,0)=-p_D*normalM(e,0);
-        }
-        
-        STATE detjac_v = datavecleft[vindex].detjac;
-        STATE fact = weight * InnerVec(phiVi,p_Dnormal);
-        
-        ef(i1) += fact;
-    }
-    
     
     switch (fBC->Type()) {
         case 0: //Dirichlet for continuous formulation
@@ -209,7 +173,26 @@ void TPZMHMBrinkmanBC::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMate
             
         case 1: //Neumann for continuous formulation
         {
-
+            for(int i1 = 0; i1 < nshapeV; i1++)
+            {
+                int iphi1 = datavecleft[vindex].fVecShapeIndex[i1].second;
+                int ivec1 = datavecleft[vindex].fVecShapeIndex[i1].first;
+                
+                TPZFNMatrix<9, STATE> phiVi(dim,1);
+                for (int e=0; e< dim ; e++) {
+                    phiVi(e,0)=datavecleft[vindex].fNormalVec(e,ivec1)*datavecleft[vindex].phi(iphi1,0);
+                }
+                
+                TPZFNMatrix<9, STATE> p_Dnormal(dim,1);
+                
+                for (int e=0; e<dim; e++) {
+                    p_Dnormal(e,0)=-p_D*normalM(e,0);
+                }
+                
+                STATE fact = weight * InnerVec(phiVi,p_Dnormal);
+                
+                ef(i1) += fact;
+            }
         }
             break;
             
@@ -221,15 +204,7 @@ void TPZMHMBrinkmanBC::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMate
         }
             break;
     }
-            
-    
 
-    //ContributeBC(datavecleft,weight,ek,ef,*fBC);
-
-    
-    ek(nshapeLambda+nshapeV-2,nshapeLambda+nshapeV-2)=0.;
-    ek(nshapeLambda+nshapeV-1,nshapeLambda+nshapeV-1)=0.;
-    
     std::ofstream plotfileM("ekBCInterfaceH.txt");
     ek.Print("KBCintH = ",plotfileM,EMathematicaInput);
     

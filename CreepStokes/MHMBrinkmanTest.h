@@ -48,6 +48,7 @@
 #include "pzanalysis.h"
 #include "TPZParFrontStructMatrix.h"
 #include "TPZSpStructMatrix.h"
+#include "pzinterpolationspace.h"
 
 using namespace std;
 using namespace pzshape;
@@ -73,6 +74,10 @@ private:
     int fmatLambdaBC_left;
     int fmatLambdaBC_right;
     
+    int fmatWrapBC_bott;
+    int fmatWrapBC_top;
+    int fmatWrapBC_left;
+    int fmatWrapBC_right;
     
     int fmatInterfaceLeft;
     int fmatInterfaceRight;
@@ -169,6 +174,9 @@ public:
     
     // Insere interfaces na malha multifísica
     void InsertInterfaces(TPZMultiphysicsCompMesh *cmesh);
+    
+    // Insere interfaces na malha multifísica
+    void InsertWrapBoundary(TPZCompMesh *cmesh);
 };
 
 

@@ -1018,7 +1018,6 @@ TPZCompMesh *StokesTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STATE
     BCond0->SetForcingFunction(Sol_exact,bc_inte_order);
     cmesh->InsertMaterialObject(BCond0); //Insere material na malha
   
-    
     //val2(0,0) = 1.0; // vx -> 0
     TPZMaterial * BCond1 = material->CreateBC(material, fmatBCtop, fpenetration, val1, val2); //Cria material que implementa a condicao de contorno superior
     BCond1->SetForcingFunction(Sol_exact,bc_inte_order);

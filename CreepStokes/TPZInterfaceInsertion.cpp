@@ -396,7 +396,7 @@ void TPZInterfaceInsertion::AddMultiphysicsBCInterface(int matfrom, int matBCint
             
             TPZCompElSide celneigh = neigh.Reference();
             if (!celside || !celneigh) {
-         //       DebugStop();    // Verificat paapapapapapapapapapappa
+                DebugStop();
             }
             int64_t neigh_index = neigh.Element()->Index();
             if (neigh.Element()->Dimension()!=2){
@@ -408,6 +408,7 @@ void TPZInterfaceInsertion::AddMultiphysicsBCInterface(int matfrom, int matBCint
             
             TPZMultiphysicsInterfaceElement *elem_inter = new TPZMultiphysicsInterfaceElement(*cmesh,gbc.CreatedElement(),index,celneigh,celside);
             elem_inter->SetLeftRightElementIndices(LeftElIndices,RightElIndices);
+            
             
             std::cout << "Created an BC interface element between volumetric element " << neigh.Element()->Index() <<
             " side " << neigh.Side() <<
