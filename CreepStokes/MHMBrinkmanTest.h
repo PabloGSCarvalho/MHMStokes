@@ -174,9 +174,9 @@ public:
     
     // Insere interfaces na malha multifísica
     void InsertInterfaces(TPZMultiphysicsCompMesh *cmesh);
+
     
-    // Insere interfaces na malha multifísica
-    void InsertWrapBoundary(TPZCompMesh *cmesh);
+    
 };
 
 

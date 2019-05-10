@@ -82,12 +82,12 @@ int main(int argc, char *argv[])
     
     if (MHMBrinkmanDomain)
     {
-        pOrder = 2;
-        hx=1.,hy=1.;
+        pOrder = 1;
+        hx=2.,hy=2.;
         
         HDivPiola = 1;
         for (int it=0; it<=0; it++) {
-            //h_level = pow(2., 2+it);
+           // h_level = pow(2., 2+it);
             h_level = 4;
             
             //Coeficiente estabilização (Stokes)

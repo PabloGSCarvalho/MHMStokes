@@ -123,12 +123,11 @@ void MHMBrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, doub
         n_mais = 1;
     }
     
-    
-    TPZCompMesh *cmesh_v = this->CMesh_v(gmesh, Space, pOrder); //Função para criar a malha computacional da velocidade
-    TPZCompMesh *cmesh_p = this->CMesh_p(gmesh, Space, pOrder+n_mais); //Função para criar a malha computacional da pressão
-    //TPZCompMesh *cmesh_St = this->CMesh_St(gmesh, Space, pOrder); //Função para criar a malha computacional da pressão
+    TPZCompMesh *cmesh_v = this->CMesh_v(gmesh, Space, pOrder);
+    TPZCompMesh *cmesh_p = this->CMesh_p(gmesh, Space, pOrder+n_mais);
     
     ChangeExternalOrderConnects(cmesh_v,n_mais);
+   // ChangeExternalOrderConnects(cmesh_p,n_mais);
     
    // InsertWrapBoundary(cmesh_p);
     
@@ -214,6 +213,21 @@ void MHMBrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, doub
      }
     std::cout << "Solving Matrix " << std::endl;
     an.Solve();
+    
+    
+    
+#ifdef PZDEBUG
+    {
+        std::ofstream filecv("MalhaC_v2.txt"); //Impressão da malha computacional da velocidade (formato txt)
+        std::ofstream filecp("MalhaC_p2.txt"); //Impressão da malha computacional da pressão (formato txt)
+        cmesh_v->Print(filecv);
+        cmesh_p->Print(filecp);
+        
+        std::ofstream filecm("MalhaC_m2.txt"); //Impressão da malha computacional multifísica (formato txt)
+        cmesh_m->Print(filecm);
+    }
+#endif
+    
     
 #ifdef PZDEBUG
     //Imprimir Matriz de rigidez Global:
@@ -814,9 +828,9 @@ void MHMBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFM
     REAL x1 = x[0];
     REAL x2 = x[1];
     
-    STATE v_1 = x2;
+    STATE v_1 = -0.1*x2*x2+0.2*x2;
     STATE v_2 = 0.;
-    STATE pressure = 1.;
+    STATE pressure = 1.-0.2*x1;
     
     sol[0]=v_1;
     sol[1]=v_2;
@@ -824,7 +838,7 @@ void MHMBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFM
     
     // vx direction
     dsol(0,0)= 0.;
-    dsol(0,1)= 1.;
+    dsol(0,1)= 0.2-0.2*x2;
     
     // vy direction
     dsol(1,0)= 0.;
@@ -1210,7 +1224,7 @@ TPZCompMesh *MHMBrinkmanTest::CMesh_p(TPZGeoMesh *gmesh, int Space, int pOrder)
     }
     std::set<int> materialids;
     materialids.insert(fmatID);
-    materialids.insert(fpointtype);
+   // materialids.insert(fpointtype);
     cmesh->AutoBuild(materialids);
     
     gmesh->ResetReference();
@@ -1392,74 +1406,3 @@ void MHMBrinkmanTest::InsertInterfaces(TPZMultiphysicsCompMesh *cmesh_m){
 
 }
 
-
-void MHMBrinkmanTest::InsertWrapBoundary(TPZCompMesh *cmesh){
-    
-    std::set<int> bc_wrap_ids;
-    bc_wrap_ids.insert(fmatWrapBC_top);
-    bc_wrap_ids.insert(fmatWrapBC_bott);
-    bc_wrap_ids.insert(fmatWrapBC_left);
-    bc_wrap_ids.insert(fmatWrapBC_right);
-    
-    std::set<int> bc_1D_ids;
-    bc_1D_ids.insert(fmatLambdaBC_top);
-    bc_1D_ids.insert(fmatLambdaBC_bott);
-    bc_1D_ids.insert(fmatLambdaBC_left);
-    bc_1D_ids.insert(fmatLambdaBC_right);
-    
-#ifdef PZDEBUG
-    if (!cmesh) {
-        DebugStop();
-    }
-#endif
-
-    TPZGeoMesh *gmesh = cmesh->Reference();
-    int dim = gmesh->Dimension();
-    gmesh->ResetReference();
-    cmesh->LoadReferences();
-    
-    
-    int64_t nel = gmesh->NElements();
-    for (int64_t el=0; el<nel; el++) {
-        TPZGeoEl *gel = gmesh->Element(el);
-        int matid = gel->MaterialId();
-        
-        TPZCompEl *cel = gel->Reference();
-        int nsides = gel->NSides();
-        TPZGeoElSide gelside(gel,nsides-1);
-
-        
-
-        for (auto matBC_id : bc_1D_ids) {
-            if (matid != matBC_id) {
-                continue;
-            }
-
-            int matwrap_id = matid + 10;
-
-            if(bc_wrap_ids.find(matwrap_id)==bc_wrap_ids.end()){
-                DebugStop();
-            }
-            
-            TPZGeoElBC Wrap_bc(gelside,matwrap_id);
-            TPZCompElSide compside = gelside.Reference();
-            cmesh->SetAllCreateFunctionsDiscontinuous();
-            int64_t index;
-            cmesh->CreateCompEl(Wrap_bc.CreatedElement(),index);
-//            TPZInterpolatedElement *intel = dynamic_cast<TPZInterpolatedElement *>(cmesh->Element(index));
-//            intel->SetSideOrient(nsides-1, 1);
-         
-//            TPZGeoElBC 0gbc(candidates[i].Reference(), flux_trace_id);
-//            int64_t compel_index;
-//            int_cel->LoadElementReference();
-//            TPZCompEl *flux_trace_cel = flux_cmesh->ApproxSpace().CreateCompEl(gbc.CreatedElement(), *flux_cmesh, compel_index);
-
-            
-            
-        }
-
-    
-    }
-
-    
-}
