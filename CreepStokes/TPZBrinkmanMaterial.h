@@ -14,7 +14,7 @@
 #include "pzlog.h"
 #include "tpzautopointer.h"
 #include "TPZMaterial.h"
-
+#include "pztrnsform.h"
 
 #ifndef TPZBrinkmanMATERIAL
 #define TPZBrinkmanMATERIAL
@@ -41,6 +41,10 @@ protected:
     STATE fTheta;
     
     STATE fSigma;
+    
+//    TPZTransform<STATE> f_T;
+//    
+//    TPZTransform<STATE> f_InvT;
     
 public:
     
@@ -80,6 +84,12 @@ public:
     
     virtual void FillDataRequirementsInterface(TPZMaterialData &data, TPZVec<TPZMaterialData > &datavec_left, TPZVec<TPZMaterialData > &datavec_right);
     
+//    void SetTranform(TPZTransform<STATE> Transf, TPZTransform<STATE> InvTransf)
+//    {
+//        f_T = Transf;
+//        f_InvT = InvTransf;
+//    }
+    
     void SetPermeability(REAL perm) {
         fk = perm;
     }
@@ -87,6 +97,14 @@ public:
     /** returns the name of the material */
     std::string Name() {
         return "TPZBrinkmanMaterial";
+    }
+    
+    STATE GetViscosity() const{
+        return fViscosity;
+    }
+
+    void SetViscosity(STATE visco){
+        fViscosity = visco;
     }
     
     /** returns the integrable dimension of the material */

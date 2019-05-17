@@ -15,7 +15,7 @@
 #include "tpzautopointer.h"
 #include "TPZMaterial.h"
 #include "TPZBrinkmanMaterial.h"
-
+#include "pztrnsform.h"
 
 #ifndef TPZMHMBrinkmanMATERIAL
 #define TPZMHMBrinkmanMATERIAL
@@ -27,6 +27,7 @@ class TPZMHMBrinkmanMaterial : public TPZBrinkmanMaterial  {
 protected:
     
     STATE fMultiplier;
+    
     
 public:
 
@@ -42,6 +43,7 @@ public:
      */
     TPZMHMBrinkmanMaterial(int matid, int dimension, int space, STATE viscosity, STATE theta, STATE Sigma) : TPZBrinkmanMaterial(matid,dimension,space,viscosity,theta,Sigma), fMultiplier(1.)
     {
+
     }
     
     
@@ -62,13 +64,15 @@ public:
     {
         fMultiplier = mult;
     }
-    
+
     virtual void FillDataRequirementsInterface(TPZMaterialData &data, TPZVec<TPZMaterialData > &datavec_left, TPZVec<TPZMaterialData > &datavec_right) override;
     
     virtual TPZMaterial *NewMaterial() override
     {
         return new TPZMHMBrinkmanMaterial(*this);
     }
+    
+    TPZFMatrix<STATE> Transpose(TPZFMatrix<STATE> &GradU );
     
     /**
      * It computes a contribution to the stiffness matrix and load vector at one BC integration point.

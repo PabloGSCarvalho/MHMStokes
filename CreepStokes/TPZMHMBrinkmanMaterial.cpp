@@ -144,6 +144,8 @@ void TPZMHMBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<T
 
 void TPZMHMBrinkmanMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef, TPZBndCond &bc){
     
+    int dim = Dimension();
+    
     int nshapeV , nshapeP , nshapeLambda;
     
     nshapeV = datavec[0].phi.Rows();
@@ -153,7 +155,9 @@ void TPZMHMBrinkmanMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL
         DebugStop();
     }
     
-    TPZFNMatrix<9, STATE> u_D(Dimension(),1);
+    //TPZFNMatrix<9, STATE> u_D(dim,1);
+    TPZVec<STATE> v_Dirichlet(3,0.);
+    TPZVec<STATE> v_Neumann(3,0.);
     STATE p_D =0.;
     
     TPZFMatrix<STATE> * phi;
@@ -166,32 +170,82 @@ void TPZMHMBrinkmanMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL
         x=datavec[1].x;
     }
     
-    
+    TPZFMatrix<STATE> gradu;
+    TPZManVector<STATE> vbc(3),vbc_rot(3);
+    TPZFMatrix<STATE> Du(dim,dim,0.),Dun(dim,1,0.);
     if(bc.HasBCForcingFunction())
     {
-        TPZManVector<STATE> vbc(3);
-        TPZFMatrix<STATE> gradu;
+        
+        TPZVec<STATE> xrot(3,0.);
+        
         bc.BCForcingFunction()->Execute(x,vbc,gradu);
-        u_D(0,0) = vbc[0];
-        u_D(1,0) = vbc[1];
+        v_Dirichlet[0] = vbc[0];
+        v_Dirichlet[1] = vbc[1];
         p_D = vbc[2];
+        
+        
+        // Calculo do vetor (Du)n :
+        if (nshapeV!=0) {
+            gradu.Resize(2,2);
+            STATE visco = GetViscosity();
+            for (int i = 0; i<dim; i++) {
+                for (int j = 0; j<dim; j++) {
+                    Du(i,j)=  visco * (gradu(i,j) + gradu(j, i));
+                }
+            }
+        
+            for (int i = 0; i<dim; i++) {
+                for (int j = 0; j<dim; j++) {
+                    Dun(i,0) +=  Du(i,j) * datavec[0].normal[j];
+                }
+            }
+
+            // Neumann vector
+            
+            for (int i = 0; i<dim; i++) {
+                v_Neumann[i] = Dun(i,0) - p_D * datavec[0].normal[i];
+            }
+            
+        }
+        
+        
     }else{
         DebugStop();
     }
+
+//    gradu.Print("gradu");
+//    Du.Print("Du");
+//    Dun.Print("Dun");
+    
     STATE value = 0.;
     if(nshapeV!=0){
         
-        value = -p_D;
+        if (bc.Type()==0) {
+            value = v_Dirichlet[0]*datavec[0].normal[0]+v_Dirichlet[1]*datavec[0].normal[1];
+
+        }else if (bc.Type()==1){
+            
+            //STATE DunNormal = 0.;
+            for (int j = 0; j<dim; j++) {
+                //DunNormal += Dun(j,0) * datavec[0].normal[j];
+                value += v_Neumann[j] * datavec[0].normal[j];
+            }
+            //value = DunNormal-p_D;
+        }
         
         phi = &datavec[0].phi;
         
-    }else if (nshapeLambda!=0){
+    }else if (nshapeLambda!=0&&(bc.Type()!=5)){
         
-        value = u_D(0,0)*datavec[1].axes(0,0)+u_D(1,0)*datavec[1].axes(0,1);
+        value = v_Dirichlet[0]*datavec[1].axes(0,0)+v_Dirichlet[1]*datavec[1].axes(0,1);
         
         phi = &datavec[1].phi;
         
-    }else{
+    }else if (bc.Type()==5){
+        
+        phi = &datavec[1].phi;
+        
+    }else {
         DebugStop();
     }
     
@@ -225,6 +279,29 @@ void TPZMHMBrinkmanMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL
         }
             break;
             
+        case 5: //Ponto pressao
+        {
+
+            //return;
+            p_D = bc.Val2()(0,0);
+            
+            
+            for(int i = 0; i < phi->Rows(); i++ )
+            {
+                
+                
+                ef(i) += 1.0 * p_D * (*phi)(i,0);
+                
+                for(int j = 0; j < phi->Rows(); j++){
+                    
+                    ek(i,j) += 1.0 * ((*phi)(i,0) * (*phi)(j,0));
+                    
+                }
+                
+            }
+            
+        }
+            break;
             
         default:
         {
@@ -972,5 +1049,24 @@ TPZManVector<REAL,3> TPZMHMBrinkmanMaterial::ComputeNormal(TPZMaterialData &data
     }
     
     return normalV;
+    
+}
+
+TPZFMatrix<STATE> TPZMHMBrinkmanMaterial::Transpose(TPZFMatrix<STATE> &MatrixU ){
+
+    int dim = Dimension();
+    TPZFMatrix<STATE> MatrixUt(dim,dim);
+    
+    if((MatrixU.Rows()!=dim)&&(MatrixU.Cols()!=dim)){
+        DebugStop();
+    }
+    
+    for (int i = 0; i < dim; i++ ) {
+        for (int j = 0; j < dim; j++ ) {
+            MatrixUt(i,j) = MatrixU(j,i);
+         }
+    }
+    
+    return MatrixUt;
     
 }

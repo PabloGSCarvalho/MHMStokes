@@ -42,6 +42,7 @@
 #include "TPZParFrontStructMatrix.h"
 #include "TPZSSpStructMatrix.h"
 #include "TPZGmshReader.h"
+#include "pztrnsform.h"
 
 
 #define TEST_DOMAINS
@@ -71,24 +72,24 @@ int main(int argc, char *argv[])
 #endif
     //Dados do problema:
     
-    int h_level = 4;
+    int h_level = 0;
     
     double hx=2.,hy=2.; //Dimensões em x e y do domínio
     //double hx=Pi,hy=2.; //Dimensões em x e y do domínio (acoplamento)
     int nelx=h_level, nely=h_level; //Número de elementos em x e y
     int nx=nelx+1 ,ny=nely+1; //Número de nos em x  y
-    int pOrder = 2; //Ordem polinomial de aproximação
+    int pOrder = 0; //Ordem polinomial de aproximação
     
     
     if (MHMBrinkmanDomain)
     {
-        pOrder = 1;
+        pOrder = 2;
         hx=2.,hy=2.;
         
         HDivPiola = 1;
         for (int it=0; it<=0; it++) {
            // h_level = pow(2., 2+it);
-            h_level = 4;
+            h_level = 8;
             
             //Coeficiente estabilização (Stokes)
             STATE hE=hx/h_level;
@@ -104,6 +105,14 @@ int main(int argc, char *argv[])
             MHMBrinkmanTest  * Test2 = new MHMBrinkmanTest();
             //Test2->SetTriangularMesh();
             //Test2->SetHdivPlus();
+
+            TPZTransform<STATE> Transf(3,3), InvTransf(3,3);
+            Test2->SetTransform(Transf, InvTransf);
+
+            REAL phi_rot = 0.;
+            phi_rot = phi_rot*Pi/180.;
+            
+            Test2->SetRotationMatrix(phi_rot);
             Test2->Run(SpaceHDiv, pOrder, nx, ny, hx, hy,visc,theta,sigma);
             
         }

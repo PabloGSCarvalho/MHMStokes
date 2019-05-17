@@ -36,6 +36,8 @@ TPZBrinkmanMaterial::TPZBrinkmanMaterial(int matid, int dimension, int space, ST
     this->SetDefaultMem(Vl);
     fk=1.;
     
+
+    
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -197,10 +199,17 @@ void TPZBrinkmanMaterial::Solution(TPZVec<TPZMaterialData> &datavec, int var, TP
             break;
         case 2: //f
         {
-            TPZVec<STATE> f(2,0.0);
+            TPZVec<STATE> f(3,0.0),frot(3,0.);
             if(this->HasForcingFunction()){
-                this->ForcingFunction()->Execute(datavec[vindex].x, f, gradu);
+                
+                TPZVec<STATE> x(3,0.),xrot(3,0.);
+                x=datavec[vindex].x;
+
+                this->ForcingFunction()->Execute(x, f, gradu);
+                
             }
+            
+            
             Solout[0] = f[0]; // fx
             Solout[1] = f[1]; // fy
         }
@@ -208,9 +217,13 @@ void TPZBrinkmanMaterial::Solution(TPZVec<TPZMaterialData> &datavec, int var, TP
             
         case 3: //v_exact
         {
-            TPZVec<STATE> sol(3,0.0);
+            TPZVec<STATE> sol(3,0.0),sol_r(3,0.0);
             if(this->HasForcingFunctionExact()){
-                this->fForcingFunctionExact->Execute(datavec[vindex].x, sol, gradu); // @omar::check it!
+                TPZVec<STATE> x(3,0.),xrot(3,0.);
+                x=datavec[vindex].x;
+                
+                this->fForcingFunctionExact->Execute(x, sol, gradu); // @omar::check it!
+
             }
             Solout[0] = sol[0]; // vx
             Solout[1] = sol[1]; // vy
@@ -221,7 +234,10 @@ void TPZBrinkmanMaterial::Solution(TPZVec<TPZMaterialData> &datavec, int var, TP
         {
             TPZVec<STATE> sol(3,0.0);
             if(this->HasForcingFunctionExact()){
-                this->fForcingFunctionExact->Execute(datavec[pindex].x, sol, gradu); // @omar::check it!
+                TPZVec<STATE> x(3,0.),xrot(3,0.);
+                x=datavec[pindex].x;
+
+                this->fForcingFunctionExact->Execute(x, sol, gradu); // @omar::check it!
             }
             Solout[0] = sol[2]; // px
             
@@ -430,7 +446,7 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
     nshapeP = phiP.Rows();
     nshapeV = datavec[vindex].fVecShapeIndex.NElements();
     
-    TPZVec<STATE> f(3);
+    TPZVec<STATE> f(3,0.), f_rot(3,0.);
     for (int e=0; e<3; e++) {
         f[e] = 0.;
     }
@@ -490,8 +506,14 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
         if(this->HasForcingFunction()){
             TPZFMatrix<STATE> gradu;
             
-            this->ForcingFunction()->Execute(datavec[vindex].x, f, gradu);
+            TPZVec<STATE> x(3,0.),xrot(3,0.);
+            x=datavec[vindex].x;
+            
+
+            this->ForcingFunction()->Execute(x, f, gradu);
+            
         }
+        
         
         STATE phi_dot_f = 0.0;
         for (int e=0; e<fDimension; e++) {
@@ -546,7 +568,7 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
             STATE fact = 0.;
             if (fSpace==1) {
 //                fact = (-1.) * weight * phiP(j,0) * div_on_master(i);
-                fact = (-1.) * weight * phiP(j,0) * datavec[0].divphi(i)/datavec[0].detjac;
+                fact = (-1.) * weight * phiP(j,0) * datavec[0].divphi(i);
             }else{
                 fact = (-1.) * weight * phiP(j,0) * divui;
             }
@@ -2416,6 +2438,9 @@ void TPZBrinkmanMaterial::Errors(TPZVec<TPZMaterialData> &data, TPZVec<STATE> &u
     TPZFMatrix<STATE> &dsol = data[vindex].dsol[0];
     TPZFMatrix<STATE> &dsolp = data[pindex].dsol[0];
     //std::cout<<dsol<<std::endl;
+    
+    TPZVec<STATE> u_exact_rot(3,0);
+
     
     //Adaptação feita para Hdiv
     dsol.Resize(Dimension(),Dimension());

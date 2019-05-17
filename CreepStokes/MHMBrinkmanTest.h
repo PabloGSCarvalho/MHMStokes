@@ -49,6 +49,7 @@
 #include "TPZParFrontStructMatrix.h"
 #include "TPZSpStructMatrix.h"
 #include "pzinterpolationspace.h"
+#include "pztrnsform.h"
 
 using namespace std;
 using namespace pzshape;
@@ -120,6 +121,10 @@ private:
     
     TPZVec<TPZCompMesh * > f_mesh_vector;
     
+    static TPZTransform<STATE> f_T;
+    
+    static TPZTransform<STATE> f_InvT;
+    
 public:
 
     MHMBrinkmanTest();
@@ -155,6 +160,42 @@ public:
     void SetTriangularMesh(){
         fTriang = true;
     };
+
+    // Set transform object and its transformation
+    void SetTransform(TPZTransform<STATE> Transf, TPZTransform<STATE> InvTransf){
+        f_T = Transf;
+        f_InvT = InvTransf;
+    }
+    
+//    void SetTransfMatrix(TPZFMatrix<STATE> TfMatrix){
+//        f_Tmatrix = TfMatrix;
+//        TPZFMatrix<STATE> Inv(0,0,0.);
+//        f_Tmatrix.Inverse(Inv, ENoDecompose);
+//        f_InvTmatrix = Inv;
+//        TPZFMatrix<REAL> sum(3,3,0.); //only rotation
+//        if(f_T.Mult().Rows()>0 && f_InvT.Mult().Rows()>0){
+//            f_T.SetMatrix(f_Tmatrix, sum);
+//            f_InvT.SetMatrix(f_InvTmatrix, sum);
+//        }
+//    }
+
+    void SetRotationMatrix(REAL theta){
+        TPZFMatrix<STATE> TfMatrix(3,3,0.);
+        TfMatrix(0,0)= cos(theta);
+        TfMatrix(0,1)= -sin(theta);
+        TfMatrix(1,0)= sin(theta);
+        TfMatrix(1,1)= cos(theta);
+        TfMatrix(2,2)= 1.;
+
+        TPZFMatrix<REAL> sum(3,1,0.); //only rotation
+        TPZFMatrix<STATE> Inv(0,0,0.);
+        f_T.SetMatrix(TfMatrix, sum);
+        
+        TfMatrix.Inverse(Inv, ENoDecompose);
+        f_InvT.SetMatrix(Inv, sum);
+        
+    }
+    
     
     //solucao exata
     static void Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFMatrix<STATE> &dsol);
@@ -175,7 +216,6 @@ public:
     // Insere interfaces na malha multifísica
     void InsertInterfaces(TPZMultiphysicsCompMesh *cmesh);
 
-    
     
 };
 
