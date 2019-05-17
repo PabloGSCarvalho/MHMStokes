@@ -841,8 +841,8 @@ TPZCompEl *MHMBrinkmanTest::CreateInterfaceEl(TPZGeoEl *gel,TPZCompMesh &mesh,in
 
 void MHMBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFMatrix<STATE> &dsol){
     
-    //    dsol.Resize(3,2);
-    //    sol.Resize(3);
+    //    dsol.Resize(3,3);
+    //    sol.Resize(4);
     //
     //    REAL x1 = x[0];
     //    REAL x2 = x[1];
@@ -853,7 +853,8 @@ void MHMBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFM
     //
     //    sol[0]=v_1;
     //    sol[1]=v_2;
-    //    sol[2]=pressure;
+    //    sol[2]=0.;
+    //    sol[3]=pressure;
     //
     //    // vx direction
     //    dsol(0,0)= 0.;
@@ -863,14 +864,12 @@ void MHMBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFM
     //    dsol(1,0)= 0.;
     //    dsol(1,1)= 0.;
     //
-    //    // Gradiente pressão
-    //    dsol(2,0)= 0.;
-    //    dsol(2,1)= 0.;
+
     
     
     // General form : : Artigo Botti, Di Pietro, Droniou
     
-    //    dsol.Resize(3,2);
+    //    dsol.Resize(3,3);
     //    sol.Resize(3);
     //
     //    REAL x1 = x[0];
@@ -896,14 +895,12 @@ void MHMBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFM
     //    dsol(1,0)= -exp(-Cf)*cos(x2)*sin(x1)+(1./m_v)*(1.-exp(-Cf))*cos(x2)*sin(x1);
     //    dsol(1,1)= exp(-Cf)*cos(x1)*sin(x2)+(1./m_v)*(1.-exp(-Cf))*cos(x1)*sin(x2);
     //
-    //    // Gradiente pressão
-    //    dsol(2,0)= -sin(x1)*sin(x2);
-    //    dsol(2,1)= cos(x1)*cos(x2);
+
     
     
     // Brinkman : : Artigo Botti, Di Pietro, Droniou
     
-    //    dsol.Resize(3,2);
+    //    dsol.Resize(3,3);
     //    sol.Resize(3);
     //
     //    REAL x1 = x[0];
@@ -927,14 +924,12 @@ void MHMBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFM
     //    dsol(1,0)= (1.-2./e)*cos(x2)*sin(x1);
     //    dsol(1,1)= cos(x1)*sin(x2);
     //
-    //    // Gradiente pressão
-    //    dsol(2,0)= -sin(x1)*sin(x2);
-    //    dsol(2,1)= cos(x1)*cos(x2);
+
     
     // Stokes : : Artigo Botti, Di Pietro, Droniou
     
-    dsol.Resize(3,2);
-    sol.Resize(3);
+    dsol.Resize(3,3);
+    sol.Resize(4);
 
     
     //Applying rotation:
@@ -950,7 +945,7 @@ void MHMBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFM
     
     REAL e = exp(1.);
    
-    TPZVec<REAL> v_Dirichlet(3,0), vbc_rot(3,0);
+    TPZVec<REAL> v_Dirichlet(3,0.), vbc_rot(3,0.);
     
     v_Dirichlet[0] = -1.*sin(x1)*sin(x2);
     v_Dirichlet[1] = -1.*cos(x1)*cos(x2);
@@ -961,11 +956,12 @@ void MHMBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFM
     
     sol[0]=v_Dirichlet[0];
     sol[1]=v_Dirichlet[1];
-    sol[2]=pressure;
+    sol[2]=v_Dirichlet[2];
+    sol[3]=pressure;
     
     
     // GradU * Rt
-    TPZFMatrix<STATE> GradU(3,3,0), GradURt(3,3,0.), RGradURt(3,3,0.);
+    TPZFMatrix<STATE> GradU(3,3,0.), GradURt(3,3,0.), RGradURt(3,3,0.);
 
     // vx direction
     GradU(0,0)= -1.*cos(x1)*sin(x2);
@@ -992,19 +988,21 @@ void MHMBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFM
     // vx direction
     dsol(0,0)= RGradURt(0,0);
     dsol(0,1)= RGradURt(0,1);
+    dsol(0,2)= RGradURt(0,2);
     
     // vy direction
     dsol(1,0)= RGradURt(1,0);
     dsol(1,1)= RGradURt(1,1);
-    
-    // Gradiente pressão
-    dsol(2,0)= -sin(x1)*sin(x2);
-    dsol(2,1)= cos(x1)*cos(x2);
-    
+    dsol(1,2)= RGradURt(1,2);
+
+    // vz direction
+    dsol(2,0)= RGradURt(2,0);
+    dsol(2,1)= RGradURt(2,1);
+    dsol(2,2)= RGradURt(2,2);
     
     // Darcy : : Artigo Botti, Di Pietro, Droniou
     
-    //        dsol.Resize(3,2);
+    //        dsol.Resize(3,3);
     //        sol.Resize(3);
     //
     //        REAL x1 = x[0];
@@ -1025,10 +1023,8 @@ void MHMBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFM
     //        // vy direction
     //        dsol(1,0)= cos(x2)*sin(x1);
     //        dsol(1,1)= cos(x1)*sin(x2);
-    //
-    //        // Gradiente pressão
-    //        dsol(2,0)= -sin(x1)*sin(x2);
-    //        dsol(2,1)= cos(x1)*cos(x2);
+    
+
     
     
 }
@@ -1091,7 +1087,7 @@ void MHMBrinkmanTest::F_source(const TPZVec<REAL> &x, TPZVec<STATE> &f, TPZFMatr
     
     f[0] = f_s[0]; // x direction
     f[1] = f_s[1]; // y direction
-    f[2] = 0.;
+    f[2] = f_s[2];
     
     
     // Darcy : : Artigo Botti, Di Pietro, Droniou

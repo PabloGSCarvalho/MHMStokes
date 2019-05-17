@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
         HDivPiola = 1;
         for (int it=0; it<=0; it++) {
            // h_level = pow(2., 2+it);
-            h_level = 8;
+            h_level = 4;
             
             //Coeficiente estabilização (Stokes)
             STATE hE=hx/h_level;
@@ -109,10 +109,13 @@ int main(int argc, char *argv[])
             TPZTransform<STATE> Transf(3,3), InvTransf(3,3);
             Test2->SetTransform(Transf, InvTransf);
 
-            REAL phi_rot = 0.;
-            phi_rot = phi_rot*Pi/180.;
+            REAL rot_x = 5.;
+            REAL rot_z = 44.;
+            REAL rot_y = -85.;
+            rot_z = rot_z*Pi/180.;
+            rot_y = rot_y*Pi/180.;
             
-            Test2->SetRotationMatrix(phi_rot);
+            Test2->SetRotation3DMatrix(rot_x,rot_y,rot_z);
             Test2->Run(SpaceHDiv, pOrder, nx, ny, hx, hy,visc,theta,sigma);
             
         }

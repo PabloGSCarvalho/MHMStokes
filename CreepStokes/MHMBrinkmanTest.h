@@ -22,7 +22,6 @@
 #include "pzanalysis.h"
 #include "pzbndcond.h"
 #include "TPZMHMBrinkmanMaterial.h"
-#include "TPZMHMBrinkmanBC.h"
 #include "TPZMultiphysicsCompMesh.h"
 
 #include <pzgeoel.h>
@@ -196,6 +195,36 @@ public:
         
     }
     
+    void SetRotation3DMatrix(REAL rot_x, REAL rot_y, REAL rot_z){
+        TPZFMatrix<STATE> RotX(3,3,0.),RotY(3,3,0.),RotZ(3,3,0.),R(3,3,0.),RZY(3,3,0.);
+        RotX(0,0)= 1.;
+        RotX(1,1)= cos(rot_x);
+        RotX(1,2)= -sin(rot_x);
+        RotX(2,1)= sin(rot_x);
+        RotX(2,2)= cos(rot_x);
+        
+        RotY(0,0)= cos(rot_y);
+        RotY(0,2)= sin(rot_y);
+        RotY(1,1)= 1.;
+        RotY(2,0)= -sin(rot_y);
+        RotY(2,2)= cos(rot_y);
+        
+        RotZ(0,0)= cos(rot_z);
+        RotZ(0,1)= -sin(rot_z);
+        RotZ(1,0)= sin(rot_z);
+        RotZ(1,1)= cos(rot_z);
+        RotZ(2,2)= 1.;
+        
+        RotZ.Multiply(RotY,RZY);
+        RZY.Multiply(RotX,R);
+        
+        TPZFMatrix<REAL> sum(3,1,0.); //only rotation
+        TPZFMatrix<STATE> Inv(0,0,0.);
+        f_T.SetMatrix(R, sum);
+        
+        R.Inverse(Inv, ENoDecompose);
+        f_InvT.SetMatrix(Inv, sum);
+    }
     
     //solucao exata
     static void Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFMatrix<STATE> &dsol);

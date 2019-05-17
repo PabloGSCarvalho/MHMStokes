@@ -133,11 +133,11 @@ int TPZBrinkmanMaterial::NSolutionVariables(int var) {
         case 0:
             return 1; // Pressure, Scalar
         case 1:
-            return this->Dimension(); // Velocity, Vector
+            return 3; // Velocity, Vector
         case 2:
-            return this->Dimension(); // f, Vector
+            return 3; // f, Vector
         case 3:
-            return this->Dimension(); // V_exact, Vector
+            return 3; // V_exact, Vector
         case 4:
             return 1; // P_exact, Scalar
         case 5:
@@ -166,21 +166,19 @@ void TPZBrinkmanMaterial::Solution(TPZVec<TPZMaterialData> &datavec, int var, TP
     TPZManVector<STATE,3> v_h = datavec[vindex].sol[0];
     TPZManVector<STATE,3> p_h = datavec[pindex].sol[0];
     
-    TPZFNMatrix<9,STATE> gradu(2,1);
+    TPZFNMatrix<9,STATE> gradu(3,1);
     
     // TPZManVector<STATE> v_h = datavec[vindex].sol[0];
     // TPZManVector<STATE> p_h = datavec[pindex].sol[0];
     
     TPZFMatrix<STATE> &dsol = datavec[vindex].dsol[0];
-    dsol.Resize(Dimension(),Dimension());
-    TPZFNMatrix<9,STATE> dsolxy(2,2), dsolxyp(2,1);
+   // dsol.Resize(3,3);
+    TPZFNMatrix<9,STATE> dsolxy(3,3),dsolxyp(3,1);
     dsolxy = dsol;
     if (fSpace!=1) {
         TPZAxesTools<STATE>::Axes2XYZ(dsol, dsolxy, datavec[vindex].axes);
     }
 
-    
-    
     Solout.Resize(this->NSolutionVariables(var));
     
     switch(var) {
@@ -195,16 +193,15 @@ void TPZBrinkmanMaterial::Solution(TPZVec<TPZMaterialData> &datavec, int var, TP
         {
             Solout[0] = v_h[0]; // Vx
             Solout[1] = v_h[1]; // Vy
+            Solout[2] = v_h[2]; // Vz
         }
             break;
         case 2: //f
         {
-            TPZVec<STATE> f(3,0.0),frot(3,0.);
+            TPZVec<STATE> f(3,0.0);
             if(this->HasForcingFunction()){
-                
-                TPZVec<STATE> x(3,0.),xrot(3,0.);
+                TPZVec<STATE> x(3,0.);
                 x=datavec[vindex].x;
-
                 this->ForcingFunction()->Execute(x, f, gradu);
                 
             }
@@ -212,34 +209,36 @@ void TPZBrinkmanMaterial::Solution(TPZVec<TPZMaterialData> &datavec, int var, TP
             
             Solout[0] = f[0]; // fx
             Solout[1] = f[1]; // fy
+            Solout[2] = f[2]; // fz
         }
             break;
             
         case 3: //v_exact
         {
-            TPZVec<STATE> sol(3,0.0),sol_r(3,0.0);
+            TPZVec<STATE> sol(4,0.0);
             if(this->HasForcingFunctionExact()){
-                TPZVec<STATE> x(3,0.),xrot(3,0.);
+                TPZVec<STATE> x(3,0.);
                 x=datavec[vindex].x;
-                
                 this->fForcingFunctionExact->Execute(x, sol, gradu); // @omar::check it!
 
             }
             Solout[0] = sol[0]; // vx
             Solout[1] = sol[1]; // vy
+            Solout[2] = sol[2]; // vz
+         
         }
             break;
             
         case 4: //p_exact
         {
-            TPZVec<STATE> sol(3,0.0);
+            TPZVec<STATE> sol(4,0.0);
             if(this->HasForcingFunctionExact()){
                 TPZVec<STATE> x(3,0.),xrot(3,0.);
                 x=datavec[pindex].x;
 
                 this->fForcingFunctionExact->Execute(x, sol, gradu); // @omar::check it!
             }
-            Solout[0] = sol[2]; // px
+            Solout[0] = sol[3]; // px
             
         }
             break;
@@ -247,7 +246,7 @@ void TPZBrinkmanMaterial::Solution(TPZVec<TPZMaterialData> &datavec, int var, TP
         case 5: //div
         {
             STATE Div=0.;
-            for(int i=0; i<Dimension(); i++) {
+            for(int i=0; i<3; i++) {
                 Div+=dsolxy(i,i);
             }
             Solout[0] = Div;
@@ -410,17 +409,6 @@ void TPZBrinkmanMaterial::FillGradPhi(TPZMaterialData &dataV, TPZVec< TPZFMatrix
 
 void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef){
     
-    
-//#ifdef PZDEBUG
-//    //2 = 1 Vel space + 1 Press space
-//    int nref =  datavec.size();
-//    if (nref != 2 ) {
-//        std::cout << " Erro. The size of the datavec is different from 2 \n";
-//        DebugStop();
-//    }
-//#endif
-    
-    
     const int vindex = this->VIndex();
     const int pindex = this->PIndex();
     
@@ -451,11 +439,10 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
         f[e] = 0.;
     }
     
-    TPZFMatrix<STATE> phiVi(fDimension,1,0.0),phiVj(fDimension,1,0.0);
+    TPZFMatrix<STATE> phiVi(3,1,0.0),phiVj(3,1,0.0);
 
     TPZFNMatrix<100,STATE> divphi;
     TPZFNMatrix<40,STATE> div_on_master;
-    STATE divu;
     TPZFNMatrix<10,STATE> gradV_axes = datavec[vindex].dsol[0];
         
     STATE jac_det;
@@ -463,19 +450,15 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
         datavec[0].ComputeFunctionDivergence();
 //        this->ComputeDivergenceOnMaster(datavec, div_on_master);
     }
-//    datavec[0].divphi.Print("divphi");
-    
-    jac_det = datavec[vindex].detjac;
-    
     
     for(int i = 0; i < nshapeV; i++ )
     {
         int iphi = datavec[vindex].fVecShapeIndex[i].second;
         int ivec = datavec[vindex].fVecShapeIndex[i].first;
-        TPZFNMatrix<4,STATE> GradVi(fDimension,fDimension),GradVit(fDimension,fDimension),Dui(fDimension,fDimension);
-        for (int e=0; e<fDimension; e++) {
+        TPZFNMatrix<4,STATE> GradVi(3,3),GradVit(3,3),Dui(3,3);
+        for (int e=0; e<3; e++) {
             phiVi(e,0) = phiV(iphi,0)*datavec[vindex].fNormalVec(e,ivec);
-            for (int f=0; f<fDimension; f++) {
+            for (int f=0; f<3; f++) {
                 GradVi(e,f) = datavec[vindex].fNormalVec(e,ivec)*dphiVx(f,iphi);
                 //termo transposto:
                 GradVit(f,e) = datavec[vindex].fNormalVec(e,ivec)*dphiVx(f,iphi);
@@ -483,40 +466,27 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
         }
 
         //Du = 0.5(GradU+GradU^T)
-        for (int e=0; e<fDimension; e++) {
-            for (int f=0; f<fDimension; f++) {
+        for (int e=0; e<3; e++) {
+            for (int f=0; f<3; f++) {
                 Dui(e,f)= 0.5 * (GradVi(e,f) + GradVit(e,f));
             }
         }
         
         
-        //Divergente (incluindo elementos deformados em Hdiv)
-        
+        //Divergente (Calculo em H1)
         STATE divui = 0.;
-    
         divui = Tr( GradVi );
-        
-        if (HDivPiola == 1) {
-            
-       //     divui = divphi(i,0);
-        }
-        //////////////////////////////////////////////////////
         
         
         if(this->HasForcingFunction()){
             TPZFMatrix<STATE> gradu;
-            
             TPZVec<STATE> x(3,0.),xrot(3,0.);
             x=datavec[vindex].x;
-            
-
             this->ForcingFunction()->Execute(x, f, gradu);
-            
         }
         
-        
         STATE phi_dot_f = 0.0;
-        for (int e=0; e<fDimension; e++) {
+        for (int e=0; e<3; e++) {
             phi_dot_f += phiVi(e)*f[e];
         }
         
@@ -527,13 +497,13 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
             int jphi = datavec[vindex].fVecShapeIndex[j].second;
             int jvec = datavec[vindex].fVecShapeIndex[j].first;
             
-            for (int e=0; e<fDimension; e++) {
+            for (int e=0; e<3; e++) {
                 phiVj(e,0) = phiV(jphi,0)*datavec[vindex].fNormalVec(e,jvec);
             }
             
-            TPZFNMatrix<4,STATE> GradVj(fDimension,fDimension),GradVjt(fDimension,fDimension),Duj(fDimension,fDimension);
-            for (int e=0; e<fDimension; e++) {
-                for (int f=0; f<fDimension; f++) {
+            TPZFNMatrix<4,STATE> GradVj(3,3),GradVjt(3,3),Duj(3,3);
+            for (int e=0; e<3; e++) {
+                for (int f=0; f<3; f++) {
                     GradVj(e,f) = datavec[vindex].fNormalVec(e,jvec)*dphiVx(f,jphi);
                     //termo transposto:
                     GradVjt(f,e) = datavec[vindex].fNormalVec(e,jvec)*dphiVx(f,jphi);
@@ -542,8 +512,8 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
             }
             
             //Du = 0.5(GradU+GradU^T)
-            for (int e=0; e<fDimension; e++) {
-                for (int f=0; f<fDimension; f++) {
+            for (int e=0; e<3; e++) {
+                for (int f=0; f<3; f++) {
                     Duj(e,f)= 0.5 * (GradVj(e,f) + GradVjt(e,f));
                 }
             }
@@ -552,40 +522,31 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
             STATE val1 = InnerVec(phiVi, phiVj);
             
             ek(i,j) += 2. * weight * fViscosity * val + 0.*weight * val1; ///Visc*(GradU+GradU^T):GradPhi
-            
         }
-        
         
         // matrix B - pressure and velocity
         for (int j = 0; j < nshapeP; j++) {
             
-            TPZManVector<REAL,3> GradPj(fDimension);
-            for (int e=0; e<fDimension; e++) {
+            TPZManVector<REAL,3> GradPj(3,0.);
+            for (int e=0; e<3; e++) {
                 GradPj[e] = dphiPx(e,j);
             }
 
-                ///p*div(U)
+            ///p*div(U)
             STATE fact = 0.;
             if (fSpace==1) {
-//                fact = (-1.) * weight * phiP(j,0) * div_on_master(i);
                 fact = (-1.) * weight * phiP(j,0) * datavec[0].divphi(i);
             }else{
                 fact = (-1.) * weight * phiP(j,0) * divui;
             }
 
-
-            
-  //          STATE fact = (-1.) * weight * phiP(j,0) * divui;
-            // colocar vectoriais vezes pressao
             // Matrix B
             ek(i, nshapeV+j) += fact;
             
-            // colocar pressao vezes vectoriais
             // Matrix B^T
             ek(nshapeV+j,i) += fact;
             
-            
-        }//j
+        }
         
     }
     
@@ -2418,15 +2379,12 @@ void TPZBrinkmanMaterial::FillVecShapeIndex(TPZMaterialData &data)
 
 
 
-void TPZBrinkmanMaterial::Errors(TPZVec<TPZMaterialData> &data, TPZVec<STATE> &u_exact, TPZFMatrix<STATE> &du_exact, TPZVec<REAL> &errors)
+void TPZBrinkmanMaterial::Errors(TPZVec<TPZMaterialData> &data, TPZVec<STATE> &sol_exact, TPZFMatrix<STATE> &dsol_exact, TPZVec<REAL> &errors)
 {
-    
     
     errors.Resize(NEvalErrors());
     errors.Fill(0.0);
-    TPZManVector<STATE> Velocity, Pressure;
-    Velocity.Fill(0.0);
-    Pressure.Fill(0.0);
+    TPZManVector<STATE> Velocity(3,0.), Pressure(3,0.);
     
     this->Solution(data,VariableIndex("V"), Velocity);
     this->Solution(data,VariableIndex("P"), Pressure);
@@ -2434,27 +2392,25 @@ void TPZBrinkmanMaterial::Errors(TPZVec<TPZMaterialData> &data, TPZVec<STATE> &u
     int vindex = this->VIndex();
     int pindex = this->PIndex();
     
-    TPZFMatrix<REAL> dudx(Dimension(),Dimension());
+    TPZFMatrix<REAL> dudx(3,3);
     TPZFMatrix<STATE> &dsol = data[vindex].dsol[0];
     TPZFMatrix<STATE> &dsolp = data[pindex].dsol[0];
     //std::cout<<dsol<<std::endl;
     
-    TPZVec<STATE> u_exact_rot(3,0);
-
-    
     //Adaptação feita para Hdiv
-    dsol.Resize(Dimension(),Dimension());
+    dsol.Resize(3,3);
     
-    TPZFNMatrix<2,STATE> dsolxy(2,2), dsolxyp(2,1);
+    TPZFNMatrix<2,STATE> dsolxy(3,3,0.), dsolxyp(3,1,0.);
     dsolxy = dsol;
     if (fSpace!=1) {
         TPZAxesTools<STATE>::Axes2XYZ(dsol, dsolxy, data[vindex].axes);
     }
-
    // TPZAxesTools<STATE>::Axes2XYZ(dsolp, dsolxyp, data[pindex].axes);
-
-   
+    
     dsolxyp = dsolp;
+    
+//    std::cout<<Velocity<<std::endl;
+//    std::cout<<sol_exact<<std::endl;
     
     int shift = 3;
     // velocity
@@ -2462,8 +2418,8 @@ void TPZBrinkmanMaterial::Errors(TPZVec<TPZMaterialData> &data, TPZVec<STATE> &u
     //values[2] : erro norma L2
     REAL diff, diffp;
     errors[1] = 0.;
-    for(int i=0; i<Dimension(); i++) {
-        diff = Velocity[i] - u_exact[i];
+    for(int i=0; i<3; i++) {
+        diff = Velocity[i] - sol_exact[i];
         errors[1]  += diff*diff;
     }
     
@@ -2489,8 +2445,8 @@ void TPZBrinkmanMaterial::Errors(TPZVec<TPZMaterialData> &data, TPZVec<STATE> &u
         /// erro norma HDiv
         
         STATE Div_exact=0., Div=0.;
-        for(int i=0; i<Dimension(); i++) {
-            Div_exact+=du_exact(i,i);
+        for(int i=0; i<3; i++) {
+            Div_exact+=dsol_exact(i,i);
             Div+=dsolxy(i,i);
         }
         
@@ -2522,8 +2478,8 @@ void TPZBrinkmanMaterial::Errors(TPZVec<TPZMaterialData> &data, TPZVec<STATE> &u
         /// erro norma HDiv
         
         STATE Div_exact=0., Div=0.;
-        for(int i=0; i<Dimension(); i++) {
-            Div_exact+=du_exact(i,i);
+        for(int i=0; i<3; i++) {
+            Div_exact+=dsol_exact(i,i);
             Div+=dsolxy(i,i);
         }
         
@@ -2541,22 +2497,10 @@ void TPZBrinkmanMaterial::Errors(TPZVec<TPZMaterialData> &data, TPZVec<STATE> &u
     // pressure
     
     /// values[1] : eror em norma L2
-    diffp = Pressure[0] - u_exact[2];
+    diffp = Pressure[0] - sol_exact[3];
     errors[shift+1]  = diffp*diffp;
     
-    // pressure gradient error ....
-    
-    errors[shift+2] = 0.;
-    TPZFMatrix<STATE> Sp(Dimension(),1,0.0);
-    for(int i=0; i<Dimension(); i++) {
-        Sp(i,0) = dsolxyp(i,0) - du_exact(2,i);
-    }
-    
-    diffp = InnerVec(Sp, Sp);
- //   errors[shift+2]  += diffp;
-    
-    //values[0] : erro em norma H1 <=> norma Energia
-   // errors[shift]  = errors[1+shift]+errors[2+shift];
+
     
     ////////////////////////////////////////////////// HDIV
     
@@ -2564,8 +2508,8 @@ void TPZBrinkmanMaterial::Errors(TPZVec<TPZMaterialData> &data, TPZVec<STATE> &u
         /// erro norma HDiv
         
         STATE Div_exact=0., Div=0.;
-        for(int i=0; i<Dimension(); i++) {
-            Div_exact+=du_exact(i,i);
+        for(int i=0; i<3; i++) {
+            Div_exact+=dsol_exact(i,i);
             Div+=dsolxy(i,i);
         }
         
