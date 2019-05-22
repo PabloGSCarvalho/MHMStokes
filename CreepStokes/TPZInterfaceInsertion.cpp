@@ -24,6 +24,7 @@ TPZInterfaceInsertion::TPZInterfaceInsertion(){
     m_cmesh = NULL;
     m_geometry = NULL;
     m_boundaries_ids.clear();
+    m_Triang = false;
     
 }
 
@@ -41,16 +42,19 @@ TPZInterfaceInsertion::TPZInterfaceInsertion(TPZInterfaceInsertion & other){
     m_multiplierBC_id      = other.m_multiplierBC_id;
     m_geometry           = other.m_geometry;
     m_boundaries_ids     = other.m_boundaries_ids;
+    m_Triang            = other.m_Triang;
 }
 
 /// Constructor based on a computational mesh and fracture material id
-TPZInterfaceInsertion::TPZInterfaceInsertion(TPZCompMesh *cmesh, int mat_multiplier, std::set<int> & boundaries_ids){
+TPZInterfaceInsertion::TPZInterfaceInsertion(TPZCompMesh *cmesh, int mat_multiplier, std::set<int> & boundaries_ids, bool meshtype){
     m_cmesh = cmesh;
     m_geometry = cmesh->Reference();
     m_multiplier_id = mat_multiplier;
     m_boundaries_ids = boundaries_ids;
     m_interface_id = 0;
     m_interfaceVector_ids.Resize(0);
+    m_Triang            = meshtype;
+    
 }
 
 /// Set Interface Identifier (interfaces between multiplier and volumetric materials)
@@ -383,7 +387,10 @@ void TPZInterfaceInsertion::AddMultiphysicsBCInterface(int matfrom, int matBCint
         gelside.AllNeighbours(neighbourset);
         
         int nneighs = neighbourset.size();
-        if(nneighs!=2){
+        if(nneighs!=2&&m_Triang==false){
+            DebugStop();
+        }
+        if(nneighs!=3&&m_Triang==true){
             DebugStop();
         }
         
@@ -396,7 +403,7 @@ void TPZInterfaceInsertion::AddMultiphysicsBCInterface(int matfrom, int matBCint
             
             TPZCompElSide celneigh = neigh.Reference();
             if (!celside || !celneigh) {
-                DebugStop();
+            //    DebugStop();
             }
             int64_t neigh_index = neigh.Element()->Index();
             if (neigh.Element()->Dimension()!=2){

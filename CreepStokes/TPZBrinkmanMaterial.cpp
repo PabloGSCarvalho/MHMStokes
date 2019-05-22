@@ -551,10 +551,8 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
     }
     
     for (int i = 0; i < nshapeP; i++) {
-        
         STATE factf= -weight * phiP(i,0)*f[2]*0.;
         ef(nshapeV+i,0) += factf;
- 
     }
     
     {

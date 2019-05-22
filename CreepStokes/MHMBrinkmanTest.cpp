@@ -135,9 +135,7 @@ void MHMBrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, doub
     
     ChangeExternalOrderConnects(cmesh_v,n_mais);
     // ChangeExternalOrderConnects(cmesh_p,n_mais);
-    
-    // InsertWrapBoundary(cmesh_p);
-    
+  
     f_mesh_vector[0]=cmesh_v;
     f_mesh_vector[1]=cmesh_p;
     
@@ -181,7 +179,7 @@ void MHMBrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, doub
 #endif
     
     //Resolvendo o Sistema:
-    int numthreads = 0;
+    int numthreads = 4;
     
     bool optimizeBandwidth = true; //Impede a renumeração das equacoes do problema (para obter o mesmo resultado do Oden)
     TPZAnalysis an(cmesh_m, optimizeBandwidth); //Cria objeto de análise que gerenciará a analise do problema
@@ -193,9 +191,9 @@ void MHMBrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, doub
     
     //TPZParSkylineStructMatrix matskl(cmesh_m, numthreads);
     
-    //    TPZSkylineNSymStructMatrix matskl(cmesh_m); //OK para Hdiv
-    //    matskl.SetNumThreads(numthreads);
-    //    an.SetStructuralMatrix(matskl);
+//        TPZSkylineNSymStructMatrix matskl(cmesh_m); //OK para Hdiv
+//        matskl.SetNumThreads(numthreads);
+//        an.SetStructuralMatrix(matskl);
     //
     //    if (Space==1) {
     //        TPZFStructMatrix matsklD(cmesh_m); //caso nao simetrico *** //OK para discont.
@@ -213,11 +211,11 @@ void MHMBrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, doub
     std::cout << "Assemble matrix with NDoF = " << cmesh_m->NEquations() << std::endl;
     
     an.Assemble();//Assembla a matriz de rigidez (e o vetor de carga) global
-    {
-        std::ofstream filestiff("stiffness_before.txt");
-        an.Solver().Matrix()->Print("K1 = ",filestiff,EMathematicaInput);
-        
-    }
+//    {
+//        std::ofstream filestiff("stiffness_before.txt");
+//        an.Solver().Matrix()->Print("K1 = ",filestiff,EMathematicaInput);
+//
+//    }
     std::cout << "Solving Matrix " << std::endl;
     an.Solve();
     
@@ -290,8 +288,8 @@ void MHMBrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, doub
     int postProcessResolution = 3; //  keep low as possible
     
     int dim = gmesh->Dimension();
-    an.DefineGraphMesh(dim,scalnames,vecnames,plotfile);
-    an.PostProcess(postProcessResolution,dim);
+//    an.DefineGraphMesh(dim,scalnames,vecnames,plotfile);
+//    an.PostProcess(postProcessResolution,dim);
     
     std::cout << "FINISHED!" << std::endl;
     
@@ -332,7 +330,7 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
         
         //Vetor auxiliar para armazenar coordenadas:
         
-        TPZVec<REAL> coord (3,0.), coord_r(3,0.);
+        TPZVec<REAL> coord (3,0.);
         
         //Inicialização dos nós:
         
@@ -343,31 +341,31 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
                 coord[1] = -1.+(i)*hy/(ny - 1);
                 //using the same coordinate x for z
                 coord[2] = 0.;
-                //cout << coord << endl;
-                
-                //rottação phi
-                Rotate(coord, coord_r, true);
                 
                 //Get the index in the mesh nodes vector for the new node
                 index = gmesh->NodeVec().AllocateNewElement();
+                
+                //rottação phi
+                TPZVec <REAL> coord_rot(3,0.);
+                f_T.Apply(coord, coord_rot);
+                
                 //Set the value of the node in the mesh nodes vector
-                gmesh->NodeVec()[index] = TPZGeoNode(id,coord_r,*gmesh);
+                gmesh->NodeVec()[index] = TPZGeoNode(id,coord_rot,*gmesh);
             }
         }
         
         
         //Ponto 1
-        TPZVec<int64_t> pointtopology(1);
-        pointtopology[0] = nx-1;
-        
-        gmesh->CreateGeoElement(EPoint,pointtopology,fmatPoint,id);
+//        TPZVec<int64_t> pointtopology(1);
+//        pointtopology[0] = nx-1;
+//
+//        gmesh->CreateGeoElement(EPoint,pointtopology,fmatPoint,id);
         
         
         //Vetor auxiliar para armazenar as conecções entre elementos:
         
         TPZVec <int64_t> connectD(3,0);
         TPZVec <int64_t> connectU(3,0);
-        
         
         //Conectividade dos elementos:
         
@@ -383,9 +381,6 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
                 connectU[1] = connectD[2]-1;
                 connectU[2] = connectD[0];
                 gmesh->CreateGeoElement(ETriangle,connectU,fmatID,id);
-                
-                //   std::cout<<connectD<<std::endl;
-                //   std::cout<<connectU<<std::endl;
                 
                 id++;
             }
@@ -427,6 +422,10 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
             {
                 Nodefinder[i] = gmesh->NodeVec()[TopolPlate[i]];
                 Nodefinder[i].GetCoordinates(nodecoord_r);
+                
+                TPZManVector <REAL,3> nodecoord_orig(3,0.);
+                f_InvT.Apply(nodecoord, nodecoord_orig);
+                
                 int id_node = Nodefinder[i].Id();
                 
                 for (int64_t j = 0; j < ny; j++){
@@ -513,9 +512,9 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
         
         
         //Criando 1D material (Lambda multiplier):
+        TPZVec<int64_t> nodint(2);
         
         if(fSpaceV!=2){
-            TPZVec<int64_t> nodint(2);
             for(i = 0; i < (ny - 1); i++){
                 for(j = 0; j <= (nx - 1); j++){
                     if(j>0&&j<(nx-1)){
@@ -544,6 +543,35 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
             }
         }
         
+        // Criando elementos 1D externos, para tração tangencial (Lambda multiplier BC)
+        
+        for(i = 0; i < ny; i++){
+            for(j = 0; j < nx; j++){
+                if ((i==0)&&j<(nx-1)) {
+                    nodint[0]=j+nx*i;
+                    nodint[1]=j+nx*i+1;
+                    gmesh->CreateGeoElement(EOned, nodint, fmatLambdaBC_bott, index); //Criando elemento de interface (GeoElement)
+                }
+                if ((i==(ny-1))&&j<(nx-1)) {
+                    nodint[0]=j+nx*i;
+                    nodint[1]=j+nx*i+1;
+                    gmesh->CreateGeoElement(EOned, nodint, fmatLambdaBC_top, index); //Criando elemento de interface (GeoElement)
+                }
+                
+                
+                if((j==0)&&i<(ny-1)) {
+                    nodint[0]=j+nx*i;
+                    nodint[1]=j+nx*(i+1);
+                    gmesh->CreateGeoElement(EOned, nodint, fmatLambdaBC_left, index); //Criando elemento de interface (GeoElement)
+                    
+                }
+                if((j==(nx-1))&&i<(ny-1)) {
+                    nodint[0]=j+nx*i;
+                    nodint[1]=j+nx*(i+1);
+                    gmesh->CreateGeoElement(EOned, nodint, fmatLambdaBC_right, index); //Criando elemento de interface (GeoElement)
+                }
+            }
+        }
         //new TPZGeoElRefPattern< pzgeom::TPZGeoLinear > (nodind3,matInterface,*gmesh); //Criando elemento de interface (RefPattern)
         id++;
         
@@ -1458,7 +1486,7 @@ void MHMBrinkmanTest::InsertInterfaces(TPZMultiphysicsCompMesh *cmesh_m){
     boundaries_ids.insert(fmatBCtop);
     boundaries_ids.insert(fmatBCright);
     
-    TPZInterfaceInsertion InterfaceInsertion(cmesh_m, fmatLambda, boundaries_ids);
+    TPZInterfaceInsertion InterfaceInsertion(cmesh_m, fmatLambda, boundaries_ids, fTriang);
     TPZManVector<int64_t,3> Interfaces(2,0);
     Interfaces[0] = fmatInterfaceLeft;
     Interfaces[1] = fmatInterfaceRight;

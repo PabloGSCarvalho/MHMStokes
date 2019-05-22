@@ -88,8 +88,8 @@ int main(int argc, char *argv[])
         
         HDivPiola = 1;
         for (int it=0; it<=0; it++) {
-           // h_level = pow(2., 2+it);
-            h_level = 4;
+            //h_level = pow(2., 2+it);
+            h_level = 16;
             
             //Coeficiente estabilização (Stokes)
             STATE hE=hx/h_level;
@@ -114,8 +114,9 @@ int main(int argc, char *argv[])
             REAL rot_y = -85.;
             rot_z = rot_z*Pi/180.;
             rot_y = rot_y*Pi/180.;
+            rot_z = rot_z*Pi/180.;
             
-            Test2->SetRotation3DMatrix(rot_x,rot_y,rot_z);
+            //Test2->SetRotation3DMatrix(rot_x,rot_y,rot_z);
             Test2->Run(SpaceHDiv, pOrder, nx, ny, hx, hy,visc,theta,sigma);
             
         }
