@@ -243,10 +243,15 @@ void TPZInterfaceInsertion::AddMultiphysicsInterfacesLeftNRight(int matfrom)
         
         TPZStack<TPZGeoElSide> neighbourset;
         gelside.AllNeighbours(neighbourset);
-        
+    
         int nneighs = neighbourset.size();
+        
         if(nneighs!=2){
-        //    DebugStop();
+//            if(nneighs==1){
+//                TPZCompElSide compel = gelside.LowerLevelCompElementList2(1);
+//            }
+            
+            DebugStop();
         }
         
         TPZManVector<int64_t,3> LeftElIndices(1,0.),RightElIndices(1,0.);

@@ -335,11 +335,25 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
     grid.SetBC(gmesh, 6, fmatBCtop);
     grid.SetBC(gmesh, 7, fmatBCleft);
     
+// Refinar elemento dada a coord. central
+    
+    TPZVec<REAL> centerCo(2,0.);
+    
+    centerCo[0]=1.;
+    centerCo[1]=0.;
+    
+    UniformRefine(1, gmesh, centerCo,true);
+    
+    
 // Inserir elmentos 1D fmatLambda and fmatLambdaBCs
     
     int64_t nel = gmesh->NElements();
     for (int64_t el = 0; el<nel; el++) {
         TPZGeoEl *gel = gmesh->Element(el);
+        if(gel->HasSubElement())
+        {
+            continue;
+        }
         if (gel->Dimension() != gmesh->Dimension()) {
             continue;
         }
@@ -368,8 +382,13 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
                     break;
                     
                 }
+                if(neighbour.Element()->HasSubElement()){
+                    break;
+                }
                 neighbour = neighbour.Neighbour();
+                
             }
+            
             
             if (neighbour == gelside) {
                 TPZGeoElBC(gelside, fmatLambda);
@@ -383,16 +402,7 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
     
     gmesh->BuildConnectivity();
 
-    // refinar elemento com central coord
-    
-    TPZVec<REAL> centerCo(2,0.);
-    
-    centerCo[0]=1.;
-    centerCo[1]=0.;
-    
-    UniformRefine(1, gmesh, centerCo,true);
 
-    
         {
             std::ofstream Dummyfile("GeometricMesh2d.vtk");
             TPZVTKGeoMesh::PrintGMeshVTK(gmesh,Dummyfile, true);
@@ -445,43 +455,9 @@ void MHMBrinkmanTest::UniformRefine(int nDiv, TPZGeoMesh *gmesh, TPZVec<REAL> ce
             
             if(!gel) continue;
             if(!gel->HasSubElement()) gel->Divide(filhos);
-
-            
-            // Inserir elmentos 1D fmatLambda
-            
-            int64_t n_filhos = filhos.size();
-            for (int64_t el = 0; el<n_filhos; el++) {
-                TPZGeoEl *gel = filhos.operator[](el);
-                
-                if (gel->Dimension() != gmesh->Dimension()) {
-                    continue;
-                }
-                int nsides = gel->NSides();
-                for (int is = 0; is<nsides; is++) {
-                    if (gel->SideDimension(is) != gmesh->Dimension() - 1) {
-                        continue;
-                    }
-                    
-                    TPZGeoElSide gelside(gel,is);
-                    TPZGeoElSide neighbour = gelside.Neighbour();
-                    while (neighbour != gelside) {
-                        if (neighbour.Element()->Dimension() == gmesh->Dimension() - 1) {
-                            break;
-                        }
-                        neighbour = neighbour.Neighbour();
-                    }
-                    
-                    if (neighbour == gelside) {
-                        TPZGeoElBC(gelside, fmatLambda);
-                    }
-                }
-            }
-
             
         }
     }
-    
-    
     
     gmesh->ResetConnectivities();
     gmesh->BuildConnectivity();
