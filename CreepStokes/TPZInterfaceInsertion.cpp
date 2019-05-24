@@ -233,6 +233,10 @@ void TPZInterfaceInsertion::AddMultiphysicsInterfacesLeftNRight(int matfrom)
             continue;
         }
         
+        if (gel->HasSubElement() == 1) {
+            continue;
+        }
+        
         int nsides = gel->NSides();
         TPZGeoElSide gelside(gel,nsides-1);
         TPZCompElSide celside = gelside.Reference();
@@ -242,7 +246,7 @@ void TPZInterfaceInsertion::AddMultiphysicsInterfacesLeftNRight(int matfrom)
         
         int nneighs = neighbourset.size();
         if(nneighs!=2){
-            DebugStop();
+        //    DebugStop();
         }
         
         TPZManVector<int64_t,3> LeftElIndices(1,0.),RightElIndices(1,0.);

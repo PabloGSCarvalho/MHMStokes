@@ -135,6 +135,7 @@ public:
     /*  Malhas geometricas */
     TPZGeoMesh *CreateGMesh(int nx, int ny, double hx, double hy);
     
+    void UniformRefine(int nDiv, TPZGeoMesh *gmesh, TPZVec<REAL> centerCo, bool restriction);
     //   TPZGeoMesh *GMeshDeformed(int dim, bool ftriang, int ndiv);
     
     void ChangeExternalOrderConnects(TPZCompMesh *mesh, int addToOrder);
