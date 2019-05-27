@@ -180,7 +180,7 @@ void MHMBrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, doub
 #endif
     
     //Resolvendo o Sistema:
-    int numthreads = 4;
+    int numthreads = 0;
     
     bool optimizeBandwidth = true; //Impede a renumeração das equacoes do problema (para obter o mesmo resultado do Oden)
     TPZAnalysis an(cmesh_m, optimizeBandwidth); //Cria objeto de análise que gerenciará a analise do problema
@@ -342,7 +342,7 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
     centerCo[0]=1.;
     centerCo[1]=0.;
     
-    UniformRefine(1, gmesh, centerCo,true);
+    //UniformRefine(1, gmesh, centerCo,true);
     
     
 // Inserir elmentos 1D fmatLambda and fmatLambdaBCs

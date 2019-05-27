@@ -55,18 +55,8 @@ void TPZMHMBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<T
     // V - left
     TPZFMatrix<REAL> &dphiV1 = datavecleft[vindex].dphix;
     
-    //Normal e tangente
-    TPZManVector<REAL, 3>  &normalVec = datavecleft[vindex].normal;
-    
     TPZFNMatrix<9,REAL>  &tan = data.axes;
     
-    TPZFNMatrix<3, STATE> normalM(3,1,0.),tangent(3,1,0.);
-    for (int e=0; e<3; e++) {
-        normalM(e,0)=normalVec[e];
-    }
-    
-    tangent(0,0) = normalVec[1];
-    tangent(1,0) = normalVec[0];
     
     TPZFNMatrix<220,REAL> dphiVx1(3,dphiV1.Cols());
     TPZAxesTools<REAL>::Axes2XYZ(dphiV1, dphiVx1, datavecleft[vindex].axes);

@@ -215,7 +215,8 @@ void TPZInterfaceInsertion::AddMultiphysicsInterfacesLeftNRight(int matfrom)
     // create interface elements between the tangent velocity element and the volumetric elements
     
     TPZCompMesh *cmesh = m_cmesh;
-
+    int dim = cmesh->Dimension();
+    
     if (! (m_geometry) ) {
         DebugStop();
     }
@@ -243,16 +244,10 @@ void TPZInterfaceInsertion::AddMultiphysicsInterfacesLeftNRight(int matfrom)
         
         TPZStack<TPZGeoElSide> neighbourset;
         gelside.AllNeighbours(neighbourset);
+        
+        gelside.LowerLevelCompElementList2(1);
     
         int nneighs = neighbourset.size();
-        
-        if(nneighs!=2){
-//            if(nneighs==1){
-//                TPZCompElSide compel = gelside.LowerLevelCompElementList2(1);
-//            }
-            
-            DebugStop();
-        }
         
         TPZManVector<int64_t,3> LeftElIndices(1,0.),RightElIndices(1,0.);
         LeftElIndices[0]=0;
@@ -280,7 +275,31 @@ void TPZInterfaceInsertion::AddMultiphysicsInterfacesLeftNRight(int matfrom)
             " and interior 1D element " << gelside.Element()->Index() << std::endl;
             
         }
+        
+        if (nneighs==1) {
+            
+            TPZCompElSide clarge = gelside.LowerLevelCompElementList2(false);
+            if(!clarge) DebugStop();
+            TPZGeoElSide glarge = clarge.Reference();
+           
+            TPZGeoElBC gbc(gelside, m_interfaceVector_ids[1]);
+            
+            int64_t index;
+            TPZMultiphysicsInterfaceElement *intface = new TPZMultiphysicsInterfaceElement(*cmesh, gbc.CreatedElement(), index, celside, clarge);
+            intface->SetLeftRightElementIndices(LeftElIndices,RightElIndices);
+            
+            std::cout << "Created an interface element between volumetric element " << glarge.Element()->Index() <<
+            " side " << glarge.Side() <<
+            " and interior 1D element " << gelside.Element()->Index() << std::endl;
+            nneighs++;
+        }
+        
+        if(nneighs!=2){
+            DebugStop();
+        }
+
     }
+    
 }
 
 
