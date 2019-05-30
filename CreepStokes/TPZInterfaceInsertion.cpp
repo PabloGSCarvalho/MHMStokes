@@ -278,6 +278,9 @@ void TPZInterfaceInsertion::AddMultiphysicsInterfacesLeftNRight(int matfrom)
         
         if (nneighs==1) {
             
+            LeftElIndices[0]=0;
+            RightElIndices[0]=1;
+            
             TPZCompElSide clarge = gelside.LowerLevelCompElementList2(false);
             if(!clarge) DebugStop();
             TPZGeoElSide glarge = clarge.Reference();
@@ -285,7 +288,7 @@ void TPZInterfaceInsertion::AddMultiphysicsInterfacesLeftNRight(int matfrom)
             TPZGeoElBC gbc(gelside, m_interfaceVector_ids[1]);
             
             int64_t index;
-            TPZMultiphysicsInterfaceElement *intface = new TPZMultiphysicsInterfaceElement(*cmesh, gbc.CreatedElement(), index, celside, clarge);
+            TPZMultiphysicsInterfaceElement *intface = new TPZMultiphysicsInterfaceElement(*cmesh, gbc.CreatedElement(), index, clarge, celside);
             intface->SetLeftRightElementIndices(LeftElIndices,RightElIndices);
             
             std::cout << "Created an interface element between volumetric element " << glarge.Element()->Index() <<
