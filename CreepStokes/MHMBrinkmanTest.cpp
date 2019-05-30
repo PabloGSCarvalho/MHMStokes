@@ -286,7 +286,7 @@ void MHMBrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, doub
     scalnames.Push("Div");
     
     
-    int postProcessResolution = 3; //  keep low as possible
+    int postProcessResolution = 1; //  keep low as possible
     
     int dim = gmesh->Dimension();
     an.DefineGraphMesh(dim,scalnames,vecnames,plotfile);
@@ -342,7 +342,7 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
     centerCo[0]=1.;
     centerCo[1]=0.;
     
-    UniformRefine(1, gmesh, centerCo,true);
+    UniformRefine(4, gmesh, centerCo,true);
     
 // Inserir elmentos 1D fmatLambda and fmatLambdaBCs
     
@@ -474,39 +474,39 @@ TPZCompEl *MHMBrinkmanTest::CreateInterfaceEl(TPZGeoEl *gel,TPZCompMesh &mesh,in
 
 void MHMBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFMatrix<STATE> &dsol){
     
-        dsol.Resize(3,3);
-        sol.Resize(4);
-
-        REAL x1 = x[0];
-        REAL x2 = x[1];
-
-        TPZVec<REAL> v_Dirichlet(3,0.);
-
-        v_Dirichlet[0] = -0.1*x2*x2+0.2*x2;
-        v_Dirichlet[1] = 0.;
-        STATE pressure = 1.-0.2*x1;
-    
-    
-        sol[0]=v_Dirichlet[0];
-        sol[1]=v_Dirichlet[1];
-        sol[2]=v_Dirichlet[2];
-        sol[3]=pressure;
-
-        // vx direction
-        dsol(0,0)= 0.;
-       // dsol(0,1)= 0.2;
-        dsol(0,1)= 0.2-0.2*x2;
-        dsol(0,2)= 0.;
-
-        // vy direction
-        dsol(1,0)= 0.;
-        dsol(1,1)= 0.;
-        dsol(1,2)= 0.;
-
-        // vz direction
-        dsol(2,0)= 0.;
-        dsol(2,1)= 0.;
-        dsol(2,2)= 0.;
+//        dsol.Resize(3,3);
+//        sol.Resize(4);
+//
+//        REAL x1 = x[0];
+//        REAL x2 = x[1];
+//
+//        TPZVec<REAL> v_Dirichlet(3,0.);
+//
+//        v_Dirichlet[0] = -0.1*x2*x2+0.2*x2;
+//        v_Dirichlet[1] = 0.;
+//        STATE pressure = 1.-0.2*x1;
+//
+//
+//        sol[0]=v_Dirichlet[0];
+//        sol[1]=v_Dirichlet[1];
+//        sol[2]=v_Dirichlet[2];
+//        sol[3]=pressure;
+//
+//        // vx direction
+//        dsol(0,0)= 0.;
+//       // dsol(0,1)= 0.2;
+//        dsol(0,1)= 0.2-0.2*x2;
+//        dsol(0,2)= 0.;
+//
+//        // vy direction
+//        dsol(1,0)= 0.;
+//        dsol(1,1)= 0.;
+//        dsol(1,2)= 0.;
+//
+//        // vz direction
+//        dsol(2,0)= 0.;
+//        dsol(2,1)= 0.;
+//        dsol(2,2)= 0.;
     
     // General form : : Artigo Botti, Di Pietro, Droniou
     
@@ -569,77 +569,77 @@ void MHMBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFM
     
     // Stokes : : Artigo Botti, Di Pietro, Droniou
     
-//    dsol.Resize(3,3);
-//    sol.Resize(4);
-//
-//
-//    //Applying rotation:
-//    TPZVec<REAL> x_in = x;
-//    TPZVec<REAL> x_rot(3,0.);
-//
-//    f_InvT.Apply(x_in,x_rot);
-//    x[0] = x_rot[0];
-//    x[1] = x_rot[1];
-//
-//    REAL x1 = x[0];
-//    REAL x2 = x[1];
-//
-//    REAL e = exp(1.);
-//
-//    TPZVec<REAL> v_Dirichlet(3,0.), vbc_rot(3,0.);
-//
-//    v_Dirichlet[0] = -1.*sin(x1)*sin(x2);
-//    v_Dirichlet[1] = -1.*cos(x1)*cos(x2);
-//    STATE pressure= cos(x1)*sin(x2);
-//
-//    f_T.Apply(v_Dirichlet, vbc_rot);
-//    v_Dirichlet = vbc_rot;
-//
-//    sol[0]=v_Dirichlet[0];
-//    sol[1]=v_Dirichlet[1];
-//    sol[2]=v_Dirichlet[2];
-//    sol[3]=pressure;
-//
-//
-//    // GradU * Rt
-//    TPZFMatrix<STATE> GradU(3,3,0.), GradURt(3,3,0.), RGradURt(3,3,0.);
-//
-//    // vx direction
-//    GradU(0,0)= -1.*cos(x1)*sin(x2);
-//    GradU(0,1)= cos(x2)*sin(x1);
-//
-//    // vy direction
-//    GradU(1,0)= -1.*cos(x2)*sin(x1);
-//    GradU(1,1)= cos(x1)*sin(x2);
-//
-//    TPZFMatrix<STATE> R = f_T.Mult();
-//    TPZFMatrix<STATE> Rt(3,3,0.);
-//    R.Transpose(&Rt);
-//
-////    GradU.Print("GradU = ");
-////    R.Print("R = ");
-////    Rt.Print("Rt = ");
-//
-//    GradU.Multiply(Rt,GradURt);
-////    GradURt.Print("GradURt = ");
-//
-//    R.Multiply(GradURt,RGradURt);
-////    RGradURt.Print("RGradURt = ");
-//
-//    // vx direction
-//    dsol(0,0)= RGradURt(0,0);
-//    dsol(0,1)= RGradURt(0,1);
-//    dsol(0,2)= RGradURt(0,2);
-//
-//    // vy direction
-//    dsol(1,0)= RGradURt(1,0);
-//    dsol(1,1)= RGradURt(1,1);
-//    dsol(1,2)= RGradURt(1,2);
-//
-//    // vz direction
-//    dsol(2,0)= RGradURt(2,0);
-//    dsol(2,1)= RGradURt(2,1);
-//    dsol(2,2)= RGradURt(2,2);
+    dsol.Resize(3,3);
+    sol.Resize(4);
+
+
+    //Applying rotation:
+    TPZVec<REAL> x_in = x;
+    TPZVec<REAL> x_rot(3,0.);
+
+    f_InvT.Apply(x_in,x_rot);
+    x[0] = x_rot[0];
+    x[1] = x_rot[1];
+
+    REAL x1 = x[0];
+    REAL x2 = x[1];
+
+    REAL e = exp(1.);
+
+    TPZVec<REAL> v_Dirichlet(3,0.), vbc_rot(3,0.);
+
+    v_Dirichlet[0] = -1.*sin(x1)*sin(x2);
+    v_Dirichlet[1] = -1.*cos(x1)*cos(x2);
+    STATE pressure= cos(x1)*sin(x2);
+
+    f_T.Apply(v_Dirichlet, vbc_rot);
+    v_Dirichlet = vbc_rot;
+
+    sol[0]=v_Dirichlet[0];
+    sol[1]=v_Dirichlet[1];
+    sol[2]=v_Dirichlet[2];
+    sol[3]=pressure;
+
+
+    // GradU * Rt
+    TPZFMatrix<STATE> GradU(3,3,0.), GradURt(3,3,0.), RGradURt(3,3,0.);
+
+    // vx direction
+    GradU(0,0)= -1.*cos(x1)*sin(x2);
+    GradU(0,1)= cos(x2)*sin(x1);
+
+    // vy direction
+    GradU(1,0)= -1.*cos(x2)*sin(x1);
+    GradU(1,1)= cos(x1)*sin(x2);
+
+    TPZFMatrix<STATE> R = f_T.Mult();
+    TPZFMatrix<STATE> Rt(3,3,0.);
+    R.Transpose(&Rt);
+
+//    GradU.Print("GradU = ");
+//    R.Print("R = ");
+//    Rt.Print("Rt = ");
+
+    GradU.Multiply(Rt,GradURt);
+//    GradURt.Print("GradURt = ");
+
+    R.Multiply(GradURt,RGradURt);
+//    RGradURt.Print("RGradURt = ");
+
+    // vx direction
+    dsol(0,0)= RGradURt(0,0);
+    dsol(0,1)= RGradURt(0,1);
+    dsol(0,2)= RGradURt(0,2);
+
+    // vy direction
+    dsol(1,0)= RGradURt(1,0);
+    dsol(1,1)= RGradURt(1,1);
+    dsol(1,2)= RGradURt(1,2);
+
+    // vz direction
+    dsol(2,0)= RGradURt(2,0);
+    dsol(2,1)= RGradURt(2,1);
+    dsol(2,2)= RGradURt(2,2);
     
     // Darcy : : Artigo Botti, Di Pietro, Droniou
     
@@ -719,16 +719,16 @@ void MHMBrinkmanTest::F_source(const TPZVec<REAL> &x, TPZVec<STATE> &f, TPZFMatr
     // Stokes : : Artigo Botti, Di Pietro, Droniou
     
     
-//    f_s[0] = -3.*sin(x1)*sin(x2);
-//    f_s[1] = -1.*cos(x1)*cos(x2);
-//
-//    f_T.Apply(f_s, f_rot);
-//    f_s = f_rot;
-//
-//
-//    f[0] = f_s[0]; // x direction
-//    f[1] = f_s[1]; // y direction
-//    f[2] = f_s[2];
+    f_s[0] = -3.*sin(x1)*sin(x2);
+    f_s[1] = -1.*cos(x1)*cos(x2);
+
+    f_T.Apply(f_s, f_rot);
+    f_s = f_rot;
+
+
+    f[0] = f_s[0]; // x direction
+    f[1] = f_s[1]; // y direction
+    f[2] = f_s[2];
     
     
     // Darcy : : Artigo Botti, Di Pietro, Droniou

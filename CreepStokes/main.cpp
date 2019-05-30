@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
     
     if (MHMBrinkmanDomain)
     {
-        pOrder = 2;
+        pOrder = 1;
         hx=2.,hy=2.;
         
         HDivPiola = 1;
