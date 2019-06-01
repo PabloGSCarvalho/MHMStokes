@@ -422,7 +422,7 @@ void TPZInterfaceInsertion::AddMultiphysicsBCInterface(int matfrom, int matBCint
             DebugStop();
         }
         if(nneighs!=3&&m_Triang==true){
-            DebugStop();
+      //      DebugStop();
         }
         
         TPZManVector<int64_t,3> LeftElIndices(1,0.),RightElIndices(1,0.);

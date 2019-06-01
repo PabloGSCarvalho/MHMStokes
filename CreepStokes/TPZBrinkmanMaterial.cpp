@@ -450,6 +450,7 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
         datavec[0].ComputeFunctionDivergence();
 //        this->ComputeDivergenceOnMaster(datavec, div_on_master);
     }
+ 
     
     for(int i = 0; i < nshapeV; i++ )
     {

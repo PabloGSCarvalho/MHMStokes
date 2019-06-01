@@ -83,13 +83,13 @@ int main(int argc, char *argv[])
     
     if (MHMBrinkmanDomain)
     {
-        pOrder = 1;
+        pOrder = 2;
         hx=2.,hy=2.;
         
         HDivPiola = 1;
         for (int it=0; it<=0; it++) {
             //h_level = pow(2., 2+it);
-            h_level = 3;
+            h_level = 2;
             
             //Coeficiente estabilização (Stokes)
             STATE hE=hx/h_level;

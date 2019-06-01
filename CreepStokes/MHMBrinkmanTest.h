@@ -134,6 +134,10 @@ public:
     
     /*  Malhas geometricas */
     TPZGeoMesh *CreateGMesh(int nx, int ny, double hx, double hy);
+
+    void UniformRefine3(int nDiv, TPZGeoMesh *gmesh, TPZVec<int> &n_div);
+    
+    void UniformRefine2(int nDiv, TPZGeoMesh *gmesh, TPZVec<int> &n_div);
     
     void UniformRefine(int nDiv, TPZGeoMesh *gmesh, TPZVec<REAL> centerCo, bool restriction);
     //   TPZGeoMesh *GMeshDeformed(int dim, bool ftriang, int ndiv);
