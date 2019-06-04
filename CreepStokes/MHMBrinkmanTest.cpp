@@ -180,7 +180,7 @@ void MHMBrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, doub
 #endif
     
     //Resolvendo o Sistema:
-    int numthreads = 4;
+    int numthreads = 0;
     
     bool optimizeBandwidth = true; //Impede a renumeração das equacoes do problema (para obter o mesmo resultado do Oden)
     TPZAnalysis an(cmesh_m, optimizeBandwidth); //Cria objeto de análise que gerenciará a analise do problema
@@ -314,6 +314,130 @@ void MHMBrinkmanTest::Rotate(TPZVec<REAL> &co, TPZVec<REAL> &co_r, bool rotate){
     
 }
 
+void MHMBrinkmanTest::InsertOneDimMaterial(TPZGeoMesh *gmesh){
+
+    // Inserir elmentos 1D fmatLambda and fmatLambdaBCs
+    
+//    if (f_allrefine) {
+    
+            int64_t nel = gmesh->NElements();
+            for (int64_t el = 0; el<nel; el++) {
+                TPZGeoEl *gel = gmesh->Element(el);
+                if(gel->HasSubElement()&&f_allrefine)
+                {
+                    continue;
+                }
+                if (gel->Dimension() != gmesh->Dimension()) {
+                    continue;
+                }
+                int nsides = gel->NSides();
+                for (int is = 0; is<nsides; is++) {
+                    if (gel->SideDimension(is) != gmesh->Dimension() - 1) {
+                        continue;
+                    }
+                    
+                    TPZGeoElSide gelside(gel,is);
+                    TPZGeoElSide neighbour = gelside.Neighbour();
+                    
+                    if (neighbour == gelside && f_allrefine == false) {
+                        continue;
+                    }
+                    
+                    while (neighbour != gelside) {
+                        if (neighbour.Element()->Dimension() == gmesh->Dimension() - 1) {
+                            int neigh_matID = neighbour.Element()->MaterialId();
+        
+                            if(neigh_matID==fmatBCbott){
+                                    TPZGeoElBC(gelside, fmatLambdaBC_bott);
+                            }else if(neigh_matID==fmatBCtop){
+                                    TPZGeoElBC(gelside, fmatLambdaBC_top);
+                            }else if(neigh_matID==fmatBCleft){
+                                    TPZGeoElBC(gelside, fmatLambdaBC_left);
+                            }else if(neigh_matID==fmatBCright){
+                                    TPZGeoElBC(gelside, fmatLambdaBC_right);
+                            }
+        
+                            break;
+        
+                        }
+                        if(neighbour.Element()->HasSubElement()){
+                            break;
+                        }
+                        neighbour = neighbour.Neighbour();
+        
+                    }
+        
+        
+                    if (neighbour == gelside) {
+                        TPZGeoElBC(gelside, fmatLambda);
+                    }
+                }
+            }
+        
+//    }else{
+//
+//
+//        int64_t nel = gmesh->NElements();
+//        for (int64_t el = 0; el<nel; el++) {
+//            TPZGeoEl *gel = gmesh->Element(el);
+//            if (gel->Dimension() != gmesh->Dimension()) {
+//                continue;
+//            }
+//            int nsides = gel->NSides();
+//            for (int is = 0; is<nsides; is++) {
+//                if (gel->SideDimension(is) != gmesh->Dimension() - 1) {
+//                    continue;
+//                }
+//
+//                TPZGeoElSide gelside(gel,is);
+//                TPZGeoElSide neighbour = gelside.Neighbour();
+//
+//                if (neighbour == gelside) {
+//                    continue;
+//                }
+//
+//                while (neighbour != gelside) {
+//                    if (neighbour.Element()->Dimension() == gmesh->Dimension() - 1) {
+//                        int neigh_matID = neighbour.Element()->MaterialId();
+//
+//                        if(neigh_matID==fmatBCbott){
+//                            TPZGeoElBC(gelside, fmatLambdaBC_bott);
+//                        }else if(neigh_matID==fmatBCtop){
+//                            TPZGeoElBC(gelside, fmatLambdaBC_top);
+//                        }else if(neigh_matID==fmatBCleft){
+//                            TPZGeoElBC(gelside, fmatLambdaBC_left);
+//                        }else if(neigh_matID==fmatBCright){
+//                            TPZGeoElBC(gelside, fmatLambdaBC_right);
+//                        }
+//
+//                        break;
+//
+//                    }
+//
+//                    if(neighbour.Element()->HasSubElement()){
+//                        break;
+//                    }
+//
+//                    neighbour = neighbour.Neighbour();
+//
+//                }
+//
+//
+//                if (neighbour == gelside) {
+//                    TPZGeoElBC(gelside, fmatLambda);
+//                }
+//            }
+//        }
+//
+//
+//    }
+    
+    
+    
+
+}
+
+
 TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
 {
     
@@ -326,7 +450,7 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
     x1[0] = 2., x1[1] = 1.;
     TPZGenGrid grid(n_div,x0,x1);
     
-    grid.SetDistortion(0.2);
+    //grid.SetDistortion(0.2);
     
     if (fTriang) {
         grid.SetElementType(ETriangle);
@@ -345,59 +469,12 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
     centerCo[0]=1.;
     centerCo[1]=0.;
     
+    UniformRefine(1, gmesh, centerCo, true);
+
 //    UniformRefine2(2, gmesh, n_div);
     
-// Inserir elmentos 1D fmatLambda and fmatLambdaBCs
-    
-    int64_t nel = gmesh->NElements();
-    for (int64_t el = 0; el<nel; el++) {
-        TPZGeoEl *gel = gmesh->Element(el);
-        if(gel->HasSubElement())
-        {
-            continue;
-        }
-        if (gel->Dimension() != gmesh->Dimension()) {
-            continue;
-        }
-        int nsides = gel->NSides();
-        for (int is = 0; is<nsides; is++) {
-            if (gel->SideDimension(is) != gmesh->Dimension() - 1) {
-                continue;
-            }
-            
-            TPZGeoElSide gelside(gel,is);
-            TPZGeoElSide neighbour = gelside.Neighbour();
-            while (neighbour != gelside) {
-                if (neighbour.Element()->Dimension() == gmesh->Dimension() - 1) {
-                    int neigh_matID = neighbour.Element()->MaterialId();
-                    
-                    if(neigh_matID==fmatBCbott){
-                            TPZGeoElBC(gelside, fmatLambdaBC_bott);
-                    }else if(neigh_matID==fmatBCtop){
-                            TPZGeoElBC(gelside, fmatLambdaBC_top);
-                    }else if(neigh_matID==fmatBCleft){
-                            TPZGeoElBC(gelside, fmatLambdaBC_left);
-                    }else if(neigh_matID==fmatBCright){
-                            TPZGeoElBC(gelside, fmatLambdaBC_right);
-                    }
-                    
-                    break;
-                    
-                }
-                if(neighbour.Element()->HasSubElement()){
-                    break;
-                }
-                neighbour = neighbour.Neighbour();
-                
-            }
-            
-            
-            if (neighbour == gelside) {
-                TPZGeoElBC(gelside, fmatLambda);
-            }
-        }
-    }
-
+  //  SetAllRefine();
+    InsertOneDimMaterial(gmesh);
     
     TPZCheckGeom check(gmesh);
     check.CheckUniqueId();
@@ -413,6 +490,62 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
     return gmesh;
     
 }
+
+void MHMBrinkmanTest::UniformRefine4(int nDiv, TPZGeoMesh *gmesh, TPZVec<REAL> centerCo, bool restriction)
+{
+    
+    int dim = gmesh->Dimension();
+    TPZManVector< TPZGeoEl *,20 > filhos;
+    for(int D = 0; D < nDiv; D++)
+    {
+        TPZAdmChunkVector<TPZGeoEl *> gelvec = gmesh->ElementVec();
+        int nels = gmesh->NElements();
+        
+        for(int elem = 0; elem < nels; elem++)
+        {
+            
+            TPZGeoEl * gel = gelvec[elem];
+            
+            TPZGeoEl * higher_el = gel->LowestFather();
+            TPZVec<REAL> centerMaster(3,0.), centerEuclid(3,0.);;
+            int nsides = gel->NSides();
+            int side = nsides - 1;
+            higher_el->CenterPoint(side, centerMaster);
+            higher_el->X(centerMaster,centerEuclid);
+            
+            
+            if (fabs(centerCo[0]-centerEuclid[0]) > 1.e-9 &&  restriction == true) {
+                continue;
+            }
+            if (fabs(centerCo[1]-centerEuclid[1]) > 1.e-9 && restriction == true) {
+                continue;
+            }
+            
+            unsigned int n_corner_sides = gel->NCornerNodes();
+            
+            for (int i_s=n_corner_sides; i_s<nsides; i_s++) {
+                TPZGeoElSide gelside(gel,i_s);
+                TPZGeoElSide neighbour = gelside.Neighbour();
+                while(neighbour != gelside)
+                {
+                    if(neighbour.Element()->Dimension()== dim-1){
+                        break;
+             //           neighbour.Element()->Divide(filhos);
+                    }
+                    neighbour = neighbour.Neighbour();
+                }
+            }
+            
+            if(!gel) continue;
+            if(!gel->HasSubElement()) gel->Divide(filhos);
+            
+        }
+    }
+    
+    gmesh->ResetConnectivities();
+    gmesh->BuildConnectivity();
+}
+
 
 void MHMBrinkmanTest::UniformRefine3(int nDiv, TPZGeoMesh *gmesh, TPZVec<int> &n_div)
 {
@@ -580,7 +713,6 @@ void MHMBrinkmanTest::UniformRefine(int nDiv, TPZGeoMesh *gmesh, TPZVec<REAL> ce
     gmesh->BuildConnectivity();
 }
 
-
 TPZCompEl *MHMBrinkmanTest::CreateInterfaceEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index) {
     if(!gel->Reference() && gel->NumInterfaces() == 0)
         return new TPZInterfaceElement(mesh,gel,index);
@@ -598,12 +730,10 @@ void MHMBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFM
 
         TPZVec<REAL> v_Dirichlet(3,0.);
 
-        //v_Dirichlet[0] = -0.1*x2*x2+0.2*x2;
-    
-        v_Dirichlet[0] = 1.;
+        v_Dirichlet[0] = -0.1*x2*x2+0.2*x2;
         v_Dirichlet[1] = 0.;
-        //STATE pressure = 1.-0.2*x1;
-        STATE pressure = 0.;
+        STATE pressure = 1.-0.2*x1;
+
 
         sol[0]=v_Dirichlet[0];
         sol[1]=v_Dirichlet[1];
@@ -612,8 +742,7 @@ void MHMBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFM
 
         // vx direction
         dsol(0,0)= 0.;
-        dsol(0,1)= 0.;
-       // dsol(0,1)= 0.2-0.2*x2;
+        dsol(0,1)= 0.2-0.2*x2;
         dsol(0,2)= 0.;
 
         // vy direction
@@ -1223,13 +1352,22 @@ void MHMBrinkmanTest::InsertInterfaces(TPZMultiphysicsCompMesh *cmesh_m){
     Interfaces[1] = fmatInterfaceRight;
     InterfaceInsertion.SetInterfaceVectorId(Interfaces);
     
-    //InterfaceInsertion.InsertHdivBound(fmatWrap);
-    InterfaceInsertion.AddMultiphysicsInterfacesLeftNRight(fmatLambda);
-    // InterfaceInsertion.SetMultiplierBCMatId(fmatLambdaBC);
-    InterfaceInsertion.AddMultiphysicsBCInterface(fmatLambdaBC_bott,fmatInterfaceLeft);
-    InterfaceInsertion.AddMultiphysicsBCInterface(fmatLambdaBC_top,fmatInterfaceLeft);
-    InterfaceInsertion.AddMultiphysicsBCInterface(fmatLambdaBC_left,fmatInterfaceLeft);
-    InterfaceInsertion.AddMultiphysicsBCInterface(fmatLambdaBC_right,fmatInterfaceLeft);
+    if (f_allrefine) {
+        InterfaceInsertion.AddMultiphysicsInterfacesLeftNRight(fmatLambda);
+        InterfaceInsertion.AddMultiphysicsBCInterface(fmatLambdaBC_bott,fmatInterfaceLeft);
+        InterfaceInsertion.AddMultiphysicsBCInterface(fmatLambdaBC_top,fmatInterfaceLeft);
+        InterfaceInsertion.AddMultiphysicsBCInterface(fmatLambdaBC_left,fmatInterfaceLeft);
+        InterfaceInsertion.AddMultiphysicsBCInterface(fmatLambdaBC_right,fmatInterfaceLeft);
+    }else{
+        InterfaceInsertion.AddMultiphysicsInterfacesLeftNRight2(fmatLambda);
+        InterfaceInsertion.AddMultiphysicsBCInterface2(fmatLambdaBC_bott,fmatInterfaceLeft);
+        InterfaceInsertion.AddMultiphysicsBCInterface2(fmatLambdaBC_top,fmatInterfaceLeft);
+        InterfaceInsertion.AddMultiphysicsBCInterface2(fmatLambdaBC_left,fmatInterfaceLeft);
+        InterfaceInsertion.AddMultiphysicsBCInterface2(fmatLambdaBC_right,fmatInterfaceLeft);
+
+    }
+    
+    
     
 }
 

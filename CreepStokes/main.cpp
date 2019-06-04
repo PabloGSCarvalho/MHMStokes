@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
         HDivPiola = 1;
         for (int it=0; it<=0; it++) {
             //h_level = pow(2., 2+it);
-            h_level = 2;
+            h_level = 3;
             
             //Coeficiente estabilização (Stokes)
             STATE hE=hx/h_level;

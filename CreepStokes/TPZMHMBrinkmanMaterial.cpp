@@ -88,7 +88,7 @@ void TPZMHMBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<T
             for (int e=0; e< 3 ; e++) {
                 lambda_j(e,0) = phiLamb(j1,0)*tan(0,e);
             }
-            
+            REAL detjac = data.detjac;
             STATE fact = fMultiplier * weight * InnerVec(phiVi,lambda_j);
             ek(i1,j1+nshapeV) += fact;
             ek(j1+nshapeV,i1) += fact;

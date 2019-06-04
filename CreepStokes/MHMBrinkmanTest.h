@@ -124,6 +124,8 @@ private:
     
     static TPZTransform<STATE> f_InvT;
     
+    bool f_allrefine = false;
+    
 public:
 
     MHMBrinkmanTest();
@@ -135,12 +137,16 @@ public:
     /*  Malhas geometricas */
     TPZGeoMesh *CreateGMesh(int nx, int ny, double hx, double hy);
 
-    void UniformRefine3(int nDiv, TPZGeoMesh *gmesh, TPZVec<int> &n_div);
+    void UniformRefine4(int nDiv, TPZGeoMesh *gmesh, TPZVec<REAL> centerCo, bool restriction); //Elemento escolhido pela coordenada -> grande estrutura
     
-    void UniformRefine2(int nDiv, TPZGeoMesh *gmesh, TPZVec<int> &n_div);
+    void UniformRefine3(int nDiv, TPZGeoMesh *gmesh, TPZVec<int> &n_div); //Refinamento padrão para triangulo
     
-    void UniformRefine(int nDiv, TPZGeoMesh *gmesh, TPZVec<REAL> centerCo, bool restriction);
+    void UniformRefine2(int nDiv, TPZGeoMesh *gmesh, TPZVec<int> &n_div); //Refinamento padrão para quadrilatero
+    
+    void UniformRefine(int nDiv, TPZGeoMesh *gmesh, TPZVec<REAL> centerCo, bool restriction); //Elemento escolhido pela coordenada
     //   TPZGeoMesh *GMeshDeformed(int dim, bool ftriang, int ndiv);
+    
+    void InsertOneDimMaterial(TPZGeoMesh *gmesh);
     
     void ChangeExternalOrderConnects(TPZCompMesh *mesh, int addToOrder);
     /* Malhas computacionais */
@@ -151,6 +157,11 @@ public:
     TPZCompMesh *CMesh_p(TPZGeoMesh *gmesh, int Space, int pOrder);
     //TPZCompMesh *CMesh_St(TPZGeoMesh *gmesh, int Space, int pOrder);
     TPZMultiphysicsCompMesh *CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STATE visco, STATE theta, STATE sigma);
+
+    void SetAllRefine(){
+        f_allrefine = true;
+    };
+    
     
     void SetHdivPlus(){
         f_hdivPlus = true;

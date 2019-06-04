@@ -101,8 +101,15 @@ public:
     /// Add BC interface from a reference material, only one side
     void AddMultiphysicsBCInterface(int matfrom, int mattarget);
     
+    /// Add BC interface from a reference material, only one side
+    void AddMultiphysicsBCInterface2(int matfrom, int mattarget);
+    
     /// Add interfaces in left and right sides of a reference material, it should be given an interface vector (left and right materials)
     void AddMultiphysicsInterfacesLeftNRight(int matfrom);
+
+    /// Add interfaces in left and right sides of a reference material, it should be given an interface vector (left and right materials)
+    /// This method consider the lowest fathers mesh skeleton
+    void AddMultiphysicsInterfacesLeftNRight2(int matfrom);
     
     /// Open the connects of a Interface, create dim-1 Interface elements (Hdiv version)
     void InsertHdivBound(int mat_id_flux_wrap);
