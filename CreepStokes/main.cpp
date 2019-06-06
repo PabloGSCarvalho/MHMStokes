@@ -65,7 +65,7 @@ bool MHMBrinkmanDomain = true;
 int main(int argc, char *argv[])
 {
     
-    TPZMaterial::gBigNumber = 1.e16;
+    TPZMaterial::gBigNumber = 1.e12;
     
 #ifdef LOG4CXX
     InitializePZLOG();
@@ -83,13 +83,13 @@ int main(int argc, char *argv[])
     
     if (MHMBrinkmanDomain)
     {
-        pOrder = 2;
+        pOrder = 3;
         hx=2.,hy=2.;
         
         HDivPiola = 1;
         for (int it=0; it<=0; it++) {
             //h_level = pow(2., 2+it);
-            h_level = 3;
+            h_level = 64;
             
             //Coeficiente estabilização (Stokes)
             STATE hE=hx/h_level;
@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
             REAL visc = 1.0; //->Darcy
             
             MHMBrinkmanTest  * Test2 = new MHMBrinkmanTest();
-            //Test2->SetTriangularMesh();
+            Test2->SetTriangularMesh();
             //Test2->SetHdivPlus();
 
             TPZTransform<STATE> Transf(3,3), InvTransf(3,3);

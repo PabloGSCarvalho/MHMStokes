@@ -2415,7 +2415,7 @@ void TPZBrinkmanMaterial::Errors(TPZVec<TPZMaterialData> &data, TPZVec<STATE> &s
     // velocity
     
     //values[2] : erro norma L2
-    REAL diff, diffp;
+    STATE diff, diffp;
     errors[1] = 0.;
     for(int i=0; i<3; i++) {
         diff = Velocity[i] - sol_exact[i];

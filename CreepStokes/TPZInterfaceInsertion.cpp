@@ -622,7 +622,7 @@ void TPZInterfaceInsertion::AddMultiphysicsBCInterface2(int matfrom, int matBCin
         
         int nneighs = neighbourset.size();
         if(nneighs!=2&&m_Triang==false){
-            DebugStop();
+        //    DebugStop();
         }
         if(nneighs!=3&&m_Triang==true){
             //      DebugStop();
