@@ -83,13 +83,13 @@ int main(int argc, char *argv[])
     
     if (MHMBrinkmanDomain)
     {
-        pOrder = 3;
+        pOrder = 1;
         hx=2.,hy=2.;
         
         HDivPiola = 1;
         for (int it=0; it<=0; it++) {
             //h_level = pow(2., 2+it);
-            h_level = 64;
+            h_level = 2;
             
             //Coeficiente estabilização (Stokes)
             STATE hE=hx/h_level;
@@ -98,12 +98,15 @@ int main(int argc, char *argv[])
             
             nx=h_level+1 ,ny=h_level+1;
             hE=hx/h_level;
+            
+            ny=2; //Obs!!
+            
             sigma=s0*(pOrder*pOrder)/hE;
             
             REAL visc = 1.0; //->Darcy
             
             MHMBrinkmanTest  * Test2 = new MHMBrinkmanTest();
-            Test2->SetTriangularMesh();
+            //Test2->SetTriangularMesh();
             //Test2->SetHdivPlus();
 
             TPZTransform<STATE> Transf(3,3), InvTransf(3,3);

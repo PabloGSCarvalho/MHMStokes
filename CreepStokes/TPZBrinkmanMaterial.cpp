@@ -556,6 +556,36 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
         ef(nshapeV+i,0) += factf;
     }
     
+    
+    // Preparação para formulação MHM :
+    if (datavec.size()>2) {
+        
+        TPZFMatrix<REAL> &phipM = datavec[2].phi;
+        TPZFMatrix<REAL> &phigM = datavec[3].phi;
+        
+        // matrix C - pressure and average-pressure
+        for (int j = 0; j < nshapeP; j++) {
+            
+            STATE fact = (1.) * weight * phiP(j,0) * phipM(0,0);
+            // Matrix C
+            ek(nshapeV+nshapeP, nshapeV+j) += fact;
+            // Matrix C^T
+            ek(nshapeV+j,nshapeV+nshapeP) += fact;
+            
+        }
+        
+        // matrix D - injection and average-pressure
+
+        STATE factG = (1.) * weight * phigM(0,0) * phipM(0,0);
+        // Matrix C
+        ek(nshapeV+nshapeP+1, nshapeV+nshapeP) += factG;
+        // Matrix C^T
+        ek(nshapeV+nshapeP,nshapeV+nshapeP+1) += factG;
+        
+    }
+    
+    
+    
     {
         std::ofstream fileEK("FileEKContribute.txt");
         ek.Print("stiff = ",fileEK,EMathematicaInput);

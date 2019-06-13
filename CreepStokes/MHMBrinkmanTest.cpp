@@ -22,6 +22,9 @@
 #include "pzintel.h"
 #include "TPZNullMaterial.h"
 #include "pzgengrid.h"
+#include "TPZLagrangeMultiplier.h"
+#include "pzelementgroup.h"
+#include "pzcondensedcompel.h"
 
 using namespace std;
 
@@ -38,6 +41,11 @@ MHMBrinkmanTest::MHMBrinkmanTest()
     
     fdim=2; //Dimensão do problema
     fmatID=1; //Materia do elemento volumétrico
+    
+    fmatMultP=30; //Materia multiplicador de pressão média
+    fmatMultP_MHM=31;
+    fmatMultG=32;  //Materia multiplicador de injeção de fluxo
+    fmatMultG_MHM=33;
     
     //Materiais das condições de contorno
     fmatBCbott=-1;
@@ -98,7 +106,7 @@ MHMBrinkmanTest::MHMBrinkmanTest()
     
     fTriang = false;
     
-    f_mesh_vector.resize(2);
+    f_mesh_vector.resize(4);
     
     f_T = TPZTransform<>(3,3);
     f_InvT = TPZTransform<>(3,3);
@@ -134,24 +142,41 @@ void MHMBrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, doub
     TPZCompMesh *cmesh_v = this->CMesh_v(gmesh, Space, pOrder);
     TPZCompMesh *cmesh_p = this->CMesh_p(gmesh, Space, pOrder+n_mais);
     
+    TPZCompMesh *cmesh_pM = this->CMesh_pM(gmesh, 0);
+    TPZCompMesh *cmesh_gM = this->CMesh_gM(gmesh, 0);
+    
+    if (!f_mesh0) {
+        DebugStop();
+    }
+    
+    
+    
+//    TPZCompMesh *cmesh_pM_0 = this->CMesh_pM_0(f_mesh0, 0);
+//    TPZCompMesh *cmesh_gM_0 = this->CMesh_gM_0(f_mesh0, 0);
+    
     ChangeExternalOrderConnects(cmesh_v,n_mais);
     // ChangeExternalOrderConnects(cmesh_p,n_mais);
   
     f_mesh_vector[0]=cmesh_v;
     f_mesh_vector[1]=cmesh_p;
+    f_mesh_vector[2]=cmesh_pM;
+    f_mesh_vector[3]=cmesh_gM;
     
     TPZMultiphysicsCompMesh *cmesh_m = this->CMesh_m(gmesh, Space, pOrder, visco, theta, sigma); //Função para criar a malha computacional multifísica
     
 #ifdef PZDEBUG
     {
-        std::ofstream filecv("MalhaC_v.txt"); //Impressão da malha computacional da velocidade (formato txt)
-        std::ofstream filecp("MalhaC_p.txt"); //Impressão da malha computacional da pressão (formato txt)
-        std::ofstream filecSt("MalhaC_St.txt"); //Impressão da malha computacional da pressão (formato txt)
+        //Impressão da malha computacional da velocidade (formato txt)
+        std::ofstream filecv("MalhaC_v.txt");
+        std::ofstream filecp("MalhaC_p.txt");
+        std::ofstream filecpM("MalhaC_pM.txt");
+        std::ofstream filecgM("MalhaC_gM.txt");
         cmesh_v->Print(filecv);
         cmesh_p->Print(filecp);
-        //cmesh_St->Print(filecSt);
+        cmesh_pM->Print(filecpM);
+        cmesh_gM->Print(filecgM);
         
-        std::ofstream filecm("MalhaC_m.txt"); //Impressão da malha computacional multifísica (formato txt)
+        std::ofstream filecm("MalhaC_m.txt");
         cmesh_m->Print(filecm);
     }
 #endif
@@ -169,6 +194,9 @@ void MHMBrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, doub
     
     //    AddMultiphysicsInterfaces(*cmesh_m);
     
+    // Agrupar e condensar os elementos
+    GroupAndCondense(cmesh_m);
+
 #ifdef PZDEBUG
     std::ofstream fileg1("MalhaGeo.txt"); //Impressão da malha geométrica (formato txt)
     std::ofstream filegvtk1("MalhaGeo.vtk"); //Impressão da malha geométrica (formato vtk)
@@ -179,15 +207,16 @@ void MHMBrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, doub
     cmesh_m->Print(filecm);
 #endif
     
-    //Resolvendo o Sistema:
-    int numthreads = 4;
     
-    bool optimizeBandwidth = true; //Impede a renumeração das equacoes do problema (para obter o mesmo resultado do Oden)
+    //Resolvendo o Sistema:
+    int numthreads = 0;
+    
+    bool optimizeBandwidth = false; //Impede a renumeração das equacoes do problema (para obter o mesmo resultado do Oden)
     TPZAnalysis an(cmesh_m, optimizeBandwidth); //Cria objeto de análise que gerenciará a analise do problema
     
-    TPZSymetricSpStructMatrix struct_mat(cmesh_m);
-    struct_mat.SetNumThreads(numthreads);
-    an.SetStructuralMatrix(struct_mat);
+//    TPZSymetricSpStructMatrix struct_mat(cmesh_m);
+//    struct_mat.SetNumThreads(numthreads);
+//    an.SetStructuralMatrix(struct_mat);
     
     
     //TPZParSkylineStructMatrix matskl(cmesh_m, numthreads);
@@ -197,9 +226,9 @@ void MHMBrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, doub
 //        an.SetStructuralMatrix(matskl);
 //    //
 ////        if (Space==1) {
-//            TPZFStructMatrix matsklD(cmesh_m); //caso nao simetrico *** //OK para discont.
-//            matsklD.SetNumThreads(numthreads);
-//            an.SetStructuralMatrix(matsklD);
+            TPZFStructMatrix matsklD(cmesh_m); //caso nao simetrico *** //OK para discont.
+            matsklD.SetNumThreads(numthreads);
+            an.SetStructuralMatrix(matsklD);
 //        }
     
     
@@ -383,8 +412,12 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
     n_div[0]=nx-1;
     n_div[1]=ny-1;
     TPZManVector<REAL,3> x0(3,0.),x1(3,0.);
-    x0[0] = 0., x0[1] = -1.;
-    x1[0] = 2., x1[1] = 1.;
+//    x0[0] = 0., x0[1] = -1.;
+//    x1[0] = 2., x1[1] = 1.;
+    
+    x0[0] = 0., x0[1] = 0.;
+    x1[0] = 4., x1[1] = 2.;
+    
     TPZGenGrid grid(n_div,x0,x1);
     
     //grid.SetDistortion(0.2);
@@ -399,8 +432,7 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
     grid.SetBC(gmesh, 6, fmatBCtop);
     grid.SetBC(gmesh, 7, fmatBCleft);
     
-// Refinar elemento dada a coord. central
-
+    SetOriginalMesh(gmesh); //Save the original mesh
     
     //SetAllRefine();
     
@@ -409,7 +441,7 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
     centerCo[1]=0.;
    // UniformRefine(1, gmesh, centerCo, true);
 
-    //UniformRefine3(1, gmesh, n_div);
+    UniformRefine2(1, gmesh, n_div);
     InsertOneDimMaterial(gmesh);
     
     TPZCheckGeom check(gmesh);
@@ -672,38 +704,40 @@ TPZCompEl *MHMBrinkmanTest::CreateInterfaceEl(TPZGeoEl *gel,TPZCompMesh &mesh,in
 
 void MHMBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFMatrix<STATE> &dsol){
     
-//        dsol.Resize(3,3);
-//        sol.Resize(4);
-//
-//        REAL x1 = x[0];
-//        REAL x2 = x[1];
-//
-//        TPZVec<REAL> v_Dirichlet(3,0.);
-//
+        dsol.Resize(3,3);
+        sol.Resize(4);
+
+        REAL x1 = x[0];
+        REAL x2 = x[1];
+
+        TPZVec<REAL> v_Dirichlet(3,0.);
+
 //        v_Dirichlet[0] = -0.1*x2*x2+0.2*x2;
-//        v_Dirichlet[1] = 0.;
+        v_Dirichlet[0] = -1.+x2;
+        v_Dirichlet[1] = 0.;
 //        STATE pressure = 1.-0.2*x1;
-//
-//
-//        sol[0]=v_Dirichlet[0];
-//        sol[1]=v_Dirichlet[1];
-//        sol[2]=v_Dirichlet[2];
-//        sol[3]=pressure;
-//
-//        // vx direction
-//        dsol(0,0)= 0.;
-//        dsol(0,1)= 0.2-0.2*x2;
-//        dsol(0,2)= 0.;
-//
-//        // vy direction
-//        dsol(1,0)= 0.;
-//        dsol(1,1)= 0.;
-//        dsol(1,2)= 0.;
-//
-//        // vz direction
-//        dsol(2,0)= 0.;
-//        dsol(2,1)= 0.;
-//        dsol(2,2)= 0.;
+        STATE pressure = 1.;
+
+        sol[0]=v_Dirichlet[0];
+        sol[1]=v_Dirichlet[1];
+        sol[2]=v_Dirichlet[2];
+        sol[3]=pressure;
+
+        // vx direction
+        dsol(0,0)= 0.;
+        //dsol(0,1)= 0.2-0.2*x2;
+        dsol(0,1)= 1.;
+        dsol(0,2)= 0.;
+
+        // vy direction
+        dsol(1,0)= 0.;
+        dsol(1,1)= 0.;
+        dsol(1,2)= 0.;
+
+        // vz direction
+        dsol(2,0)= 0.;
+        dsol(2,1)= 0.;
+        dsol(2,2)= 0.;
     
     // General form : : Artigo Botti, Di Pietro, Droniou
     
@@ -766,77 +800,77 @@ void MHMBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFM
     
     // Stokes : : Artigo Botti, Di Pietro, Droniou
     
-    dsol.Resize(3,3);
-    sol.Resize(4);
-
-
-    //Applying rotation:
-    TPZVec<REAL> x_in = x;
-    TPZVec<REAL> x_rot(3,0.);
-
-    f_InvT.Apply(x_in,x_rot);
-    x[0] = x_rot[0];
-    x[1] = x_rot[1];
-
-    REAL x1 = x[0];
-    REAL x2 = x[1];
-
-    REAL e = exp(1.);
-
-    TPZVec<REAL> v_Dirichlet(3,0.), vbc_rot(3,0.);
-
-    v_Dirichlet[0] = -1.*sin(x1)*sin(x2);
-    v_Dirichlet[1] = -1.*cos(x1)*cos(x2);
-    STATE pressure= cos(x1)*sin(x2);
-
-    f_T.Apply(v_Dirichlet, vbc_rot);
-    v_Dirichlet = vbc_rot;
-
-    sol[0]=v_Dirichlet[0];
-    sol[1]=v_Dirichlet[1];
-    sol[2]=v_Dirichlet[2];
-    sol[3]=pressure;
-
-
-    // GradU * Rt
-    TPZFMatrix<STATE> GradU(3,3,0.), GradURt(3,3,0.), RGradURt(3,3,0.);
-
-    // vx direction
-    GradU(0,0)= -1.*cos(x1)*sin(x2);
-    GradU(0,1)= cos(x2)*sin(x1);
-
-    // vy direction
-    GradU(1,0)= -1.*cos(x2)*sin(x1);
-    GradU(1,1)= cos(x1)*sin(x2);
-
-    TPZFMatrix<STATE> R = f_T.Mult();
-    TPZFMatrix<STATE> Rt(3,3,0.);
-    R.Transpose(&Rt);
-
-//    GradU.Print("GradU = ");
-//    R.Print("R = ");
-//    Rt.Print("Rt = ");
-
-    GradU.Multiply(Rt,GradURt);
-//    GradURt.Print("GradURt = ");
-
-    R.Multiply(GradURt,RGradURt);
-//    RGradURt.Print("RGradURt = ");
-
-    // vx direction
-    dsol(0,0)= RGradURt(0,0);
-    dsol(0,1)= RGradURt(0,1);
-    dsol(0,2)= RGradURt(0,2);
-
-    // vy direction
-    dsol(1,0)= RGradURt(1,0);
-    dsol(1,1)= RGradURt(1,1);
-    dsol(1,2)= RGradURt(1,2);
-
-    // vz direction
-    dsol(2,0)= RGradURt(2,0);
-    dsol(2,1)= RGradURt(2,1);
-    dsol(2,2)= RGradURt(2,2);
+//    dsol.Resize(3,3);
+//    sol.Resize(4);
+//
+//
+//    //Applying rotation:
+//    TPZVec<REAL> x_in = x;
+//    TPZVec<REAL> x_rot(3,0.);
+//
+//    f_InvT.Apply(x_in,x_rot);
+//    x[0] = x_rot[0];
+//    x[1] = x_rot[1];
+//
+//    REAL x1 = x[0];
+//    REAL x2 = x[1];
+//
+//    REAL e = exp(1.);
+//
+//    TPZVec<REAL> v_Dirichlet(3,0.), vbc_rot(3,0.);
+//
+//    v_Dirichlet[0] = -1.*sin(x1)*sin(x2);
+//    v_Dirichlet[1] = -1.*cos(x1)*cos(x2);
+//    STATE pressure= cos(x1)*sin(x2);
+//
+//    f_T.Apply(v_Dirichlet, vbc_rot);
+//    v_Dirichlet = vbc_rot;
+//
+//    sol[0]=v_Dirichlet[0];
+//    sol[1]=v_Dirichlet[1];
+//    sol[2]=v_Dirichlet[2];
+//    sol[3]=pressure;
+//
+//
+//    // GradU * Rt
+//    TPZFMatrix<STATE> GradU(3,3,0.), GradURt(3,3,0.), RGradURt(3,3,0.);
+//
+//    // vx direction
+//    GradU(0,0)= -1.*cos(x1)*sin(x2);
+//    GradU(0,1)= cos(x2)*sin(x1);
+//
+//    // vy direction
+//    GradU(1,0)= -1.*cos(x2)*sin(x1);
+//    GradU(1,1)= cos(x1)*sin(x2);
+//
+//    TPZFMatrix<STATE> R = f_T.Mult();
+//    TPZFMatrix<STATE> Rt(3,3,0.);
+//    R.Transpose(&Rt);
+//
+////    GradU.Print("GradU = ");
+////    R.Print("R = ");
+////    Rt.Print("Rt = ");
+//
+//    GradU.Multiply(Rt,GradURt);
+////    GradURt.Print("GradURt = ");
+//
+//    R.Multiply(GradURt,RGradURt);
+////    RGradURt.Print("RGradURt = ");
+//
+//    // vx direction
+//    dsol(0,0)= RGradURt(0,0);
+//    dsol(0,1)= RGradURt(0,1);
+//    dsol(0,2)= RGradURt(0,2);
+//
+//    // vy direction
+//    dsol(1,0)= RGradURt(1,0);
+//    dsol(1,1)= RGradURt(1,1);
+//    dsol(1,2)= RGradURt(1,2);
+//
+//    // vz direction
+//    dsol(2,0)= RGradURt(2,0);
+//    dsol(2,1)= RGradURt(2,1);
+//    dsol(2,2)= RGradURt(2,2);
     
     // Darcy : : Artigo Botti, Di Pietro, Droniou
     
@@ -916,16 +950,16 @@ void MHMBrinkmanTest::F_source(const TPZVec<REAL> &x, TPZVec<STATE> &f, TPZFMatr
     // Stokes : : Artigo Botti, Di Pietro, Droniou
     
     
-    f_s[0] = -3.*sin(x1)*sin(x2);
-    f_s[1] = -1.*cos(x1)*cos(x2);
-
-    f_T.Apply(f_s, f_rot);
-    f_s = f_rot;
-
-
-    f[0] = f_s[0]; // x direction
-    f[1] = f_s[1]; // y direction
-    f[2] = f_s[2];
+//    f_s[0] = -3.*sin(x1)*sin(x2);
+//    f_s[1] = -1.*cos(x1)*cos(x2);
+//
+//    f_T.Apply(f_s, f_rot);
+//    f_s = f_rot;
+//
+//
+//    f[0] = f_s[0]; // x direction
+//    f[1] = f_s[1]; // y direction
+//    f[2] = f_s[2];
     
     
     // Darcy : : Artigo Botti, Di Pietro, Droniou
@@ -1060,7 +1094,7 @@ TPZCompMesh *MHMBrinkmanTest::CMesh_p(TPZGeoMesh *gmesh, int Space, int pOrder)
     //Criando malha computacional:
     TPZCompMesh * cmesh = new TPZCompMesh(gmesh);
     
-    cmesh->SetDefaultOrder(pOrder-1); //Insere ordem polimonial de aproximação
+    cmesh->SetDefaultOrder(pOrder); //Insere ordem polimonial de aproximação
     cmesh->SetDimModel(fdim); //Insere dimensão do modelo
     
     cmesh->SetAllCreateFunctionsContinuous(); //Criando funções H1
@@ -1070,6 +1104,9 @@ TPZCompMesh *MHMBrinkmanTest::CMesh_p(TPZGeoMesh *gmesh, int Space, int pOrder)
     // 1 - Material volumétrico 2D
     TPZVecL2 *material = new TPZVecL2(fmatID);
     cmesh->InsertMaterialObject(material);
+
+    TPZVecL2 *material_multP = new TPZVecL2(fmatMultP);
+    cmesh->InsertMaterialObject(material_multP);
     
     //Dimensões do material (para H1 e descontínuo):
     TPZFMatrix<STATE> xkin(1,1,0.), xcin(1,1,0.), xbin(1,1,0.), xfin(1,1,0.);
@@ -1129,6 +1166,8 @@ TPZCompMesh *MHMBrinkmanTest::CMesh_p(TPZGeoMesh *gmesh, int Space, int pOrder)
     }
     std::set<int> materialids;
     materialids.insert(fmatID);
+    materialids.insert(fmatMultP);
+    
     // materialids.insert(fpointtype);
     cmesh->AutoBuild(materialids);
     
@@ -1161,12 +1200,189 @@ TPZCompMesh *MHMBrinkmanTest::CMesh_p(TPZGeoMesh *gmesh, int Space, int pOrder)
         newnod.SetLagrangeMultiplier(1);
     }
     
+    
+    
+    
     cmesh->AdjustBoundaryElements();
     cmesh->CleanUpUnconnectedNodes();
     
     return cmesh;
     
 }
+
+TPZCompMesh *MHMBrinkmanTest::CMesh_pM(TPZGeoMesh *gmesh, int pOrder)
+{
+    
+    //Criando malha computacional:
+    TPZCompMesh * cmesh = new TPZCompMesh(gmesh);
+    
+    cmesh->SetDefaultOrder(pOrder); //Insere ordem polimonial de aproximação
+    cmesh->SetDimModel(fdim); //Insere dimensão do modelo
+    
+    cmesh->SetAllCreateFunctionsDiscontinuous();
+    
+    // 1 - Material volumétrico 2D
+    TPZVecL2 *material_pM = new TPZVecL2(fmatID);
+    cmesh->InsertMaterialObject(material_pM);
+    
+    
+    //Criando elementos computacionais que gerenciarão o espaco de aproximação da malha
+    
+    int ncel = cmesh->NElements();
+    for(int i =0; i<ncel; i++){
+        TPZCompEl * compEl = cmesh->ElementVec()[i];
+        if(!compEl) continue;
+        TPZInterfaceElement * facel = dynamic_cast<TPZInterfaceElement *>(compEl);
+        if(facel)DebugStop();
+        
+    }
+
+    cmesh->AutoBuild();
+    
+    // @omar::
+    int ncon = cmesh->NConnects();
+    for(int i=0; i<ncon; i++)
+    {
+        TPZConnect &newnod = cmesh->ConnectVec()[i];
+        newnod.SetLagrangeMultiplier(1);
+    }
+    
+    cmesh->AdjustBoundaryElements();
+    cmesh->CleanUpUnconnectedNodes();
+    
+    return cmesh;
+    
+}
+
+TPZCompMesh *MHMBrinkmanTest::CMesh_gM(TPZGeoMesh *gmesh, int pOrder)
+{
+    
+    //Criando malha computacional:
+    TPZCompMesh * cmesh = new TPZCompMesh(gmesh);
+    
+    cmesh->SetDefaultOrder(pOrder); //Insere ordem polimonial de aproximação
+    cmesh->SetDimModel(fdim); //Insere dimensão do modelo
+    
+    cmesh->SetAllCreateFunctionsDiscontinuous();
+    
+    // 1 - Material volumétrico 2D
+    TPZVecL2 *material_pM = new TPZVecL2(fmatID);
+    cmesh->InsertMaterialObject(material_pM);
+    
+    //Criando elementos computacionais que gerenciarão o espaco de aproximação da malha
+    int ncel = cmesh->NElements();
+    for(int i =0; i<ncel; i++){
+        TPZCompEl * compEl = cmesh->ElementVec()[i];
+        if(!compEl) continue;
+        TPZInterfaceElement * facel = dynamic_cast<TPZInterfaceElement *>(compEl);
+        if(facel)DebugStop();
+        
+    }
+    
+    cmesh->AutoBuild();
+    
+    // @omar::
+    int ncon = cmesh->NConnects();
+    for(int i=0; i<ncon; i++)
+    {
+        TPZConnect &newnod = cmesh->ConnectVec()[i];
+        newnod.SetLagrangeMultiplier(1);
+    }
+    
+    cmesh->AdjustBoundaryElements();
+    cmesh->CleanUpUnconnectedNodes();
+    
+    return cmesh;
+    
+}
+
+
+TPZCompMesh *MHMBrinkmanTest::CMesh_pM_0(TPZGeoMesh *gmesh, int pOrder)
+{
+    
+    //Criando malha computacional:
+    TPZCompMesh * cmesh = new TPZCompMesh(gmesh);
+    
+    cmesh->SetDefaultOrder(pOrder); //Insere ordem polimonial de aproximação
+    cmesh->SetDimModel(fdim); //Insere dimensão do modelo
+    
+    cmesh->SetAllCreateFunctionsDiscontinuous();
+    
+    // 1 - Material volumétrico 2D
+    TPZVecL2 *material_pM = new TPZVecL2(fmatID);
+    cmesh->InsertMaterialObject(material_pM);
+    
+    
+    //Criando elementos computacionais que gerenciarão o espaco de aproximação da malha
+    
+    int ncel = cmesh->NElements();
+    for(int i =0; i<ncel; i++){
+        TPZCompEl * compEl = cmesh->ElementVec()[i];
+        if(!compEl) continue;
+        TPZInterfaceElement * facel = dynamic_cast<TPZInterfaceElement *>(compEl);
+        if(facel)DebugStop();
+        
+    }
+    
+    cmesh->AutoBuild();
+    
+    // @omar::
+    int ncon = cmesh->NConnects();
+    for(int i=0; i<ncon; i++)
+    {
+        TPZConnect &newnod = cmesh->ConnectVec()[i];
+        newnod.SetLagrangeMultiplier(1);
+    }
+    
+    cmesh->AdjustBoundaryElements();
+    cmesh->CleanUpUnconnectedNodes();
+    
+    return cmesh;
+    
+}
+
+TPZCompMesh *MHMBrinkmanTest::CMesh_gM_0(TPZGeoMesh *gmesh, int pOrder)
+{
+    
+    //Criando malha computacional:
+    TPZCompMesh * cmesh = new TPZCompMesh(gmesh);
+    
+    cmesh->SetDefaultOrder(pOrder); //Insere ordem polimonial de aproximação
+    cmesh->SetDimModel(fdim); //Insere dimensão do modelo
+    
+    cmesh->SetAllCreateFunctionsDiscontinuous();
+    
+    // 1 - Material volumétrico 2D
+    TPZVecL2 *material_pM = new TPZVecL2(fmatID);
+    cmesh->InsertMaterialObject(material_pM);
+    
+    //Criando elementos computacionais que gerenciarão o espaco de aproximação da malha
+    int ncel = cmesh->NElements();
+    for(int i =0; i<ncel; i++){
+        TPZCompEl * compEl = cmesh->ElementVec()[i];
+        if(!compEl) continue;
+        TPZInterfaceElement * facel = dynamic_cast<TPZInterfaceElement *>(compEl);
+        if(facel)DebugStop();
+        
+    }
+    
+    cmesh->AutoBuild();
+    
+    // @omar::
+    int ncon = cmesh->NConnects();
+    for(int i=0; i<ncon; i++)
+    {
+        TPZConnect &newnod = cmesh->ConnectVec()[i];
+        newnod.SetLagrangeMultiplier(1);
+    }
+    
+    cmesh->AdjustBoundaryElements();
+    cmesh->CleanUpUnconnectedNodes();
+    
+    return cmesh;
+    
+}
+
 
 TPZMultiphysicsCompMesh *MHMBrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STATE visco, STATE theta, STATE sigma)
 {
@@ -1189,7 +1405,6 @@ TPZMultiphysicsCompMesh *MHMBrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Space, 
     ((TPZDummyFunction<STATE>*)solp.operator->())->SetPolynomialOrder(5);
     material->SetForcingFunction(fp); //Caso simples sem termo fonte
     material->SetForcingFunctionExact(solp);
-    
     
     cmesh->InsertMaterialObject(material);
     
@@ -1275,7 +1490,7 @@ TPZMultiphysicsCompMesh *MHMBrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Space, 
     
     //Criando elementos computacionais que gerenciarão o espaco de aproximação da malha:
     
-    TPZManVector<int,5> active_approx_spaces(2,1);
+    TPZManVector<int,5> active_approx_spaces(4,1);
     
     cmesh->BuildMultiphysicsSpace(active_approx_spaces,f_mesh_vector);
     cmesh->AdjustBoundaryElements();
@@ -1318,6 +1533,112 @@ void MHMBrinkmanTest::InsertInterfaces(TPZMultiphysicsCompMesh *cmesh_m){
     }
     
     
+    
+}
+
+void MHMBrinkmanTest::GroupAndCondense(TPZMultiphysicsCompMesh *cmesh_m){
+   
+    
+    //Criando apropamento de elementos
+    
+    int64_t ncompel = cmesh_m->ElementVec().NElements();
+    int dim = cmesh_m->Reference()->Dimension();
+
+    std::vector<int64_t> GroupIndex;
+    TPZStack<TPZElementGroup *> elgroups;
+    int count = 0;
+    int64_t index =0;
+    
+    for(int64_t el = 0; el < ncompel; el++){
+        
+        TPZCompEl *cel = cmesh_m->Element(el);
+        if (cel->Dimension()!=dim) {
+            continue;
+        }
+        //GroupIndex[el] = cel->Index();
+        count++;
+        GroupIndex.resize(count);
+        GroupIndex[count-1]=cel->Index();
+        TPZElementGroup *GroupEl = new TPZElementGroup(*cmesh_m,index);
+        elgroups.Push(GroupEl);
+        elgroups[count-1]->AddElement(cel);
+    }
+    
+
+    //Inserindo as respectivas interfaces e condições de contorno
+    
+    for(int64_t el = 0; el < ncompel; el++){
+        TPZCompEl *cel = cmesh_m->Element(el);
+        
+        TPZMultiphysicsInterfaceElement *interel = dynamic_cast<TPZMultiphysicsInterfaceElement *>(cel);
+        if (interel) {
+            TPZCompEl *Leftel = interel->LeftElement();
+            
+            if (Leftel->Dimension()!=dim) {
+                continue;
+            }
+            int leftindex = Leftel->Index();
+            
+            for(int64_t iel = 0; iel < GroupIndex.size(); iel++){
+                if (leftindex==GroupIndex[iel]) {
+                    elgroups[iel]->AddElement(cel);
+                }
+            }
+        }
+        
+        if (!cel) {
+            continue;
+        }
+        
+        TPZGeoEl *gel = cel->Reference();
+        if (gel->Dimension()==dim-1) {
+            
+            TPZBndCond *elBC = dynamic_cast<TPZBndCond *>(cel->Material());
+            if (!elBC) {
+                continue;
+            }
+            
+            TPZStack<TPZCompElSide> celstack;
+            TPZGeoElSide gelside(gel, gel->NSides() - 1);
+            
+            gelside.EqualLevelCompElementList(celstack, 0, 0);
+            
+            for (auto &celstackindex : celstack) {
+                if (celstackindex.Reference().Element()->Dimension() == dim) {
+                    int bcindex = celstackindex.Element()->Index();
+                    
+                    for(int64_t iel = 0; iel < GroupIndex.size(); iel++){
+                        if (bcindex==GroupIndex[iel]) {
+                            elgroups[iel]->AddElement(cel);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    cmesh_m->ComputeNodElCon();
+    // create condensed elements
+    // increase the NumElConnected of one pressure connects in order to prevent condensation
+//    for (int64_t ienv=0; ienv<nenvel; ienv++) {
+//        TPZElementGroup *elgr = elgroups[ienv];
+    int nenvel = elgroups.NElements();
+    for (int64_t ienv=0; ienv<nenvel; ienv++) {
+        TPZElementGroup *elgr = elgroups[ienv];
+        int nc = elgr->NConnects();
+        for (int ic=0; ic<nc; ic++) {
+            TPZConnect &c = elgr->Connect(ic);
+            if (c.LagrangeMultiplier() > 0) {
+                c.IncrementElConnected();
+                break;
+            }
+        }
+        new TPZCondensedCompEl(elgr);
+    }
+
+    
+    cmesh_m->CleanUpUnconnectedNodes();
+    cmesh_m->ExpandSolution();
     
 }
 
