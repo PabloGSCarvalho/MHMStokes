@@ -194,6 +194,12 @@ void MHMBrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, doub
     
     //    AddMultiphysicsInterfaces(*cmesh_m);
     
+#ifdef PZDEBUG
+    std::ofstream filecmbfCond("MalhaC_m_beforeCond.txt"); //Impressão da malha computacional multifísica (formato txt)
+    cmesh_m->Print(filecmbfCond);
+#endif
+    
+    
     // Agrupar e condensar os elementos
     GroupAndCondense(cmesh_m);
 
@@ -344,7 +350,7 @@ void MHMBrinkmanTest::Rotate(TPZVec<REAL> &co, TPZVec<REAL> &co_r, bool rotate){
 }
 
 void MHMBrinkmanTest::InsertOneDimMaterial(TPZGeoMesh *gmesh){
-
+    
     // Inserir elmentos 1D fmatLambda and fmatLambdaBCs
 
             int64_t nel = gmesh->NElements();
@@ -390,17 +396,64 @@ void MHMBrinkmanTest::InsertOneDimMaterial(TPZGeoMesh *gmesh){
                         if(neighbour.Element()->HasSubElement()){
                             break;
                         }
+                        
+                        
+                        if (f_skellNeighs.NElements()>0 && IsSkellNeighbour(neighbour)) {
+                            break;
+                        }
+                        
                         neighbour = neighbour.Neighbour();
         
                     }
         
         
                     if (neighbour == gelside) {
-                        TPZGeoElBC(gelside, fmatLambda);
+                        
+//                        if (f_skellNeighs.NElements()>0 && neighbour.Element()->Dimension() == gmesh->Dimension()) {
+//                            int nskellneighs = f_skellNeighs.NElements();
+//
+//                            for (int iskell = 0; iskell < nskellneighs; iskell++) {
+//                                TPZStack<TPZGeoElSide> sonSides;
+//                                f_skellNeighs[iskell].GetAllSiblings(sonSides);
+//                                for (int ison=0; ison<sonSides.NElements(); ison++) {
+//                                    if (neighbour == sonSides [ison]) {
+//                                        continue;
+//                                    }
+//                                    TPZGeoElBC(gelside, fmatLambda);
+//                                }
+//                            }
+//
+//                        } else {
+                            TPZGeoElBC(gelside, fmatLambda);
+//                        }
+                        
+                        
+
                     }
                 }
             }
 
+}
+
+
+bool MHMBrinkmanTest::IsSkellNeighbour(TPZGeoElSide neighbour){
+
+    if (neighbour.Element()->Dimension() == f_mesh0->Dimension()) {
+        int nskellneighs = f_skellNeighs.NElements();
+    
+        for (int iskell = 0; iskell < nskellneighs; iskell++) {
+            TPZStack<TPZGeoElSide> sonSides;
+            f_skellNeighs[iskell].GetAllSiblings(sonSides);
+            for (int ison=0; ison<sonSides.NElements(); ison++) {
+                if (neighbour == sonSides [ison]) {
+                    return true;
+                }
+            }
+        }
+    
+    }
+    
+    return false;
 }
 
 
@@ -432,7 +485,7 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
     grid.SetBC(gmesh, 6, fmatBCtop);
     grid.SetBC(gmesh, 7, fmatBCleft);
     
-    SetOriginalMesh(gmesh); //Save the original mesh
+    //Save the original mesh
     
     //SetAllRefine();
     
@@ -441,6 +494,9 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
     centerCo[1]=0.;
    // UniformRefine(1, gmesh, centerCo, true);
 
+    //UniformRefine2(1, gmesh, n_div);
+    InsertOneDimMaterial(gmesh);
+    SetOriginalMesh(gmesh);
     UniformRefine2(1, gmesh, n_div);
     InsertOneDimMaterial(gmesh);
     
@@ -605,7 +661,7 @@ void MHMBrinkmanTest::UniformRefine2(int nDiv, TPZGeoMesh *gmesh, TPZVec<int> &n
                 count=1;
             }
             
-            if((higher_el->Index()+count)%2==0) continue;
+            //if((higher_el->Index()+count)%2==0) continue;
           
             unsigned int n_corner_sides = gel->NCornerNodes();
             
@@ -1529,12 +1585,50 @@ void MHMBrinkmanTest::InsertInterfaces(TPZMultiphysicsCompMesh *cmesh_m){
         InterfaceInsertion.AddMultiphysicsBCInterface2(fmatLambdaBC_top,fmatInterfaceLeft);
         InterfaceInsertion.AddMultiphysicsBCInterface2(fmatLambdaBC_left,fmatInterfaceLeft);
         InterfaceInsertion.AddMultiphysicsBCInterface2(fmatLambdaBC_right,fmatInterfaceLeft);
-
     }
     
     
     
 }
+
+void MHMBrinkmanTest::ComputeSkelNeighbours(){
+    
+    if (!f_mesh0) {
+        DebugStop();
+    }
+    
+    int64_t nel = f_mesh0->NElements();
+    for (int64_t el = 0; el<nel; el++) {
+        TPZGeoEl *gel = f_mesh0->Element(el);
+//        if(gel->HasSubElement()&&f_allrefine)
+//        {
+//            continue;
+//        }
+        if (gel->MaterialId() != fmatLambda) {
+            continue;
+        }
+        int nsides = gel->NSides();
+        TPZGeoElSide gelside(gel,nsides-1);
+        TPZGeoElSide neighbour = gelside.Neighbour();
+
+        if (neighbour == gelside) {
+            continue;
+        }
+        
+        while (neighbour != gelside) {
+            int neigh_matID = neighbour.Element()->MaterialId();
+            if (neighbour.Element()->Dimension() == f_mesh0->Dimension() && neigh_matID==fmatID) {
+                f_skellNeighs.Push(neighbour);
+            }
+            if(neighbour.Element()->HasSubElement()){
+                break;
+            }
+            neighbour = neighbour.Neighbour();
+        }
+    }
+    
+}
+
 
 void MHMBrinkmanTest::GroupAndCondense(TPZMultiphysicsCompMesh *cmesh_m){
    
@@ -1625,14 +1719,21 @@ void MHMBrinkmanTest::GroupAndCondense(TPZMultiphysicsCompMesh *cmesh_m){
     int nenvel = elgroups.NElements();
     for (int64_t ienv=0; ienv<nenvel; ienv++) {
         TPZElementGroup *elgr = elgroups[ienv];
-        int nc = elgr->NConnects();
-        for (int ic=0; ic<nc; ic++) {
-            TPZConnect &c = elgr->Connect(ic);
-            if (c.LagrangeMultiplier() > 0) {
-                c.IncrementElConnected();
-                break;
-            }
-        }
+        
+        int nc = elgroups[ienv]->GetElGroup()[0]->NConnects();
+        elgroups[ienv]->GetElGroup()[0]->Connect(nc-1).IncrementElConnected();
+        
+        
+//        for (int ic=0; ic<nc; ic++) {
+//            TPZConnect &c = elgr->Connect(ic);
+//            int connectpM = elgroups[ienv]->GetElGroup()[0]->NConnects();
+//            int nc = elgr->NConnects();
+//            TPZConnect &c = elgr->Connect(nc-1);
+//            if (c.LagrangeMultiplier() > 0) {
+//                c.IncrementElConnected();
+//                break;
+//            }
+//        }
         new TPZCondensedCompEl(elgr);
     }
 

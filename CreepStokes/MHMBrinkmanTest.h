@@ -133,6 +133,8 @@ private:
     
     TPZGeoMesh *f_mesh0;
     
+    TPZStack<TPZGeoElSide> f_skellNeighs;
+    
 public:
 
     MHMBrinkmanTest();
@@ -175,6 +177,7 @@ public:
 
     void SetOriginalMesh(TPZGeoMesh *gmesh){
         f_mesh0 = gmesh;
+        ComputeSkelNeighbours();
     };
 
     
@@ -283,7 +286,10 @@ public:
     
     // Agrupa elementos e realiza condensação estática
     void GroupAndCondense(TPZMultiphysicsCompMesh *cmesh_m);
-  
+    
+    void ComputeSkelNeighbours();
+    
+    bool IsSkellNeighbour(TPZGeoElSide neigh);
 
 };
 
