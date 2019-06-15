@@ -58,17 +58,15 @@ private:
     
     int fdim; //Dimensão do problema
     int fmatID; //Materia do elemento volumétrico
-    
-    int fmatMultP; //Materia multiplicador de pressão média
-    int fmatMultP_MHM;
-    int fmatMultG;  //Materia multiplicador de injeção de fluxo
-    int fmatMultG_MHM;
-    
+        
     //Materiais das condições de contorno
     int fmatBCbott;
     int fmatBCtop;
     int fmatBCleft;
     int fmatBCright;
+
+    int fmatBCtop_z;
+    int fmatBCbott_z;//normal negativa
     
     //Material do elemento de interface
     int fmatLambda; //Multiplier material
@@ -78,6 +76,10 @@ private:
     int fmatLambdaBC_top;
     int fmatLambdaBC_left;
     int fmatLambdaBC_right;
+    
+    int fmatLambdaBC_top_z;
+    int fmatLambdaBC_bott_z;
+    
     
     int fmatWrapBC_bott;
     int fmatWrapBC_top;
@@ -93,6 +95,10 @@ private:
     int fmatIntBCtop;
     int fmatIntBCleft;
     int fmatIntBCright;
+
+    int fmatIntBCtop_z;
+    int fmatIntBCbott_z;
+
     
     //Materia de um ponto
     int fmatPoint;
@@ -103,7 +109,6 @@ private:
     int fpenetration;
     int fpointtype;
     int fdirichletvar;
-    
     
     int fquadmat1; //Parte inferior do quadrado
     int fquadmat2; //Parte superior do quadrado
@@ -135,17 +140,21 @@ private:
     
     TPZStack<TPZGeoElSide> f_skellNeighs;
     
+    bool f_3Dmesh = false;
+    
 public:
 
     MHMBrinkmanTest();
     
     ~MHMBrinkmanTest();
     
-    void Run(int Space, int pOrder, int nx, int ny, double hx, double hy, STATE visco, STATE theta, STATE sigma);
+    void Run(int Space, int pOrder, TPZVec<int> &n_s, TPZVec<REAL> &h_s, STATE visco);
     
     /*  Malhas geometricas */
-    TPZGeoMesh *CreateGMesh(int nx, int ny, double hx, double hy);
+    TPZGeoMesh *CreateGMesh(TPZVec<int> &n_s, TPZVec<REAL> &h_s);
 
+    TPZGeoMesh *CreateGMesh3D(TPZVec<int> &n_s, TPZVec<REAL> &h_s);
+    
     void UniformRefine4(int nDiv, TPZGeoMesh *gmesh, TPZVec<REAL> centerCo, bool restriction); //Elemento escolhido pela coordenada -> grande estrutura
     
     void UniformRefine3(int nDiv, TPZGeoMesh *gmesh, TPZVec<int> &n_div); //Refinamento padrão para triangulo
@@ -173,7 +182,7 @@ public:
     
     
     //TPZCompMesh *CMesh_St(TPZGeoMesh *gmesh, int Space, int pOrder);
-    TPZMultiphysicsCompMesh *CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STATE visco, STATE theta, STATE sigma);
+    TPZMultiphysicsCompMesh *CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STATE visco);
 
     void SetOriginalMesh(TPZGeoMesh *gmesh){
         f_mesh0 = gmesh;
@@ -184,7 +193,11 @@ public:
     void SetAllRefine(){
         f_allrefine = true;
     };
-    
+
+    void Set3Dmesh(){
+        f_3Dmesh = true;
+        fdim = 3;
+    };
     
     void SetHdivPlus(){
         f_hdivPlus = true;

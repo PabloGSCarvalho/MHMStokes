@@ -72,40 +72,34 @@ int main(int argc, char *argv[])
 #endif
     //Dados do problema:
     
-    int h_level = 0;
     
-    double hx=2.,hy=2.; //Dimensões em x e y do domínio
-    //double hx=Pi,hy=2.; //Dimensões em x e y do domínio (acoplamento)
-    int nelx=h_level, nely=h_level; //Número de elementos em x e y
-    int nx=nelx+1 ,ny=nely+1; //Número de nos em x  y
+    REAL hx=2.,hy=2.; //Dimensões em x e y do domínio
+    //double hx=Pi,hy=2.;
+    int h_level = 0;
+    int nx=h_level+1 ,ny=h_level+1; //Número de nos em x  y
     int pOrder = 0; //Ordem polinomial de aproximação
     
+    TPZVec<REAL> h_s(3,0);
+    h_s[0]=2.,h_s[1]=2.; //Dimensões em x e y do domínio
     
     if (MHMBrinkmanDomain)
     {
-        pOrder = 1;
-        hx=2.,hy=2.;
+        int pOrder = 1;
         
         HDivPiola = 1;
         for (int it=0; it<=0; it++) {
             //h_level = pow(2., 2+it);
             h_level = 2;
             
-            //Coeficiente estabilização (Stokes)
-            STATE hE=hx/h_level;
-            STATE s0=0.;
-            STATE sigma=s0*(pOrder*pOrder)/hE;
+            TPZVec<int> n_s(3,0.);
+            n_s[0]=h_level ,n_s[1]=h_level;
             
-            nx=h_level+1 ,ny=h_level+1;
-            hE=hx/h_level;
-            
-            ny=2; //Obs!!
-            
-            sigma=s0*(pOrder*pOrder)/hE;
+            n_s[2]=2; //Obs!!
             
             REAL visc = 1.0; //->Darcy
             
             MHMBrinkmanTest  * Test2 = new MHMBrinkmanTest();
+            Test2->Set3Dmesh();
             //Test2->SetTriangularMesh();
             //Test2->SetHdivPlus();
 
@@ -120,7 +114,7 @@ int main(int argc, char *argv[])
             rot_z = rot_z*Pi/180.;
             
             //Test2->SetRotation3DMatrix(rot_x,rot_y,rot_z);
-            Test2->Run(SpaceHDiv, pOrder, nx, ny, hx, hy,visc,theta,sigma);
+            Test2->Run(SpaceHDiv, pOrder, n_s, h_s,visc);
             
         }
         
