@@ -126,7 +126,7 @@ private:
     
     bool f_hdivPlus;
     
-    bool fTriang;
+    MElementType feltype;
     
     TPZVec<TPZCompMesh * > f_mesh_vector;
     
@@ -155,6 +155,10 @@ public:
 
     TPZGeoMesh *CreateGMesh3D(TPZVec<int> &n_s, TPZVec<REAL> &h_s);
     
+    static void GenerateNodes(TPZGeoMesh *gmesh, int64_t nelem);
+    
+    void TetrahedralMeshCubo(TPZVec<int> &n_s);
+    
     void UniformRefine4(int nDiv, TPZGeoMesh *gmesh, TPZVec<REAL> centerCo, bool restriction); //Elemento escolhido pela coordenada -> grande estrutura
     
     void UniformRefine3(int nDiv, TPZGeoMesh *gmesh, TPZVec<int> &n_div); //Refinamento padrão para triangulo
@@ -164,7 +168,7 @@ public:
     void UniformRefine(int nDiv, TPZGeoMesh *gmesh, TPZVec<REAL> centerCo, bool restriction); //Elemento escolhido pela coordenada
     //   TPZGeoMesh *GMeshDeformed(int dim, bool ftriang, int ndiv);
     
-    void InsertOneDimMaterial(TPZGeoMesh *gmesh);
+    void InsertLowerDimMaterial(TPZGeoMesh *gmesh);
     
     void ChangeExternalOrderConnects(TPZCompMesh *mesh, int addToOrder);
     /* Malhas computacionais */
@@ -207,9 +211,9 @@ public:
     void SetFullHdiv(){
         f_is_hdivFull = true;
     };
-
-    void SetTriangularMesh(){
-        fTriang = true;
+    
+    void SetElType(MElementType eltype){
+        feltype = eltype;
     };
 
     // Set transform object and its transformation

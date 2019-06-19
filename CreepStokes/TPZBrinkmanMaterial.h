@@ -108,7 +108,9 @@ public:
     }
     
     /** returns the integrable dimension of the material */
-    int Dimension() const {return 2;}
+    int Dimension() const {
+        return fDimension;
+    }
     
     /** returns the number of state variables associated with the material */
     virtual int NStateVariables() const override {

@@ -584,26 +584,11 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
         
     }
     
-    
-    
+
     {
         std::ofstream fileEK("FileEKContribute.txt");
         ek.Print("stiff = ",fileEK,EMathematicaInput);
     }
-    
-//#ifdef LOG4CXX
-////    if (elastoplasticLogger->isDebugEnabled()) {
-//        std::stringstream sout;
-//        sout << "<<< TPZPoroElastoPlasticDFN<T,TMEM>::Contribute ***";
-//        sout << " Resultant rhs vector:\n" << ef;
-//        sout << " Resultant stiff vector:\n" << ek;
-////        ek.Print("ek = ",plotElasticEK,EMathematicaInput);
-////        ef.Print("ef = ",plotElasticEF,EMathematicaInput);
-//        LOGPZ_DEBUG(elastoplasticLogger, sout.str().c_str());
-////    }
-//#endif
-
-    
     
 }
 

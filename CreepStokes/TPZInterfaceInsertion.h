@@ -43,7 +43,7 @@ private:
     std::set<int> m_boundaries_ids;
     
     /// Set mesh type
-    bool m_Triang;
+    MElementType m_Eltype;
 
 public:
     
@@ -60,7 +60,7 @@ public:
     TPZInterfaceInsertion(TPZInterfaceInsertion & other);
     
     /// Constructor based on a computational mesh and Interface material id
-    TPZInterfaceInsertion(TPZCompMesh *m_cmesh, int Interface_id, std::set<int> & boundaries_ids, bool meshType);
+    TPZInterfaceInsertion(TPZCompMesh *m_cmesh, int Interface_id, std::set<int> & boundaries_ids, MElementType eltype);
     
     /// Set Interface Identifier
     void SetInterfaceId(int Interface_id);

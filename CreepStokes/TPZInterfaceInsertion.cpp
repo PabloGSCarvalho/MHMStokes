@@ -24,8 +24,7 @@ TPZInterfaceInsertion::TPZInterfaceInsertion(){
     m_cmesh = NULL;
     m_geometry = NULL;
     m_boundaries_ids.clear();
-    m_Triang = false;
-    
+    m_Eltype = EQuadrilateral;
 }
 
 /// Default desconstructor
@@ -42,18 +41,18 @@ TPZInterfaceInsertion::TPZInterfaceInsertion(TPZInterfaceInsertion & other){
     m_multiplierBC_id      = other.m_multiplierBC_id;
     m_geometry           = other.m_geometry;
     m_boundaries_ids     = other.m_boundaries_ids;
-    m_Triang            = other.m_Triang;
+    m_Eltype            = other.m_Eltype;
 }
 
 /// Constructor based on a computational mesh and fracture material id
-TPZInterfaceInsertion::TPZInterfaceInsertion(TPZCompMesh *cmesh, int mat_multiplier, std::set<int> & boundaries_ids, bool meshtype){
+TPZInterfaceInsertion::TPZInterfaceInsertion(TPZCompMesh *cmesh, int mat_multiplier, std::set<int> & boundaries_ids, MElementType eltype){
     m_cmesh = cmesh;
     m_geometry = cmesh->Reference();
     m_multiplier_id = mat_multiplier;
     m_boundaries_ids = boundaries_ids;
     m_interface_id = 0;
     m_interfaceVector_ids.Resize(0);
-    m_Triang            = meshtype;
+    m_Eltype            = eltype;
     
 }
 
@@ -322,6 +321,7 @@ void TPZInterfaceInsertion::AddMultiphysicsInterfacesLeftNRight2(int matfrom)
     int64_t nel = m_geometry->NElements();
     for (int64_t el=0; el<nel; el++) {
         TPZGeoEl *gel = m_geometry->Element(el);
+        int meshdim = m_geometry->Dimension();
         int matid = gel->MaterialId();
         
         if (matid != matfrom) {
@@ -384,7 +384,7 @@ void TPZInterfaceInsertion::AddMultiphysicsInterfacesLeftNRight2(int matfrom)
             }else{
                
                 int64_t neigh_index = neigh.Element()->Index();
-                if (neigh.Element()->Dimension()!=2){
+                if (neigh.Element()->Dimension()!=meshdim){
                     continue;
                 }
                 
@@ -551,10 +551,10 @@ void TPZInterfaceInsertion::AddMultiphysicsBCInterface(int matfrom, int matBCint
         gelside.AllNeighbours(neighbourset);
         
         int nneighs = neighbourset.size();
-        if(nneighs!=2&&m_Triang==false){
+        if(nneighs!=2&&m_Eltype==EQuadrilateral){
             DebugStop();
         }
-        if(nneighs!=3&&m_Triang==true){
+        if(nneighs!=3&&m_Eltype==ETriangle){
       //      DebugStop();
         }
         
@@ -607,6 +607,7 @@ void TPZInterfaceInsertion::AddMultiphysicsBCInterface2(int matfrom, int matBCin
     int64_t nel = m_geometry->NElements();
     for (int64_t el=0; el<nel; el++) {
         TPZGeoEl *gel = m_geometry->Element(el);
+        int meshdim = m_geometry->Dimension();
         int matid = gel->MaterialId();
         
         if (matid != matfrom) {
@@ -621,10 +622,10 @@ void TPZInterfaceInsertion::AddMultiphysicsBCInterface2(int matfrom, int matBCin
         gelside.AllNeighbours(neighbourset);
         
         int nneighs = neighbourset.size();
-        if(nneighs!=2&&m_Triang==false){
+        if(nneighs!=2&&m_Eltype==EQuadrilateral){
         //    DebugStop();
         }
-        if(nneighs!=3&&m_Triang==true){
+        if(nneighs!=3&&m_Eltype==ETriangle){
             //      DebugStop();
         }
         
@@ -635,16 +636,12 @@ void TPZInterfaceInsertion::AddMultiphysicsBCInterface2(int matfrom, int matBCin
         for(int stack_i=0; stack_i <nneighs; stack_i++){
             TPZGeoElSide neigh = neighbourset[stack_i];
             
-
-            
-            
-            
             TPZCompElSide celneigh = neigh.Reference();
             if (!celside || !celneigh) {
                 //    DebugStop();
             }
             int64_t neigh_index = neigh.Element()->Index();
-            if (neigh.Element()->Dimension()!=2){
+            if (neigh.Element()->Dimension()!=meshdim){
                 continue;
             }
             

@@ -105,7 +105,7 @@ MHMBrinkmanTest::MHMBrinkmanTest()
     
     f_hdivPlus = false;
     
-    fTriang = false;
+    feltype = EQuadrilateral;
     
     f_mesh_vector.resize(4);
     
@@ -205,7 +205,7 @@ void MHMBrinkmanTest::Run(int Space, int pOrder, TPZVec<int> &n_s, TPZVec<REAL> 
     
     
     // Agrupar e condensar os elementos
-    GroupAndCondense(cmesh_m);
+    //GroupAndCondense(cmesh_m);
 
 #ifdef PZDEBUG
     std::ofstream fileg1("MalhaGeo.txt"); //Impressão da malha geométrica (formato txt)
@@ -219,14 +219,14 @@ void MHMBrinkmanTest::Run(int Space, int pOrder, TPZVec<int> &n_s, TPZVec<REAL> 
     
     
     //Resolvendo o Sistema:
-    int numthreads = 0;
+    int numthreads = 4;
     
-    bool optimizeBandwidth = false; //Impede a renumeração das equacoes do problema (para obter o mesmo resultado do Oden)
+    bool optimizeBandwidth = true; //Impede a renumeração das equacoes do problema (para obter o mesmo resultado do Oden)
     TPZAnalysis an(cmesh_m, optimizeBandwidth); //Cria objeto de análise que gerenciará a analise do problema
     
-//    TPZSymetricSpStructMatrix struct_mat(cmesh_m);
-//    struct_mat.SetNumThreads(numthreads);
-//    an.SetStructuralMatrix(struct_mat);
+    TPZSymetricSpStructMatrix struct_mat(cmesh_m);
+    struct_mat.SetNumThreads(numthreads);
+    an.SetStructuralMatrix(struct_mat);
     
     
     //TPZParSkylineStructMatrix matskl(cmesh_m, numthreads);
@@ -236,9 +236,9 @@ void MHMBrinkmanTest::Run(int Space, int pOrder, TPZVec<int> &n_s, TPZVec<REAL> 
 //        an.SetStructuralMatrix(matskl);
 //    //
 ////        if (Space==1) {
-            TPZFStructMatrix matsklD(cmesh_m); //caso nao simetrico *** //OK para discont.
-            matsklD.SetNumThreads(numthreads);
-            an.SetStructuralMatrix(matsklD);
+//            TPZFStructMatrix matsklD(cmesh_m); //caso nao simetrico *** //OK para discont.
+//            matsklD.SetNumThreads(numthreads);
+//            an.SetStructuralMatrix(matsklD);
 //        }
     
     
@@ -259,7 +259,12 @@ void MHMBrinkmanTest::Run(int Space, int pOrder, TPZVec<int> &n_s, TPZVec<REAL> 
     std::cout << "Solving Matrix " << std::endl;
     an.Solve();
     
-    
+//        {
+//            int eqGm= cmesh_gM->Solution().Rows();
+//            TPZFMatrix<STATE> SolTriky(eqGm,1,1.0);
+//            cmesh_gM->LoadSolution(SolTriky);
+//            std::cout<<SolTriky<<std::endl;
+//        }
     
 #ifdef PZDEBUG
     {
@@ -328,9 +333,7 @@ void MHMBrinkmanTest::Run(int Space, int pOrder, TPZVec<int> &n_s, TPZVec<REAL> 
     int postProcessResolution = 1; //  keep low as possible
 
     int dim = gmesh->Dimension();
-    dim=2.;
     an.DefineGraphMesh(dim,scalnames,vecnames,plotfile);
-    dim=3.;
     an.PostProcess(postProcessResolution,dim);
     
     std::cout << "FINISHED!" << std::endl;
@@ -355,9 +358,9 @@ void MHMBrinkmanTest::Rotate(TPZVec<REAL> &co, TPZVec<REAL> &co_r, bool rotate){
     
 }
 
-void MHMBrinkmanTest::InsertOneDimMaterial(TPZGeoMesh *gmesh){
+void MHMBrinkmanTest::InsertLowerDimMaterial(TPZGeoMesh *gmesh){
     
-    // Inserir elmentos 1D fmatLambda and fmatLambdaBCs
+    // Inserir elmentos fmatLambda and fmatLambdaBCs
 
             int64_t nel = gmesh->NElements();
             for (int64_t el = 0; el<nel; el++) {
@@ -462,7 +465,7 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(TPZVec<int> &n_div, TPZVec<REAL> &h_s)
     
     //grid.SetDistortion(0.2);
     
-    if (fTriang) {
+    if (feltype==ETriangle) {
         grid.SetElementType(ETriangle);
     }
     TPZGeoMesh *gmesh = new TPZGeoMesh;
@@ -482,10 +485,10 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh(TPZVec<int> &n_div, TPZVec<REAL> &h_s)
    // UniformRefine(1, gmesh, centerCo, true);
 
     //UniformRefine2(1, gmesh, n_div);
-    InsertOneDimMaterial(gmesh);
+    InsertLowerDimMaterial(gmesh);
     SetOriginalMesh(gmesh);
-    UniformRefine2(1, gmesh, n_div);
-    InsertOneDimMaterial(gmesh);
+//    UniformRefine2(1, gmesh, n_div);
+//    InsertLowerDimMaterial(gmesh);
     
     TPZCheckGeom check(gmesh);
     check.CheckUniqueId();
@@ -510,31 +513,264 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh3D(TPZVec<int> &n_div, TPZVec<REAL> &h_s
     //    x0[0] = 0., x0[1] = -1.;
     //    x1[0] = 2., x1[1] = 1.;
     
-    x0[0] = 0., x0[1] = 0.;
-    x1[0] = 4., x1[1] = 2.;
+    x0[0] = 0., x0[1] = 0., x0[2] = 0.;
+    x1[0] = 2., x1[1] = 2., x1[2] = 2.;
     
     TPZGenGrid grid(n_div,x0,x1);
-    
-    //grid.SetDistortion(0.2);
-    
-    if (fTriang) {
+    if (feltype == ETriangle|| feltype == EPrisma ) {
         grid.SetElementType(ETriangle);
     }
     TPZGeoMesh *gmesh = new TPZGeoMesh;
-    grid.Read(gmesh);
-    grid.SetBC(gmesh, 4, fmatBCbott);
-    grid.SetBC(gmesh, 5, fmatBCright);
-    grid.SetBC(gmesh, 6, fmatBCtop);
-    grid.SetBC(gmesh, 7, fmatBCleft);
-    
 
-    REAL thickness = 1.;//2.;
-    TPZExtendGridDimension extend(gmesh,thickness);
-    int numlayers = n_div[2];
-    gmesh = extend.ExtendedMesh(numlayers,fmatBCbott_z,fmatBCtop_z);
-    gmesh->SetDimension(3);
-    dimmodel = 3;
+    //grid.SetDistortion(0.2);
     
+    if (feltype==EQuadrilateral||feltype==ECube||feltype==EPrisma||feltype==ETriangle) {
+    
+        grid.Read(gmesh);
+        grid.SetBC(gmesh, 4, fmatBCbott);
+        grid.SetBC(gmesh, 5, fmatBCright);
+        grid.SetBC(gmesh, 6, fmatBCtop);
+        grid.SetBC(gmesh, 7, fmatBCleft);
+        
+        
+        REAL thickness = h_s[2]/n_div[2];
+        TPZExtendGridDimension extend(gmesh,thickness);
+        int numlayers = n_div[2];
+        gmesh = extend.ExtendedMesh(numlayers,fmatBCbott_z,fmatBCtop_z);
+        gmesh->SetDimension(3);
+    
+    } else if(feltype==ETetraedro){
+        
+        gmesh->SetDimension(3);
+        int64_t id = 0;
+        int nx = n_div[0]+1, ny = n_div[1]+1, nz = n_div[2]+1;
+        TPZVec<REAL> coord(3,0.);
+        int nnodes=nx*ny*nz;
+        gmesh->NodeVec().Resize(nx*ny*nz);
+        for (int k=0; k<nz; k++) {
+            for(int i = 0; i < ny; i++){
+                for(int j = 0; j < nx; j++){
+                    id = i*nx + j+ k*nx*ny;
+                    coord[0] = (j)*h_s[0]/(nx - 1);
+                    coord[1] = (i)*h_s[1]/(ny - 1);
+                    coord[2] = (k)*h_s[2]/(nz - 1);
+                    gmesh->NodeVec()[id].Initialize(coord, *gmesh);
+                }
+            }
+        }
+        
+        
+        TPZVec<int64_t> nodeindD1(4,0), nodeindD2(4,0), nodeindU1(4,0), nodeindU2(4,0), nodeindL1(4,0), nodeindL2(4,0);
+        int64_t index=0;
+        
+        for(int kq=0; kq<n_div[2]; kq++){
+            for(int iq = 0; iq < n_div[1]; iq++){
+                for(int jq = 0; jq < n_div[0]; jq++){
+                    
+        
+                    // Plano xy
+                    nodeindD1[0] = (iq)*ny + (jq) + kq*nx*ny;
+                    nodeindD1[1] = nodeindD1[0]+1;
+                    nodeindD1[2] = nodeindD1[0]+nx;
+                    nodeindD1[3] = nodeindD1[1] + (1)*nx*ny;
+                    gmesh->CreateGeoElement(ETetraedro, nodeindD1, fmatID, index,0);
+                    
+                    index++;
+                    
+                    nodeindD2[0] = nodeindD1[1];
+                    nodeindD2[1] = nodeindD1[2];
+                    nodeindD2[2] = nodeindD1[1]+nx;
+                    nodeindD2[3] = nodeindD1[1] + (1)*nx*ny;
+                    gmesh->CreateGeoElement(ETetraedro, nodeindD2, fmatID, index,0);
+                    
+                    index++;
+                    
+                    nodeindU1[0] = nodeindD1[0] + (1)*nx*ny;
+                    nodeindU1[1] = nodeindU1[0]+1;
+                    nodeindU1[2] = nodeindU1[0]+nx;
+                    nodeindU1[3] = nodeindD1[2];
+                    gmesh->CreateGeoElement(ETetraedro, nodeindU1, fmatID, index,0);
+                    
+                    index++;
+                    
+                    nodeindU2[0] = nodeindU1[1];
+                    nodeindU2[1] = nodeindU1[2];
+                    nodeindU2[2] = nodeindU1[1]+nx;
+                    nodeindU2[3] = nodeindD1[2];
+                    gmesh->CreateGeoElement(ETetraedro, nodeindU2, fmatID, index,0);
+                    
+                    index++;
+                    
+                    // Plano xz
+                    
+                    nodeindL1[0] = nodeindD1[0];
+                    nodeindL1[1] = nodeindD1[2];
+                    nodeindL1[2] = nodeindL1[0]+nx*ny;
+                    nodeindL1[3] = nodeindU1[1];
+                    gmesh->CreateGeoElement(ETetraedro, nodeindL1, fmatID, index,0);
+                    
+                    index++;
+                    
+                    
+                    nodeindL2[0] = nodeindD2[2];
+                    nodeindL2[1] = nodeindD1[1]+nx*ny;
+                    nodeindL2[2] = nodeindU2[2];
+                    nodeindL2[3] = nodeindU2[3];
+                    gmesh->CreateGeoElement(ETetraedro, nodeindL2, fmatID, index,0);
+                    
+                    index++;
+                    
+                }
+            }
+        }
+
+        gmesh->BuildConnectivity();
+        
+        // Boundary Conditions
+        const int numelements = gmesh->NElements();
+        for(int el=0; el<numelements; el++)
+        {
+            TPZManVector <TPZGeoNode,4> Nodefinder(4);
+            TPZManVector <REAL,3> nodecoord(3);
+            TPZGeoEl *tetra = gmesh->ElementVec()[el];
+            
+            // na face x = 0
+            TPZVec<int64_t> ncoordVec(0); int64_t sizeOfVec = 0;
+            for (int i = 0; i < 4; i++)
+            {
+                int64_t pos = tetra->NodeIndex(i);
+                Nodefinder[i] = gmesh->NodeVec()[pos];
+                Nodefinder[i].GetCoordinates(nodecoord);
+                if (fabs(nodecoord[0]-x0[0])<1.e-5)
+                {
+                    sizeOfVec++;
+                    ncoordVec.Resize(sizeOfVec);
+                    ncoordVec[sizeOfVec-1] = pos;
+                }
+            }
+            if(ncoordVec.NElements() == 3)
+            {
+                int lado = tetra->WhichSide(ncoordVec);
+                TPZGeoElSide tetraSide(tetra, lado);
+                TPZGeoElBC(tetraSide,fmatBCleft);
+            }
+            
+            ncoordVec.clear();
+            sizeOfVec = 0;
+            // na face x = 1
+            for (int i = 0; i < 4; i++)
+            {
+                int64_t pos = tetra->NodeIndex(i);
+                Nodefinder[i] = gmesh->NodeVec()[pos];
+                Nodefinder[i].GetCoordinates(nodecoord);
+                if (fabs(nodecoord[0]-x1[0])<1.e-5)
+                {
+                    sizeOfVec++;
+                    ncoordVec.Resize(sizeOfVec);
+                    ncoordVec[sizeOfVec-1] = pos;
+                }
+            }
+            if(ncoordVec.NElements() == 3)
+            {
+                int lado = tetra->WhichSide(ncoordVec);
+                TPZGeoElSide tetraSide(tetra, lado);
+                TPZGeoElBC(tetraSide,fmatBCright);
+            }
+            
+            ncoordVec.clear();
+            sizeOfVec = 0;
+            // na face y = 0
+            for (int i = 0; i < 4; i++)
+            {
+                int64_t pos = tetra->NodeIndex(i);
+                Nodefinder[i] = gmesh->NodeVec()[pos];
+                Nodefinder[i].GetCoordinates(nodecoord);
+                
+                
+                if (fabs(nodecoord[1]-x0[1])<1.e-5)
+                {
+                    sizeOfVec++;
+                    ncoordVec.Resize(sizeOfVec);
+                    ncoordVec[sizeOfVec-1] = pos;
+                }
+            }
+            if(ncoordVec.NElements() == 3)
+            {
+                int lado = tetra->WhichSide(ncoordVec);
+                TPZGeoElSide tetraSide(tetra, lado);
+                TPZGeoElBC(tetraSide,fmatBCbott);
+            }
+            
+            ncoordVec.clear();
+            sizeOfVec = 0;
+            // na face y = 1
+            for (int i = 0; i < 4; i++)
+            {
+                int64_t pos = tetra->NodeIndex(i);
+                Nodefinder[i] = gmesh->NodeVec()[pos];
+                Nodefinder[i].GetCoordinates(nodecoord);
+                if (fabs(nodecoord[1]-x1[1])<1.e-5)
+                {
+                    sizeOfVec++;
+                    ncoordVec.Resize(sizeOfVec);
+                    ncoordVec[sizeOfVec-1] = pos;
+                }
+            }
+            if(ncoordVec.NElements() == 3)
+            {
+                int lado = tetra->WhichSide(ncoordVec);
+                TPZGeoElSide tetraSide(tetra, lado);
+                TPZGeoElBC(tetraSide,fmatBCtop);
+            }
+            
+            ncoordVec.clear();
+            sizeOfVec = 0;
+            // na face z = 0
+            for (int i = 0; i < 4; i++)
+            {
+                int64_t pos = tetra->NodeIndex(i);
+                Nodefinder[i] = gmesh->NodeVec()[pos];
+                Nodefinder[i].GetCoordinates(nodecoord);
+                if (fabs(nodecoord[2]-x0[2])<1.e-5)
+                {
+                    sizeOfVec++;
+                    ncoordVec.Resize(sizeOfVec);
+                    ncoordVec[sizeOfVec-1] = pos;
+                }
+            }
+            if(ncoordVec.NElements() == 3)
+            {
+                int lado = tetra->WhichSide(ncoordVec);
+                TPZGeoElSide tetraSide(tetra, lado);
+                TPZGeoElBC(tetraSide,fmatBCbott_z);
+            }
+            
+            ncoordVec.clear();
+            sizeOfVec = 0;
+            // na face z = 1
+            for (int i = 0; i < 4; i++)
+            {
+                int64_t pos = tetra->NodeIndex(i);
+                Nodefinder[i] = gmesh->NodeVec()[pos];
+                Nodefinder[i].GetCoordinates(nodecoord);
+                if (fabs(nodecoord[2]-x1[2])<1.e-5)
+                {
+                    sizeOfVec++;
+                    ncoordVec.Resize(sizeOfVec);
+                    ncoordVec[sizeOfVec-1] = pos;
+                }
+            }
+            if(ncoordVec.NElements() == 3)
+            {
+                int lado = tetra->WhichSide(ncoordVec);
+                TPZGeoElSide tetraSide(tetra, lado);
+                TPZGeoElBC(tetraSide,fmatBCtop_z);
+            }
+            
+        }
+        
+    
+    }
     //Save the original mesh
     
     //SetAllRefine();
@@ -545,10 +781,12 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh3D(TPZVec<int> &n_div, TPZVec<REAL> &h_s
     // UniformRefine(1, gmesh, centerCo, true);
     
     //UniformRefine2(1, gmesh, n_div);
-    InsertOneDimMaterial(gmesh);
+    
+    InsertLowerDimMaterial(gmesh);
     SetOriginalMesh(gmesh);
+    
     //UniformRefine2(1, gmesh, n_div);
-    //InsertOneDimMaterial(gmesh);
+    //InsertLowerDimMaterial(gmesh);
     
     TPZCheckGeom check(gmesh);
     check.CheckUniqueId();
@@ -564,6 +802,20 @@ TPZGeoMesh *MHMBrinkmanTest::CreateGMesh3D(TPZVec<int> &n_div, TPZVec<REAL> &h_s
     return gmesh;
     
 }
+
+void MHMBrinkmanTest::TetrahedralMeshCubo(TPZVec<int> &n_s){
+    
+//    TPZGeoMesh *gmesh = new TPZGeoMesh;
+//    GenerateNodes(gmesh,nelem);
+//
+//
+//
+//    return gmesh;
+    
+}
+
+
+
 
 
 
@@ -822,9 +1074,11 @@ void MHMBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFM
 
 //        v_Dirichlet[0] = -0.1*x2*x2+0.2*x2;
         v_Dirichlet[0] = -1.+x2;
+//        v_Dirichlet[0] = 1.;
         v_Dirichlet[1] = 0.;
+        v_Dirichlet[2] = 0.;
 //        STATE pressure = 1.-0.2*x1;
-        STATE pressure = 1.;
+        STATE pressure = 0.;
 
         sol[0]=v_Dirichlet[0];
         sol[1]=v_Dirichlet[1];
@@ -833,8 +1087,9 @@ void MHMBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFM
 
         // vx direction
         dsol(0,0)= 0.;
-        //dsol(0,1)= 0.2-0.2*x2;
+//        dsol(0,1)= 0.2-0.2*x2;
         dsol(0,1)= 1.;
+        //dsol(0,1)= 0.;
         dsol(0,2)= 0.;
 
         // vy direction
@@ -1006,6 +1261,87 @@ void MHMBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFM
     
 
     
+    // Stokes 3D : Artigo Botti, Di Pietro, Droniou
+    
+//        dsol.Resize(3,3);
+//        sol.Resize(4);
+//
+//        //Applying rotation:
+//        TPZVec<REAL> x_in = x;
+//        TPZVec<REAL> x_rot(3,0.);
+//
+//        f_InvT.Apply(x_in,x_rot);
+//        x[0] = x_rot[0];
+//        x[1] = x_rot[1];
+//
+//        REAL x1 = x[0];
+//        REAL x2 = x[1];
+//        REAL x3 = x[2];
+//
+//        TPZVec<REAL> v_Dirichlet(3,0.), vbc_rot(3,0.);
+//
+//        v_Dirichlet[0] = cos(x1)*cos(x3) -1.*sin(x1)*sin(x2);
+//        v_Dirichlet[1] = -1.*cos(x1)*cos(x2);
+//        v_Dirichlet[2] = sin(x1)*sin(x3);
+//        STATE pressure= cos(x1)*sin(x2)*cos(x3);
+//
+//        f_T.Apply(v_Dirichlet, vbc_rot);
+//        v_Dirichlet = vbc_rot;
+//
+//        sol[0]=v_Dirichlet[0];
+//        sol[1]=v_Dirichlet[1];
+//        sol[2]=v_Dirichlet[2];
+//        sol[3]=pressure;
+//
+//
+//        // GradU * Rt
+//        TPZFMatrix<STATE> GradU(3,3,0.), GradURt(3,3,0.), RGradURt(3,3,0.);
+//
+//        // vx direction
+//        GradU(0,0)= -cos(x3)*sin(x1)-1.*cos(x1)*sin(x2);
+//        GradU(0,1)= cos(x2)*sin(x1);
+//        GradU(0,2)= cos(x1)*sin(x3);
+//
+//        // vy direction
+//        GradU(1,0)= -1.*cos(x2)*sin(x1);
+//        GradU(1,1)= cos(x1)*sin(x2);
+//        GradU(1,2)= 0.;
+//
+//        // vz direction
+//        GradU(2,0)= -1.*cos(x1)*sin(x3);
+//        GradU(2,1)= 0.;
+//        GradU(2,2)= cos(x3)*sin(x1);
+//
+//
+//        TPZFMatrix<STATE> R = f_T.Mult();
+//        TPZFMatrix<STATE> Rt(3,3,0.);
+//        R.Transpose(&Rt);
+//
+//    //    GradU.Print("GradU = ");
+//    //    R.Print("R = ");
+//    //    Rt.Print("Rt = ");
+//
+//        GradU.Multiply(Rt,GradURt);
+//    //    GradURt.Print("GradURt = ");
+//
+//        R.Multiply(GradURt,RGradURt);
+//    //    RGradURt.Print("RGradURt = ");
+//
+//        // vx direction
+//        dsol(0,0)= RGradURt(0,0);
+//        dsol(0,1)= RGradURt(0,1);
+//        dsol(0,2)= RGradURt(0,2);
+//
+//        // vy direction
+//        dsol(1,0)= RGradURt(1,0);
+//        dsol(1,1)= RGradURt(1,1);
+//        dsol(1,2)= RGradURt(1,2);
+//
+//        // vz direction
+//        dsol(2,0)= RGradURt(2,0);
+//        dsol(2,1)= RGradURt(2,1);
+//        dsol(2,2)= RGradURt(2,2);
+    
     
 }
 
@@ -1022,7 +1358,12 @@ void MHMBrinkmanTest::F_source(const TPZVec<REAL> &x, TPZVec<STATE> &f, TPZFMatr
     f.resize(3);
     REAL x1 = x[0];
     REAL x2 = x[1];
-
+    REAL x3 = x[2];
+    
+    f[0] =0.;
+    f[1] =0.;
+    f[2] =0.;
+    
     TPZVec<REAL> f_s(3,0), f_rot(3,0);
     
     // General form : : Artigo Botti, Di Pietro, Droniou
@@ -1080,6 +1421,20 @@ void MHMBrinkmanTest::F_source(const TPZVec<REAL> &x, TPZVec<STATE> &f, TPZFMatr
     //        f[2] = 2.*cos(x1)*sin(x2);
     
     
+    // Stokes 3D : Artigo Botti, Di Pietro, Droniou
+    
+    
+//        f_s[0] = 2.*cos(x1)*cos(x3) - 1.*(2. + cos(x3))*sin(x1)*sin(x2);
+//        f_s[1] = cos(x1)*cos(x2)*(-2. + cos(x3));
+//        f_s[2] = (2.*sin(x1) - cos(x1)*sin(x2))*sin(x3);
+//
+//        f_T.Apply(f_s, f_rot);
+//        f_s = f_rot;
+//
+//
+//        f[0] = f_s[0]; // x direction
+//        f[1] = f_s[1]; // y direction
+//        f[2] = f_s[2];
     
 }
 
@@ -1112,7 +1467,7 @@ void MHMBrinkmanTest::ChangeExternalOrderConnects(TPZCompMesh *mesh, int addToOr
             
             if(dim==2 && addToOrder==1)
             {
-                if(fTriang){
+                if(feltype==ETriangle){
                     nshape2 = (corder + 2)*(corder + 2)-1;
                 }else{//Quadrilateral
                     nshape2 = 2*(corder + 1)*(corder + 2);
@@ -1228,36 +1583,36 @@ TPZCompMesh *MHMBrinkmanTest::CMesh_p(TPZGeoMesh *gmesh, int Space, int pOrder)
     
     // 2 - Material para tração tangencial 1D
     
-    TPZMat1dLin *matLambda = new TPZMat1dLin(fmatLambda);
-    matLambda->SetMaterial(xkin, xcin, xbin, xfin);
+    TPZVecL2 *matLambda = new TPZVecL2(fmatLambda);
+    //matLambda->SetMaterial(xkin, xcin, xbin, xfin);
     cmesh->InsertMaterialObject(matLambda);
     
     // 3 - Material para tração tangencial nos contornos
     
-    TPZMat1dLin *matLambdaBC_bott = new TPZMat1dLin(fmatLambdaBC_bott);
-    matLambdaBC_bott->SetMaterial(xkin, xcin, xbin, xfin);
+    TPZVecL2 *matLambdaBC_bott = new TPZVecL2(fmatLambdaBC_bott);
+    //matLambdaBC_bott->SetMaterial(xkin, xcin, xbin, xfin);
     cmesh->InsertMaterialObject(matLambdaBC_bott);
     
-    TPZMat1dLin *matLambdaBC_top = new TPZMat1dLin(fmatLambdaBC_top);
-    matLambdaBC_top->SetMaterial(xkin, xcin, xbin, xfin);
+    TPZVecL2 *matLambdaBC_top = new TPZVecL2(fmatLambdaBC_top);
+    //matLambdaBC_top->SetMaterial(xkin, xcin, xbin, xfin);
     cmesh->InsertMaterialObject(matLambdaBC_top);
     
-    TPZMat1dLin *matLambdaBC_left = new TPZMat1dLin(fmatLambdaBC_left);
-    matLambdaBC_left->SetMaterial(xkin, xcin, xbin, xfin);
+    TPZVecL2 *matLambdaBC_left = new TPZVecL2(fmatLambdaBC_left);
+    //matLambdaBC_left->SetMaterial(xkin, xcin, xbin, xfin);
     cmesh->InsertMaterialObject(matLambdaBC_left);
     
-    TPZMat1dLin *matLambdaBC_right = new TPZMat1dLin(fmatLambdaBC_right);
-    matLambdaBC_right->SetMaterial(xkin, xcin, xbin, xfin);
+    TPZVecL2 *matLambdaBC_right = new TPZVecL2(fmatLambdaBC_right);
+    //matLambdaBC_right->SetMaterial(xkin, xcin, xbin, xfin);
     cmesh->InsertMaterialObject(matLambdaBC_right);
     
     if (f_3Dmesh) {
 
-        TPZMat1dLin *matLambdaBC_bott_z = new TPZMat1dLin(fmatLambdaBC_bott_z);
-        matLambdaBC_bott_z->SetMaterial(xkin, xcin, xbin, xfin);
+        TPZVecL2 *matLambdaBC_bott_z = new TPZVecL2(fmatLambdaBC_bott_z);
+        //matLambdaBC_bott_z->SetMaterial(xkin, xcin, xbin, xfin);
         cmesh->InsertMaterialObject(matLambdaBC_bott_z);
         
-        TPZMat1dLin *matLambdaBC_top_z = new TPZMat1dLin(fmatLambdaBC_top_z);
-        matLambdaBC_top_z->SetMaterial(xkin, xcin, xbin, xfin);
+        TPZVecL2 *matLambdaBC_top_z = new TPZVecL2(fmatLambdaBC_top_z);
+        //matLambdaBC_top_z->SetMaterial(xkin, xcin, xbin, xfin);
         cmesh->InsertMaterialObject(matLambdaBC_top_z);
 
     }
@@ -1313,7 +1668,7 @@ TPZCompMesh *MHMBrinkmanTest::CMesh_p(TPZGeoMesh *gmesh, int Space, int pOrder)
         
     cmesh->SetAllCreateFunctionsDiscontinuous();
     cmesh->SetDefaultOrder(pOrder-1);
-    cmesh->SetDimModel(1);
+    cmesh->SetDimModel(fdim-1);
     cmesh->AutoBuild(materialids);
     
     cmesh->LoadReferences();
@@ -1526,10 +1881,10 @@ TPZMultiphysicsCompMesh *MHMBrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Space, 
     // 1 - Material volumétrico 2D
     TPZMHMBrinkmanMaterial *material = new TPZMHMBrinkmanMaterial(fmatID,fdim,Space,visco,0,0);
     
-    TPZAutoPointer<TPZFunction<STATE> > fp = new TPZDummyFunction<STATE> (F_source, 5);
-    TPZAutoPointer<TPZFunction<STATE> > solp = new TPZDummyFunction<STATE> (Sol_exact,5);
-    ((TPZDummyFunction<STATE>*)fp.operator->())->SetPolynomialOrder(5);
-    ((TPZDummyFunction<STATE>*)solp.operator->())->SetPolynomialOrder(5);
+    TPZAutoPointer<TPZFunction<STATE> > fp = new TPZDummyFunction<STATE> (F_source, 6);
+    TPZAutoPointer<TPZFunction<STATE> > solp = new TPZDummyFunction<STATE> (Sol_exact,6);
+    ((TPZDummyFunction<STATE>*)fp.operator->())->SetPolynomialOrder(6);
+    ((TPZDummyFunction<STATE>*)solp.operator->())->SetPolynomialOrder(6);
     material->SetForcingFunction(fp); //Caso simples sem termo fonte
     material->SetForcingFunctionExact(solp);
     
@@ -1563,12 +1918,11 @@ TPZMultiphysicsCompMesh *MHMBrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Space, 
     cmesh->InsertMaterialObject(BC_right);
 
     if (f_3Dmesh) {
-        TPZBndCond * BC_bott_z = material->CreateBC(material, fmatBCbott_z, fneumann, val1, val2);
+        TPZBndCond * BC_bott_z = material->CreateBC(material, fmatBCbott_z, fdirichlet, val1, val2);
         BC_bott_z->SetBCForcingFunction(0, solp);
         cmesh->InsertMaterialObject(BC_bott_z);
         
-        val2(1,0) = 1.0; // vx -> 0
-        TPZBndCond * BC_top_z = material->CreateBC(material, fmatBCtop_z, fneumann, val1, val2);
+        TPZBndCond * BC_top_z = material->CreateBC(material, fmatBCtop_z, fdirichlet, val1, val2);
         BC_top_z->SetBCForcingFunction(0, solp);
         cmesh->InsertMaterialObject(BC_top_z);
     }
@@ -1658,7 +2012,7 @@ void MHMBrinkmanTest::InsertInterfaces(TPZMultiphysicsCompMesh *cmesh_m){
     }
     
     
-    TPZInterfaceInsertion InterfaceInsertion(cmesh_m, fmatLambda, boundaries_ids, fTriang);
+    TPZInterfaceInsertion InterfaceInsertion(cmesh_m, fmatLambda, boundaries_ids, feltype);
     TPZManVector<int64_t,3> Interfaces(2,0);
     Interfaces[0] = fmatInterfaceLeft;
     Interfaces[1] = fmatInterfaceRight;

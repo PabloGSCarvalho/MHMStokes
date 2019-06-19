@@ -65,7 +65,7 @@ bool MHMBrinkmanDomain = true;
 int main(int argc, char *argv[])
 {
     
-    TPZMaterial::gBigNumber = 1.e12;
+    TPZMaterial::gBigNumber = 1.e10;
     
 #ifdef LOG4CXX
     InitializePZLOG();
@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
     int pOrder = 0; //Ordem polinomial de aproximação
     
     TPZVec<REAL> h_s(3,0);
-    h_s[0]=2.,h_s[1]=2.; //Dimensões em x e y do domínio
+    h_s[0]=2.,h_s[1]=2.,h_s[2]=2.; //Dimensões em x e y do domínio
     
     if (MHMBrinkmanDomain)
     {
@@ -89,18 +89,18 @@ int main(int argc, char *argv[])
         HDivPiola = 1;
         for (int it=0; it<=0; it++) {
             //h_level = pow(2., 2+it);
-            h_level = 2;
+            h_level = 1;
             
             TPZVec<int> n_s(3,0.);
             n_s[0]=h_level ,n_s[1]=h_level;
             
-            n_s[2]=2; //Obs!!
+            n_s[2]=h_level; //Obs!!
             
             REAL visc = 1.0; //->Darcy
             
             MHMBrinkmanTest  * Test2 = new MHMBrinkmanTest();
             Test2->Set3Dmesh();
-            //Test2->SetTriangularMesh();
+            Test2->SetElType(ETetraedro);
             //Test2->SetHdivPlus();
 
             TPZTransform<STATE> Transf(3,3), InvTransf(3,3);
