@@ -1,5 +1,5 @@
 /*
- *  MHMBrinkmanTest.cpp
+ *  HybridBrinkmanTest.cpp
  *  PZ
  *
  *  Created by Pablo Carvalho on 28/07/2017.
@@ -7,8 +7,8 @@
  *
  */
 
-#ifndef __PZ__MHMBrinkmanTest__
-#define __PZ__MHMBrinkmanTest__
+#ifndef __PZ__HybridBrinkmanTest__
+#define __PZ__HybridBrinkmanTest__
 
 #include <cmath>
 #include <set>
@@ -53,7 +53,7 @@
 using namespace std;
 using namespace pzshape;
 
-class MHMBrinkmanTest{
+class HybridBrinkmanTest{
 private:
     
     int fdim; //Dimensão do problema
@@ -144,9 +144,9 @@ private:
     
 public:
 
-    MHMBrinkmanTest();
+    HybridBrinkmanTest();
     
-    ~MHMBrinkmanTest();
+    ~HybridBrinkmanTest();
     
     void Run(int Space, int pOrder, TPZVec<int> &n_s, TPZVec<REAL> &h_s, STATE visco);
     

@@ -14,9 +14,8 @@
 #include "DarcyPTest.h"
 #include "StokesTest.h"
 #include "BrinkmanTest.h"
-#include "MHMBrinkmanTest.h"
-
-#include "HStokesTest.h"
+#include "HybridBrinkmanTest.h"
+#include "MHMStokesTest.h"
 #include "CoupledTest.h"
 
 #include "TPZCouplingDSMaterial.h"
@@ -44,7 +43,6 @@
 #include "TPZGmshReader.h"
 #include "pztrnsform.h"
 
-
 #define TEST_DOMAINS
 //#define APP_CURVE
 
@@ -58,9 +56,9 @@ const REAL Pi=M_PI;
 
 const REAL visco=1., permeability=1., theta=-1.; //Coeficientes: viscosidade, permeabilidade, fator simetria
 
-bool DarcyDomain = false, HStokesDomain = false , StokesDomain = false , BrinkmanDomain = false, CoupledDomain = false;
+bool DarcyDomain = false, StokesDomain = false , BrinkmanDomain = false, CoupledDomain = false;
 
-bool MHMBrinkmanDomain = true;
+bool HybridBrinkmanDomain = true, MHMStokesDomain = true;
 
 int main(int argc, char *argv[])
 {
@@ -81,10 +79,50 @@ int main(int argc, char *argv[])
     
     TPZVec<REAL> h_s(3,0);
     h_s[0]=2.,h_s[1]=2.,h_s[2]=2.; //Dimensões em x e y do domínio
-    
-    if (MHMBrinkmanDomain)
+
+    if (MHMStokesDomain)
     {
-        int pOrder = 1;
+        HDivPiola = 1;
+        for (int it=0; it<=0; it++) {
+            //h_level = pow(2., 2+it);
+            h_level = 1;
+            
+            TPZVec<int> n_s(3,0.);
+            n_s[0]=h_level+1 ,n_s[1]=h_level;
+            n_s[2]=h_level; //Obs!!
+            
+            MHMStokesTest  * Test2 = new MHMStokesTest();
+            //Test2->Set3Dmesh();
+            //Test2->SetElType(ETetraedro);
+            //Test2->SetHdivPlus();
+            
+            TPZTransform<STATE> Transf(3,3), InvTransf(3,3);
+            Test2->SetTransform(Transf, InvTransf);
+            
+            REAL rot_x = 5.;
+            REAL rot_z = 44.;
+            REAL rot_y = -85.;
+            rot_z = rot_z*Pi/180.;
+            rot_y = rot_y*Pi/180.;
+            rot_z = rot_z*Pi/180.;
+            
+            //Test2->SetRotation3DMatrix(rot_x,rot_y,rot_z);
+            TPZSimulationData simdata;
+            simdata.SetInternalOrder(1);
+            simdata.SetSkeletonOrder(1);
+            simdata.SetCoarseDivisions(n_s);
+            simdata.SetDomainSize(h_s);
+            simdata.SetNInterRefs(1);
+            simdata.SetViscosity(1.);
+            simdata.SetNthreads(0);
+            Test2->SetSimulationData(simdata);
+            Test2->Run();
+            
+        }
+        
+    } else if (HybridBrinkmanDomain){
+        
+        int pOrder = 2;
         
         HDivPiola = 1;
         for (int it=0; it<=0; it++) {
@@ -98,7 +136,7 @@ int main(int argc, char *argv[])
             
             REAL visc = 1.0; //->Darcy
             
-            MHMBrinkmanTest  * Test2 = new MHMBrinkmanTest();
+            HybridBrinkmanTest  * Test2 = new HybridBrinkmanTest();
             Test2->Set3Dmesh();
             Test2->SetElType(ETetraedro);
             //Test2->SetHdivPlus();
@@ -118,24 +156,7 @@ int main(int argc, char *argv[])
             
         }
         
-    }  else if (HStokesDomain) {
-
-        //Coeficiente estabilização (Stokes)
-        STATE hE=hx/h_level;
-        STATE s0=2.0;
-      
-        h_level = 8;
-        for (int it=0; it<=0.; it++) {
-            nx=h_level+1 ,ny=h_level+1;
-            hE=hx/h_level;
-            STATE sigma=s0*(pOrder*pOrder)/hE;
-            HStokesTest * Test0 = new HStokesTest();
-            Test0->Run(SpaceHDiv, pOrder, nx, ny, hx, hy,visco,theta,sigma);
-            //h_level = h_level*2;
-        }
-            
-    }
-    else if (DarcyDomain) {
+    }else if (DarcyDomain) {
         DarcyPTest * Test1 = new DarcyPTest();
         Test1->Run(SpaceHDiv, pOrder, nx, ny, hx, hy,visco,permeability,theta);
     }
