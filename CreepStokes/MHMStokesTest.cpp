@@ -126,12 +126,6 @@ void MHMStokesTest::Run()
         gmesh = CreateGMesh(n_s, h_s);
     }
     
-#ifdef PZDEBUG
-    std::ofstream fileg("MalhaGeo_0.txt"); //Impressão da malha geométrica (formato txt)
-    std::ofstream filegvtk("MalhaGeo_0.vtk"); //Impressão da malha geométrica (formato vtk)
-    gmesh->Print(fileg);
-    TPZVTKGeoMesh::PrintGMeshVTK(gmesh, filegvtk,true);
-#endif
     
     //Vetor com os indices dos elementos coarse
     TPZVec<int64_t> coarseindex;
@@ -140,6 +134,13 @@ void MHMStokesTest::Run()
     //Refinamento de subelemntos
     SubdomainRefine(nrefs,gmesh,coarseindex);
     //InsertLowerDimMaterial(gmesh);
+    
+#ifdef PZDEBUG
+    std::ofstream fileg("MalhaGeo_0.txt"); //Impressão da malha geométrica (formato txt)
+    std::ofstream filegvtk("MalhaGeo_0.vtk"); //Impressão da malha geométrica (formato vtk)
+    gmesh->Print(fileg);
+    TPZVTKGeoMesh::PrintGMeshVTK(gmesh, filegvtk,true);
+#endif
     
     //Criando objeto para gerenciar a malha MHM
     TPZAutoPointer<TPZGeoMesh> gmeshpointer(gmesh);
@@ -1016,6 +1017,11 @@ void MHMStokesTest::SubdomainRefine(int nrefine, TPZGeoMesh *gmesh, TPZVec<int64
         {
             
             TPZGeoEl * gel = gelvec[elem];
+            
+            if(gel->Dimension()!=gmesh->Dimension()){
+                continue;
+            }
+            
             TPZGeoEl * higher_el = gel->LowestFather();
 
             for (int i_coarse = 0; i_coarse<ncoarse; i_coarse++) {
@@ -1737,16 +1743,19 @@ void MHMStokesTest::InsertMaterialObjects(TPZMHMeshControl *control)
     //control->fMaterialIds.insert(fmatID);
     
     TPZMaterial * mat1(material);
+    cmesh.InsertMaterialObject(mat1);
     
     int matCoarse = 44;
+    int matSkeleton = 4;
     
     TPZMat1dLin *materialCoarse = new TPZMat1dLin(matCoarse);
     TPZFNMatrix<1,STATE> xk(1,1,0.),xb(1,1,0.),xc(1,1,0.),xf(1,1,0.);
     materialCoarse->SetMaterial(xk, xc, xb, xf);
-    
     cmesh.InsertMaterialObject(materialCoarse);
-    cmesh.InsertMaterialObject(mat1);
     
+//    materialCoarse = new TPZMat1dLin(matSkeleton);
+//    materialCoarse->SetMaterial(xk, xc, xb, xf);
+//    cmesh.InsertMaterialObject(materialCoarse);
     
     control->SwitchLagrangeMultiplierSign(false);
     ///Inserir condicao de contorno
@@ -1783,16 +1792,17 @@ void MHMStokesTest::InsertMaterialObjects(TPZMHMeshControl *control)
     control->CMesh()->InsertMaterialObject(matLambda);
  //   control->fMaterialIds.insert(fmatLambda);
     
-//    // 2.2 - Material for interfaces (Interior)
-//    TPZMHMBrinkmanMaterial *matInterfaceLeft = new TPZMHMBrinkmanMaterial(fmatInterfaceLeft,fdim,1,visco,0,0);
-//    matInterfaceLeft->SetMultiplier(1.);
-//    cmesh.InsertMaterialObject(matInterfaceLeft);
-// //   control->fLagrangeMatIdLeft=fmatInterfaceLeft;
-//    
-//    TPZMHMBrinkmanMaterial *matInterfaceRight = new TPZMHMBrinkmanMaterial(fmatInterfaceRight,fdim,1,visco,0,0);
-//    matInterfaceRight->SetMultiplier(-1.);
-//    cmesh.InsertMaterialObject(matInterfaceRight);
-// //   control->fLagrangeMatIdRight=fmatInterfaceRight;
+    
+    // 2.2 - Material for interfaces (Interior)
+    TPZMHMBrinkmanMaterial *matInterfaceLeft = new TPZMHMBrinkmanMaterial(control->fLagrangeMatIdLeft,fdim,1,visco,0,0);
+    matInterfaceLeft->SetMultiplier(1.);
+    cmesh.InsertMaterialObject(matInterfaceLeft);
+ //   control->fLagrangeMatIdLeft=fmatInterfaceLeft;
+    
+    TPZMHMBrinkmanMaterial *matInterfaceRight = new TPZMHMBrinkmanMaterial(control->fLagrangeMatIdRight,fdim,1,visco,0,0);
+    matInterfaceRight->SetMultiplier(-1.);
+    cmesh.InsertMaterialObject(matInterfaceRight);
+ //   control->fLagrangeMatIdRight=fmatInterfaceRight;
     
     // 3.1 - Material para tração tangencial 1D nos contornos
     TPZBndCond *matLambdaBC_bott = material->CreateBC(material, fmatLambdaBC_bott, fneumann, val1, val2);

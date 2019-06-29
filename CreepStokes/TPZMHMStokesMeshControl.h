@@ -100,8 +100,11 @@ protected:
 //    /// build the multi physics mesh (not at the finest geometric mesh level)
 //    virtual void BuildMultiPhysicsMesh();
 
-    
+    /// Create the multiphysics interface elements between elements of traction material id
+    void CreateMultiPhysicsInterfaceElements();
 
+    /// Create the multiphysics BC interface elements between elements of BC traction material id
+    void CreateMultiPhysicsBCInterfaceElements();
 
     
 public:

@@ -165,7 +165,8 @@ void TPZMHMBrinkmanMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL
         
         
     }else{
-        DebugStop();
+       // DebugStop();
+        std::cout<<"!!!!!!!!! falta esta condição de contorno aqui !!!!!!!!!!!!!"<<std::endl;
     }
 
     

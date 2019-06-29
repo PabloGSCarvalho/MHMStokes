@@ -562,8 +562,12 @@ void TPZMHMStokesMeshControl::CreateMultiPhysicsMHMMesh()
     }
 #endif
     std::pair<int,int> skelmatid(fSkeletonMatId,fSecondSkeletonMatId);
-    CreateMultiPhysicsInterfaceElements(fGMesh->Dimension()-1);
+    //CreateMultiPhysicsInterfaceElements(fGMesh->Dimension()-1);
     //CreateMultiPhysicsInterfaceElements(fGMesh->Dimension()-2);
+    
+    CreateMultiPhysicsInterfaceElements();
+    CreateMultiPhysicsBCInterfaceElements();
+    
     MixedFluxPressureCmesh->CleanUpUnconnectedNodes();
     
     if(1)
@@ -573,5 +577,196 @@ void TPZMHMStokesMeshControl::CreateMultiPhysicsMHMMesh()
     }
     
     return;
+    
+}
+
+void TPZMHMStokesMeshControl::CreateMultiPhysicsInterfaceElements(){
+    
+    TPZCompMesh *cmesh = fCMesh.operator->();
+    TPZVec<int> m_interfaceVector_ids(2,0);
+    m_interfaceVector_ids[0] = fLagrangeMatIdLeft;
+    m_interfaceVector_ids[1] = fLagrangeMatIdRight;
+    
+    int64_t nel = fGMesh->NElements();
+    for (int64_t el=0; el<nel; el++) {
+        TPZGeoEl *gel = fGMesh->Element(el);
+        int meshdim = fGMesh->Dimension();
+        int matid = gel->MaterialId();
+        
+        if (matid != fTractionMatId) {
+            continue;
+        }
+        
+        if (gel->HasSubElement() == 1) {
+            continue;
+        }
+        
+        int nsides = gel->NSides();
+        TPZGeoElSide gelside(gel,nsides-1);
+        TPZCompElSide celside = gelside.Reference();
+        
+        TPZStack<TPZGeoElSide> neighbourset;
+        gelside.AllNeighbours(neighbourset);
+        
+        gelside.LowerLevelCompElementList2(1);
+        
+       // int nneighs = neighbourset.size();
+        
+        TPZManVector<int64_t,3> LeftElIndices(1,0.),RightElIndices(1,0.);
+        LeftElIndices[0]=0;
+        RightElIndices[0]=1;
+        
+        for(int stack_i=0; stack_i <2; stack_i++){
+            TPZGeoElSide neigh = neighbourset[stack_i];
+            
+            if (neigh.Element()->Dimension()!=meshdim) {
+                continue;
+            }
+            
+            TPZCompElSide celneigh = neigh.Reference();
+            if (!celside ) {
+                DebugStop();
+            }
+            
+            if (neigh.Element()->HasSubElement()) {
+                //  DebugStop();
+                TPZStack<TPZGeoElSide> subelements;
+                
+                TPZStack<TPZGeoElSide> subel;
+                neigh.GetAllSiblings(subel);
+                
+                for (int i_sub =0; i_sub<subel.size(); i_sub++) {
+                    
+                    TPZCompElSide cel_sub_neigh = subel[i_sub].Reference();
+                    
+                    TPZGeoElBC gbc_sub(subel[i_sub],m_interfaceVector_ids[stack_i]);
+                    int64_t index;
+                    
+                    TPZMultiphysicsInterfaceElement *elem_inter = new TPZMultiphysicsInterfaceElement(*cmesh,gbc_sub.CreatedElement(),index,cel_sub_neigh,celside);
+                    elem_inter->SetLeftRightElementIndices(LeftElIndices,RightElIndices);
+                    
+                    std::cout << "****Created an interface element between volumetric element " << subel[i_sub].Element()->Index() <<
+                    " side " << subel[i_sub].Side() <<
+                    " and interior 1D element " << gelside.Element()->Index() << std::endl;
+                    
+                }
+                
+                
+            }else{
+                
+                if (neigh.Element()->Dimension()!=meshdim){
+                    continue;
+                }
+                
+                TPZGeoElBC gbc(gelside,m_interfaceVector_ids[stack_i]);
+                int64_t index;
+                
+                TPZMultiphysicsInterfaceElement *elem_inter = new TPZMultiphysicsInterfaceElement(*cmesh,gbc.CreatedElement(),index,celneigh,celside);
+                elem_inter->SetLeftRightElementIndices(LeftElIndices,RightElIndices);
+                
+                std::cout << "Created an interface element between volumetric element " << neigh.Element()->Index() <<
+                " side " << neigh.Side() <<
+                " and interior 1D element " << gelside.Element()->Index() << std::endl;
+                
+            }
+            
+            
+        }
+        
+    }
+    
+    
+}
+
+void TPZMHMStokesMeshControl::CreateMultiPhysicsBCInterfaceElements(){
+    
+    int matBCinterface = fLagrangeMatIdLeft;
+    for (auto it : fMaterialBCIds) {
+        
+        int matfrom = fBCTractionMatIds[it];
+        TPZCompMesh *cmesh = fCMesh.operator->();
+        
+        int64_t nel = fGMesh->NElements();
+        for (int64_t el=0; el<nel; el++) {
+            TPZGeoEl *gel = fGMesh->Element(el);
+            int meshdim = fGMesh->Dimension();
+            int matid = gel->MaterialId();
+            
+            if (matid != matfrom) {
+                continue;
+            }
+            
+            int nsides = gel->NSides();
+            TPZGeoElSide gelside(gel,nsides-1);
+            TPZCompElSide celside = gelside.Reference();
+            
+            TPZStack<TPZGeoElSide> neighbourset;
+            gelside.AllNeighbours(neighbourset);
+            
+            int nneighs = neighbourset.size();
+//            if(nneighs!=2){
+//                //    DebugStop();
+//            }
+            
+            TPZManVector<int64_t,3> LeftElIndices(1,0.),RightElIndices(1,0.);
+            LeftElIndices[0]=0;
+            RightElIndices[0]=1;
+            
+            for(int stack_i=0; stack_i <nneighs; stack_i++){
+                TPZGeoElSide neigh = neighbourset[stack_i];
+                if (neigh.Element()->Dimension()!=meshdim) {
+                    continue;
+                }
+                
+                TPZCompElSide celneigh = neigh.Reference();
+                if (!celside || !celneigh) {
+                    //    DebugStop();
+                }
+                int64_t neigh_index = neigh.Element()->Index();
+                if (neigh.Element()->Dimension()!=meshdim){
+                    continue;
+                }
+                
+                if (neigh.Element()->HasSubElement()) {
+                    
+                    TPZStack<TPZGeoElSide > subelside;
+                    neigh.GetAllSiblings(subelside);
+                    
+                    for (int i_sub = 0; i_sub<subelside.size(); i_sub++) {
+                        
+                        TPZCompElSide cel_sub_neigh = subelside[i_sub].Reference();
+                        
+                        TPZGeoElBC gbc_sub(subelside[i_sub],matBCinterface);
+                        int64_t index;
+                        
+                        TPZMultiphysicsInterfaceElement *elem_inter = new TPZMultiphysicsInterfaceElement(*cmesh,gbc_sub.CreatedElement(),index,cel_sub_neigh,celside);
+                        elem_inter->SetLeftRightElementIndices(LeftElIndices,RightElIndices);
+                        
+                        
+                        std::cout << "****Created an BC interface element between volumetric element " << subelside[i_sub].Element()->Index() <<
+                        " side " << subelside[i_sub].Side() <<
+                        " and boundary 1D element " << gelside.Element()->Index() << std::endl;
+                    }
+                    
+                }else{
+                    
+                    TPZGeoElBC gbc(gelside,matBCinterface);
+                    int64_t index;
+                    
+                    TPZMultiphysicsInterfaceElement *elem_inter = new TPZMultiphysicsInterfaceElement(*cmesh,gbc.CreatedElement(),index,celneigh,celside);
+                    elem_inter->SetLeftRightElementIndices(LeftElIndices,RightElIndices);
+                    
+                    
+                    std::cout << "Created an BC interface element between volumetric element " << neigh.Element()->Index() <<
+                    " side " << neigh.Side() <<
+                    " and boundary 1D element " << gelside.Element()->Index() << std::endl;
+                    
+                }
+                
+            }
+        }
+        
+    }
+    
     
 }
