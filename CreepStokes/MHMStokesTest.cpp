@@ -230,6 +230,9 @@ void MHMStokesTest::Run()
     SolveProblem(StokesControl->CMesh(), StokesControl->GetMeshes(), MHMStokesPref.str());
     
     
+    
+    
+    ///////////////////////////////////////////////////////////////////////////////
     return;
     //Gerando malha computacional:
     int n_mais = 0;
@@ -451,7 +454,7 @@ void MHMStokesTest::SolveProblem(TPZAutoPointer<TPZCompMesh> cmesh, TPZVec<TPZAu
     an.SetSolver(step);
     std::cout << "Assembling\n";
     an.Assemble();
-    if(0)
+   // if(0)
     {
         std::string filename = prefix;
         filename += "_Global.nb";
@@ -483,6 +486,8 @@ void MHMStokesTest::SolveProblem(TPZAutoPointer<TPZCompMesh> cmesh, TPZVec<TPZAu
         ConfigPrint(sout);
         plotfile = sout.str() + "_dim2.vtk";
     }
+    plotfile = "StokesMHMPlot.vtk";
+    
     {
         sout_geo << prefix << "Geo_";
         ConfigPrint(sout_geo) << "_dim2.vtk";
@@ -1305,13 +1310,14 @@ void MHMStokesTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFMat
 
         TPZVec<REAL> v_Dirichlet(3,0.);
 
-//        v_Dirichlet[0] = -0.1*x2*x2+0.2*x2;
-        v_Dirichlet[0] = -1.+x2;
+        v_Dirichlet[0] = -0.1*x2*x2+0.2*x2;
+//        v_Dirichlet[0] = -1.+x2;
 //        v_Dirichlet[0] = 1.;
         v_Dirichlet[1] = 0.;
         v_Dirichlet[2] = 0.;
-//        STATE pressure = 1.-0.2*x1;
-        STATE pressure = 0.;
+
+        STATE pressure = 1.-0.2*x1;
+//        STATE pressure = 0.;
 
         sol[0]=v_Dirichlet[0];
         sol[1]=v_Dirichlet[1];
@@ -1320,8 +1326,8 @@ void MHMStokesTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFMat
 
         // vx direction
         dsol(0,0)= 0.;
-//        dsol(0,1)= 0.2-0.2*x2;
-        dsol(0,1)= 1.;
+        dsol(0,1)= 0.2-0.2*x2;
+//        dsol(0,1)= 1.;
         //dsol(0,1)= 0.;
         dsol(0,2)= 0.;
 
@@ -1745,14 +1751,14 @@ void MHMStokesTest::InsertMaterialObjects(TPZMHMeshControl *control)
     TPZMaterial * mat1(material);
     cmesh.InsertMaterialObject(mat1);
     
-    int matCoarse = 44;
+//    int matCoarse = 44;
     int matSkeleton = 4;
     
-    TPZMat1dLin *materialCoarse = new TPZMat1dLin(matCoarse);
-    TPZFNMatrix<1,STATE> xk(1,1,0.),xb(1,1,0.),xc(1,1,0.),xf(1,1,0.);
-    materialCoarse->SetMaterial(xk, xc, xb, xf);
-    cmesh.InsertMaterialObject(materialCoarse);
-    
+//    TPZMat1dLin *materialCoarse = new TPZMat1dLin(matCoarse);
+//    TPZFNMatrix<1,STATE> xk(1,1,0.),xb(1,1,0.),xc(1,1,0.),xf(1,1,0.);
+//    materialCoarse->SetMaterial(xk, xc, xb, xf);
+//    cmesh.InsertMaterialObject(materialCoarse);
+//
 //    materialCoarse = new TPZMat1dLin(matSkeleton);
 //    materialCoarse->SetMaterial(xk, xc, xb, xf);
 //    cmesh.InsertMaterialObject(materialCoarse);
@@ -1783,6 +1789,14 @@ void MHMStokesTest::InsertMaterialObjects(TPZMHMeshControl *control)
     BCondD4->SetBCForcingFunction(0, solp);
     cmesh.InsertMaterialObject(BCondD4);
     //control->fMaterialBCIds.insert(fmatBCright);
+    
+    //Skeleton::
+    
+    
+    TPZBndCond * bcFlux = material->CreateBC(mat1, matSkeleton, fneumann, val1, val2);
+    //bcFlux->SetBCForcingFunction(0, solp);
+    cmesh.InsertMaterialObject(bcFlux);
+    
     
     
     // 2.1 - Material para tração tangencial 1D (Interior)

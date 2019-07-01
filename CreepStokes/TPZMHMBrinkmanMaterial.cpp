@@ -55,7 +55,7 @@ void TPZMHMBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<T
     // V - left
     TPZFMatrix<REAL> &dphiV1 = datavecleft[vindex].dphix;
     
-    TPZFNMatrix<9,REAL>  &tan = data.axes;
+    TPZFNMatrix<9,REAL>  &tan = datavecright[pindex].axes;
     
     
     TPZFNMatrix<220,REAL> dphiVx1(3,dphiV1.Cols());
@@ -165,7 +165,7 @@ void TPZMHMBrinkmanMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL
         
         
     }else{
-       // DebugStop();
+        //DebugStop();
         std::cout<<"!!!!!!!!! falta esta condição de contorno aqui !!!!!!!!!!!!!"<<std::endl;
     }
 

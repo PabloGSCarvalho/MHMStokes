@@ -91,7 +91,7 @@ void TPZMHMStokesMeshControl::BuildComputationalMesh(bool usersubstructure)
         DebugStop();
     }
     
-    InsertPeriferalMaterialObjects();
+    //InsertPeriferalMaterialObjects();  //Skeleton com dirichlet v=0
     CreateHDivMHMMesh();
     
     InsertBCSkeleton();
@@ -355,7 +355,7 @@ void TPZMHMStokesMeshControl::CreateAveragePressMHMMesh(){
     cmeshAverPressute->AutoBuild(matids);
     fAveragePressMesh->ExpandSolution();
     
-    if(0)
+    if(1)
     {
         std::ofstream out("AveragePressureMesh.txt");
         fAveragePressMesh->Print(out);
@@ -454,7 +454,7 @@ void TPZMHMStokesMeshControl::CreateDistributedFluxMHMMesh(){
     cmeshDistributedFlux->AutoBuild(matids);
     fDistrFluxMesh->ExpandSolution();
     
-    if(0)
+    if(1)
     {
         std::ofstream out("DistributedFluxMesh.txt");
         fDistrFluxMesh->Print(out);
@@ -606,17 +606,35 @@ void TPZMHMStokesMeshControl::CreateMultiPhysicsInterfaceElements(){
         TPZCompElSide celside = gelside.Reference();
         
         TPZStack<TPZGeoElSide> neighbourset;
-        gelside.AllNeighbours(neighbourset);
+       // gelside.AllNeighbours(neighbourset);
+        
+        //Find elements with the same mesh dimension :
+        TPZGeoElSide neigh = gelside.Neighbour();
+        while(neigh != gelside)
+        {
+            if (neigh.Element()->Dimension()!=fGMesh->Dimension()) {
+                neigh = neigh.Neighbour();
+                continue;
+            }
+            
+            neighbourset.Push(neigh);
+            neigh = neigh.Neighbour();
+        }
+        
+
         
         gelside.LowerLevelCompElementList2(1);
         
-       // int nneighs = neighbourset.size();
+        int nneighs = neighbourset.size();
+        if (nneighs!=2) {
+            DebugStop();
+        }
         
         TPZManVector<int64_t,3> LeftElIndices(1,0.),RightElIndices(1,0.);
         LeftElIndices[0]=0;
         RightElIndices[0]=1;
         
-        for(int stack_i=0; stack_i <2; stack_i++){
+        for(int stack_i=0; stack_i <nneighs; stack_i++){
             TPZGeoElSide neigh = neighbourset[stack_i];
             
             if (neigh.Element()->Dimension()!=meshdim) {
@@ -628,10 +646,8 @@ void TPZMHMStokesMeshControl::CreateMultiPhysicsInterfaceElements(){
                 DebugStop();
             }
             
-            if (neigh.Element()->HasSubElement()) {
-                //  DebugStop();
-                TPZStack<TPZGeoElSide> subelements;
-                
+            if(neigh.Element()->HasSubElement()) {
+
                 TPZStack<TPZGeoElSide> subel;
                 neigh.GetAllSiblings(subel);
                 
@@ -644,32 +660,32 @@ void TPZMHMStokesMeshControl::CreateMultiPhysicsInterfaceElements(){
                     
                     TPZMultiphysicsInterfaceElement *elem_inter = new TPZMultiphysicsInterfaceElement(*cmesh,gbc_sub.CreatedElement(),index,cel_sub_neigh,celside);
                     elem_inter->SetLeftRightElementIndices(LeftElIndices,RightElIndices);
-                    
+
+#ifdef PZDEBUG
                     std::cout << "****Created an interface element between volumetric element " << subel[i_sub].Element()->Index() <<
                     " side " << subel[i_sub].Side() <<
-                    " and interior 1D element " << gelside.Element()->Index() << std::endl;
-                    
+                    " and Skeleton element " << gelside.Element()->Index() << std::endl;
+#endif
+
                 }
                 
                 
             }else{
-                
-                if (neigh.Element()->Dimension()!=meshdim){
-                    continue;
-                }
                 
                 TPZGeoElBC gbc(gelside,m_interfaceVector_ids[stack_i]);
                 int64_t index;
                 
                 TPZMultiphysicsInterfaceElement *elem_inter = new TPZMultiphysicsInterfaceElement(*cmesh,gbc.CreatedElement(),index,celneigh,celside);
                 elem_inter->SetLeftRightElementIndices(LeftElIndices,RightElIndices);
-                
+
+#ifdef PZDEBUG
                 std::cout << "Created an interface element between volumetric element " << neigh.Element()->Index() <<
                 " side " << neigh.Side() <<
                 " and interior 1D element " << gelside.Element()->Index() << std::endl;
+
+#endif
                 
             }
-            
             
         }
         
@@ -741,11 +757,13 @@ void TPZMHMStokesMeshControl::CreateMultiPhysicsBCInterfaceElements(){
                         
                         TPZMultiphysicsInterfaceElement *elem_inter = new TPZMultiphysicsInterfaceElement(*cmesh,gbc_sub.CreatedElement(),index,cel_sub_neigh,celside);
                         elem_inter->SetLeftRightElementIndices(LeftElIndices,RightElIndices);
-                        
-                        
+
+#ifdef PZDEBUG
                         std::cout << "****Created an BC interface element between volumetric element " << subelside[i_sub].Element()->Index() <<
                         " side " << subelside[i_sub].Side() <<
                         " and boundary 1D element " << gelside.Element()->Index() << std::endl;
+#endif
+                        
                     }
                     
                 }else{
@@ -756,11 +774,11 @@ void TPZMHMStokesMeshControl::CreateMultiPhysicsBCInterfaceElements(){
                     TPZMultiphysicsInterfaceElement *elem_inter = new TPZMultiphysicsInterfaceElement(*cmesh,gbc.CreatedElement(),index,celneigh,celside);
                     elem_inter->SetLeftRightElementIndices(LeftElIndices,RightElIndices);
                     
-                    
+#ifdef PZDEBUG
                     std::cout << "Created an BC interface element between volumetric element " << neigh.Element()->Index() <<
                     " side " << neigh.Side() <<
                     " and boundary 1D element " << gelside.Element()->Index() << std::endl;
-                    
+#endif
                 }
                 
             }

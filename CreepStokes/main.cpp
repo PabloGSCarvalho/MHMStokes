@@ -85,10 +85,10 @@ int main(int argc, char *argv[])
         HDivPiola = 1;
         for (int it=0; it<=0; it++) {
             //h_level = pow(2., 2+it);
-            h_level = 1;
+            h_level = 2;
             
             TPZVec<int> n_s(3,0.);
-            n_s[0]=h_level+1 ,n_s[1]=h_level;
+            n_s[0]=h_level ,n_s[1]=h_level;
             n_s[2]=h_level; //Obs!!
             
             MHMStokesTest  * Test2 = new MHMStokesTest();
@@ -108,11 +108,11 @@ int main(int argc, char *argv[])
             
             //Test2->SetRotation3DMatrix(rot_x,rot_y,rot_z);
             TPZSimulationData simdata;
-            simdata.SetInternalOrder(1);
+            simdata.SetInternalOrder(2);
             simdata.SetSkeletonOrder(1);
             simdata.SetCoarseDivisions(n_s);
             simdata.SetDomainSize(h_s);
-            simdata.SetNInterRefs(1);
+            simdata.SetNInterRefs(2);
             simdata.SetViscosity(1.);
             simdata.SetNthreads(0);
             Test2->SetSimulationData(simdata);
