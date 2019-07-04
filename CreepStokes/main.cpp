@@ -58,7 +58,7 @@ const REAL visco=1., permeability=1., theta=-1.; //Coeficientes: viscosidade, pe
 
 bool DarcyDomain = false, StokesDomain = false , BrinkmanDomain = false, CoupledDomain = false;
 
-bool HybridBrinkmanDomain = true, MHMStokesDomain = true;
+bool HybridBrinkmanDomain = false, MHMStokesDomain = true;
 
 int main(int argc, char *argv[])
 {
@@ -85,10 +85,10 @@ int main(int argc, char *argv[])
         HDivPiola = 1;
         for (int it=0; it<=0; it++) {
             //h_level = pow(2., 2+it);
-            h_level = 2;
+            h_level = 1;
             
             TPZVec<int> n_s(3,0.);
-            n_s[0]=h_level ,n_s[1]=h_level;
+            n_s[0]=h_level+1,n_s[1]=h_level;
             n_s[2]=h_level; //Obs!!
             
             MHMStokesTest  * Test2 = new MHMStokesTest();
@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
             simdata.SetSkeletonOrder(1);
             simdata.SetCoarseDivisions(n_s);
             simdata.SetDomainSize(h_s);
-            simdata.SetNInterRefs(2);
+            simdata.SetNInterRefs(1);
             simdata.SetViscosity(1.);
             simdata.SetNthreads(0);
             Test2->SetSimulationData(simdata);

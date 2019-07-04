@@ -560,13 +560,13 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
     // Preparação para formulação MHM :
     if (datavec.size()>2) {
         
-        TPZFMatrix<REAL> &phipM = datavec[2].phi;
-        TPZFMatrix<REAL> &phigM = datavec[3].phi;
+        TPZFMatrix<REAL> &phigM = datavec[2].phi;
+        TPZFMatrix<REAL> &phipM = datavec[3].phi;
         
         // matrix C - pressure and average-pressure
         for (int j = 0; j < nshapeP; j++) {
             
-            STATE fact = (1.) * weight * phiP(j,0) * phipM(0,0);
+            STATE fact = (1.) * weight * phiP(j,0) * phigM(0,0);
             // Matrix C
             ek(nshapeV+nshapeP, nshapeV+j) += fact;
             // Matrix C^T
@@ -581,6 +581,32 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
         ek(nshapeV+nshapeP+1, nshapeV+nshapeP) += factG;
         // Matrix C^T
         ek(nshapeV+nshapeP,nshapeV+nshapeP+1) += factG;
+        
+    }
+
+    if (datavec.size()>4) {
+        
+        TPZFMatrix<REAL> &phigM0 = datavec[4].phi;
+        TPZFMatrix<REAL> &phipM0 = datavec[5].phi;
+        
+        // matrix C0 - pressure and average-pressure
+        for (int j = 0; j < nshapeP; j++) {
+            
+            STATE fact0 = (1.) * weight * phiP(j,0) * phigM0(0,0);
+            // Matrix C
+            ek(nshapeV+nshapeP+2, nshapeV+j) += fact0;
+            // Matrix C^T
+            ek(nshapeV+j,nshapeV+nshapeP+2) += fact0;
+            
+        }
+        
+        // matrix D0 - injection and average-pressure
+        
+        STATE factG0 = (1.) * weight * phigM0(0,0) * phipM0(0,0);
+        // Matrix C
+        ek(nshapeV+nshapeP+3, nshapeV+nshapeP+2) += factG0;
+        // Matrix C^T
+        ek(nshapeV+nshapeP+2,nshapeV+nshapeP+3) += factG0;
         
     }
     

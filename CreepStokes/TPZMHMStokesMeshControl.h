@@ -24,6 +24,12 @@ protected:
 
     /// Computational mesh to contain the distributed flux elements
     TPZAutoPointer<TPZCompMesh> fDistrFluxMesh;
+
+    /// Computational mesh to contain the coarse avarege pressure elements
+    TPZAutoPointer<TPZCompMesh> fCoarseAveragePressMesh;
+    
+    /// Computational mesh to contain the coarse distributed flux elements
+    TPZAutoPointer<TPZCompMesh> fCoarseDistrFluxMesh;
     
 
 public:
@@ -88,11 +94,23 @@ protected:
     /// Create the average pressure mesh
     void CreateAveragePressMHMMesh();
 
+    /// Insert the necessary coarse average pressure material objects to create the average pressure mesh
+    void InsertPeriferalCoarseAveragePressMaterialObjects();
+    
+    /// Create the coarse average pressure mesh
+    void CreateCoarseAveragePressMHMMesh();
+    
     /// Insert the necessary distributed flux material objects to create the distributed flux material pressure mesh
     void InsertDistributedFluxMaterialObjects();
     
     /// Create the distributed flux mesh
     void CreateDistributedFluxMHMMesh();
+    
+    /// Insert the necessary distributed flux material objects to create the distributed flux material pressure mesh
+    void InsertCoarseDistributedFluxMaterialObjects();
+    
+    /// Create the distributed flux mesh
+    void CreateCoarseDistributedFluxMHMMesh();
     
     /// Create multiphysics MHM mesh
     void CreateMultiPhysicsMHMMesh();
@@ -105,6 +123,8 @@ protected:
 
     /// Create the multiphysics BC interface elements between elements of BC traction material id
     void CreateMultiPhysicsBCInterfaceElements();
+
+    void GroupAndCondense(TPZCompMesh *cmesh_m);
 
     
 public:

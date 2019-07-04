@@ -229,8 +229,7 @@ void MHMStokesTest::Run()
     
     SolveProblem(StokesControl->CMesh(), StokesControl->GetMeshes(), MHMStokesPref.str());
     
-    
-    
+
     
     ///////////////////////////////////////////////////////////////////////////////
     return;
@@ -517,6 +516,21 @@ void MHMStokesTest::SolveProblem(TPZAutoPointer<TPZCompMesh> cmesh, TPZVec<TPZAu
     int resolution = 0;
     an.PostProcess(resolution,cmesh->Dimension());
     
+    //Calculo do erro
+    std::cout << "Comuting Error (need to check for MHM?) " << std::endl;
+    TPZManVector<REAL,6> Errors;
+    ofstream ErroOut("Error_Brinkman.txt", std::ofstream::app);
+    an.SetExact(Sol_exact);
+    an.PostProcessError(Errors,false);
+    
+    ConfigPrint(ErroOut);
+    ErroOut <<" " << std::endl;
+    //ErroOut <<"Norma H1/HDiv - V = "<< Errors[0] << std::endl;
+    ErroOut <<"Norma L2 - V = "<< Errors[1] << std::endl;
+    ErroOut <<"Semi-norma H1/Hdiv - V = "<< Errors[2] << std::endl;
+    ErroOut <<"Norma L2 - P = "<< Errors[4] << std::endl;
+    ErroOut <<"-------------" << std::endl;
+    ErroOut.flush();
     
     
 }
