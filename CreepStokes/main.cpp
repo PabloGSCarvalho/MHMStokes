@@ -84,16 +84,16 @@ int main(int argc, char *argv[])
     {
         HDivPiola = 1;
         for (int it=0; it<=0; it++) {
-            //h_level = pow(2., 2+it);
-            h_level = 1;
+            //h_level = pow(2., 1+it);
+            h_level = 4;
             
             TPZVec<int> n_s(3,0.);
-            n_s[0]=h_level+1,n_s[1]=h_level;
+            n_s[0]=h_level,n_s[1]=h_level;
             n_s[2]=h_level; //Obs!!
             
             MHMStokesTest  * Test2 = new MHMStokesTest();
             //Test2->Set3Dmesh();
-            //Test2->SetElType(ETetraedro);
+            //Test2->SetElType(ETriangle);
             //Test2->SetHdivPlus();
             
             TPZTransform<STATE> Transf(3,3), InvTransf(3,3);
@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
             simdata.SetDomainSize(h_s);
             simdata.SetNInterRefs(1);
             simdata.SetViscosity(1.);
-            simdata.SetNthreads(0);
+            simdata.SetNthreads(4);
             Test2->SetSimulationData(simdata);
             Test2->Run();
             

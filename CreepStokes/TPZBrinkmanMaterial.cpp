@@ -612,8 +612,8 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
     
 
     {
-        std::ofstream fileEK("FileEKContribute.txt");
-        ek.Print("stiff = ",fileEK,EMathematicaInput);
+    //   std::ofstream fileEK("FileEKContribute.txt");
+    //    ek.Print("stiff = ",fileEK,EMathematicaInput);
     }
     
 }

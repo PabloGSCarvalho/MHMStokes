@@ -168,8 +168,11 @@ void MHMStokesTest::Run()
     StokesControl->SetSkeletonPOrder(skeleton_order);
     
     StokesControl->DivideSkeletonElements(0); //Insere material id do skeleton wrap
-//    StokesControl->InsertBCSkeleton();
-//    StokesControl->InsertInternalSkeleton();
+
+    
+    if (fsimData.GetNInterRefs()>0) {
+        StokesControl->SetCoarseAverageMultipliers(true);
+    }
 
     //Malha computacional
     StokesControl->BuildComputationalMesh(0);
@@ -229,207 +232,6 @@ void MHMStokesTest::Run()
     
     SolveProblem(StokesControl->CMesh(), StokesControl->GetMeshes(), MHMStokesPref.str());
     
-
-    
-    ///////////////////////////////////////////////////////////////////////////////
-    return;
-    //Gerando malha computacional:
-    int n_mais = 0;
-    if (f_hdivPlus) {
-        n_mais = 1;
-    }
-    
-    TPZCompMesh *cmesh_v = this->CMesh_v(gmesh, int_order);
-    TPZCompMesh *cmesh_p = this->CMesh_p(gmesh, int_order+n_mais);
-    
-    TPZCompMesh *cmesh_pM = this->CMesh_pM(gmesh, 0);
-    TPZCompMesh *cmesh_gM = this->CMesh_gM(gmesh, 0);
-    
-    if (!f_mesh0) {
-        DebugStop();
-    }
-    
-//    TPZCompMesh *cmesh_pM_0 = this->CMesh_pM_0(f_mesh0, 0);
-//    TPZCompMesh *cmesh_gM_0 = this->CMesh_gM_0(f_mesh0, 0);
-    
-    ChangeExternalOrderConnects(cmesh_v,n_mais);
-    // ChangeExternalOrderConnects(cmesh_p,n_mais);
-  
-    f_mesh_vector[0]=cmesh_v;
-    f_mesh_vector[1]=cmesh_p;
-    f_mesh_vector[2]=cmesh_pM;
-    f_mesh_vector[3]=cmesh_gM;
-    
-    TPZMultiphysicsCompMesh *cmesh_m = this->CMesh_m(gmesh, int_order); //Função para criar a malha computacional multifísica
-    
-#ifdef PZDEBUG
-    {
-        //Impressão da malha computacional da velocidade (formato txt)
-        std::ofstream filecv("MalhaC_v.txt");
-        std::ofstream filecp("MalhaC_p.txt");
-        std::ofstream filecpM("MalhaC_pM.txt");
-        std::ofstream filecgM("MalhaC_gM.txt");
-        cmesh_v->Print(filecv);
-        cmesh_p->Print(filecp);
-        cmesh_pM->Print(filecpM);
-        cmesh_gM->Print(filecgM);
-        
-        std::ofstream filecm("MalhaC_m.txt");
-        cmesh_m->Print(filecm);
-    }
-#endif
-    
-    
-    cmesh_m->LoadReferences();
-    InsertInterfaces(cmesh_m);
-    
-    
-    //    AddMultiphysicsInterfacesLeftNRight(*cmesh_m,fmatLambda); // Rever isto aqui
-    //    AddMultiphysicsInterfaces(*cmesh_m,fmatIntBCbott,fmatBCbott);
-    //    AddMultiphysicsInterfaces(*cmesh_m,fmatIntBCtop,fmatBCtop);
-    //    AddMultiphysicsInterfaces(*cmesh_m,fmatIntBCleft,fmatBCleft);
-    //    AddMultiphysicsInterfaces(*cmesh_m,fmatIntBCright,fmatBCright);
-    
-    //    AddMultiphysicsInterfaces(*cmesh_m);
-    
-#ifdef PZDEBUG
-    std::ofstream filecmbfCond("MalhaC_m_beforeCond.txt"); //Impressão da malha computacional multifísica (formato txt)
-    cmesh_m->Print(filecmbfCond);
-#endif
-    
-    
-    // Agrupar e condensar os elementos
-    GroupAndCondense(cmesh_m);
-
-#ifdef PZDEBUG
-    std::ofstream fileg2("MalhaGeo.txt"); //Impressão da malha geométrica (formato txt)
-    std::ofstream filegvtk2("MalhaGeo.vtk"); //Impressão da malha geométrica (formato vtk)
-    gmesh->Print(fileg2);
-    TPZVTKGeoMesh::PrintGMeshVTK(gmesh, filegvtk2,true);
-    
-    std::ofstream filecm("MalhaC_m.txt"); //Impressão da malha computacional multifísica (formato txt)
-    cmesh_m->Print(filecm);
-#endif
-    
-    
-    //Resolvendo o Sistema:
-    int numthreads = 4;
-    
-    bool optimizeBandwidth = true; //Impede a renumeração das equacoes do problema (para obter o mesmo resultado do Oden)
-    TPZAnalysis an(cmesh_m, optimizeBandwidth); //Cria objeto de análise que gerenciará a analise do problema
-    
-    TPZSymetricSpStructMatrix struct_mat(cmesh_m);
-    struct_mat.SetNumThreads(numthreads);
-    an.SetStructuralMatrix(struct_mat);
-    
-    
-    //TPZParSkylineStructMatrix matskl(cmesh_m, numthreads);
-    
-//        TPZSkylineStructMatrix matskl(cmesh_m); //OK para Hdiv
-//        matskl.SetNumThreads(numthreads);
-//        an.SetStructuralMatrix(matskl);
-//    //
-////        if (Space==1) {
-//            TPZFStructMatrix matsklD(cmesh_m); //caso nao simetrico *** //OK para discont.
-//            matsklD.SetNumThreads(numthreads);
-//            an.SetStructuralMatrix(matsklD);
-//        }
-    
-    
-    TPZStepSolver<STATE> step;
-    step.SetDirect(ELDLt);
-    an.SetSolver(step);
-    
-    
-    
-    std::cout << "Assemble matrix with NDoF = " << cmesh_m->NEquations() << std::endl;
-    
-    an.Assemble(); //Assembla a matriz de rigidez (e o vetor de carga) global
-//    {
-//        std::ofstream filestiff("stiffness_before.txt");
-//        an.Solver().Matrix()->Print("K1 = ",filestiff,EMathematicaInput);
-//
-//    }
-    std::cout << "Solving Matrix " << std::endl;
-    an.Solve();
-    
-//        {
-//            int eqGm= cmesh_gM->Solution().Rows();
-//            TPZFMatrix<STATE> SolTriky(eqGm,1,1.0);
-//            cmesh_gM->LoadSolution(SolTriky);
-//            std::cout<<SolTriky<<std::endl;
-//        }
-    
-#ifdef PZDEBUG
-    {
-        std::ofstream filecv("MalhaC_v2.txt"); //Impressão da malha computacional da velocidade (formato txt)
-        std::ofstream filecp("MalhaC_p2.txt"); //Impressão da malha computacional da pressão (formato txt)
-        cmesh_v->Print(filecv);
-        cmesh_p->Print(filecp);
-        
-        std::ofstream filecm("MalhaC_m2.txt"); //Impressão da malha computacional multifísica (formato txt)
-        cmesh_m->Print(filecm);
-    }
-#endif
-    
-    
-#ifdef PZDEBUG
-    //Imprimir Matriz de rigidez Global:
-    {
-        std::ofstream filestiff("stiffness.txt");
-        an.Solver().Matrix()->Print("K1 = ",filestiff,EMathematicaInput);
-        
-        std::ofstream filerhs("rhs.txt");
-        an.Rhs().Print("R = ",filerhs,EMathematicaInput);
-    }
-#endif
-    
-#ifdef PZDEBUG
-    //Imprimindo vetor solução:
-    {
-        TPZFMatrix<STATE> solucao=cmesh_m->Solution();//Pegando o vetor de solução, alphaj
-        std::ofstream solout("sol.txt");
-        solucao.Print("Sol",solout,EMathematicaInput);//Imprime na formatação do Mathematica
-        
-        std::ofstream fileAlpha("alpha.txt");
-        an.Solution().Print("Alpha = ",fileAlpha,EMathematicaInput);
-    }
-#endif
-    
-    //Calculo do erro
-    std::cout << "Comuting Error " << std::endl;
-    TPZManVector<REAL,6> Errors;
-    ofstream ErroOut("Error_Brinkman.txt", std::ofstream::app);
-    an.SetExact(Sol_exact);
-    an.PostProcessError(Errors,false);
-    
-    ErroOut <<"  //  Ordem = "<< int_order << "  //  Tamanho da malha = "<< n_s[0] <<" x "<< n_s[1] << " x " << n_s[2] << std::endl;
-    ErroOut <<" " << std::endl;
-    //ErroOut <<"Norma H1/HDiv - V = "<< Errors[0] << std::endl;
-    ErroOut <<"Norma L2 - V = "<< Errors[1] << std::endl;
-    ErroOut <<"Semi-norma H1/Hdiv - V = "<< Errors[2] << std::endl;
-    ErroOut <<"Norma L2 - P = "<< Errors[4] << std::endl;
-    ErroOut <<"-------------" << std::endl;
-    ErroOut.flush();
-    
-    //Pós-processamento (paraview):
-    std::cout << "Post Processing " << std::endl;
-    std::string plotfile("MHMStokes.vtk");
-    TPZStack<std::string> scalnames, vecnames;
-    scalnames.Push("P");
-    vecnames.Push("V");
-    vecnames.Push("f");
-    vecnames.Push("V_exact");
-    scalnames.Push("P_exact");
-    scalnames.Push("Div");
-    
-    
-    int postProcessResolution = 1; //  keep low as possible
-
-    int dim = gmesh->Dimension();
-    an.DefineGraphMesh(dim,scalnames,vecnames,plotfile);
-    an.PostProcess(postProcessResolution,dim);
-    
     std::cout << "FINISHED!" << std::endl;
     
 }
@@ -437,7 +239,7 @@ void MHMStokesTest::Run()
 void MHMStokesTest::SolveProblem(TPZAutoPointer<TPZCompMesh> cmesh, TPZVec<TPZAutoPointer<TPZCompMesh> > compmeshes, std::string prefix){
     
     //calculo solution
-    bool shouldrenumber = false;
+    bool shouldrenumber = true;
     TPZAnalysis an(cmesh,shouldrenumber);
 #ifdef USING_MKL
     TPZSymetricSpStructMatrix strmat(cmesh.operator->());
@@ -453,7 +255,9 @@ void MHMStokesTest::SolveProblem(TPZAutoPointer<TPZCompMesh> cmesh, TPZVec<TPZAu
     an.SetSolver(step);
     std::cout << "Assembling\n";
     an.Assemble();
-   // if(0)
+
+#ifdef PZDEBUG
+    if(0)
     {
         std::string filename = prefix;
         filename += "_Global.nb";
@@ -462,6 +266,7 @@ void MHMStokesTest::SolveProblem(TPZAutoPointer<TPZCompMesh> cmesh, TPZVec<TPZAu
         an.Solver().Matrix()->Print("Kg = ",global,EMathematicaInput);
         an.Rhs().Print("Fg = ",global,EMathematicaInput);
     }
+#endif
     std::cout << "Solving\n";
     an.Solve();
     std::cout << "Finished\n";
@@ -474,7 +279,7 @@ void MHMStokesTest::SolveProblem(TPZAutoPointer<TPZCompMesh> cmesh, TPZVec<TPZAu
         std::ofstream out(prefix+"_MeshWithSol.txt");
         cmesh->Print(out);
     }
-#endif
+
     
     std::cout << "Post Processing " << std::endl;
     std::string plotfile;
@@ -516,6 +321,8 @@ void MHMStokesTest::SolveProblem(TPZAutoPointer<TPZCompMesh> cmesh, TPZVec<TPZAu
     int resolution = 0;
     an.PostProcess(resolution,cmesh->Dimension());
     
+#endif
+    
     //Calculo do erro
     std::cout << "Comuting Error (need to check for MHM?) " << std::endl;
     TPZManVector<REAL,6> Errors;
@@ -538,12 +345,26 @@ void MHMStokesTest::SolveProblem(TPZAutoPointer<TPZCompMesh> cmesh, TPZVec<TPZAu
 std::ostream &MHMStokesTest::ConfigPrint(std::ostream &out)
 {
     int int_order = fsimData.GetInternalOrder();
-    int skeleton_order = fsimData.GetInternalOrder();
+    int skeleton_order = fsimData.GetSkeletonOrder();
     TPZVec<int> n_s = fsimData.GetCoarseDivisions();
     TPZVec<REAL> h_s = fsimData.GetDomainSize();
     int nrefs = fsimData.GetNInterRefs();
     
-    out << n_s[0] <<" x "<< n_s[1] << " x " << n_s[2] << "_HSkel" << nrefs << "_pSkel" << skeleton_order << "_HDiv" << nrefs << "_pInt" << int_order;
+    std::string elemName;
+    
+    if (feltype==EQuadrilateral) {
+        elemName = " Quadrilateral elements : ";
+        n_s[2] = 0;
+    }else if(feltype==ETriangle){
+        elemName = " Triangular elements : ";
+        n_s[2] = 0;
+    }else if(feltype==ETetraedro){
+        elemName = " Tetrahedral elements : ";
+    }else if(feltype==ECube){
+        elemName = " Cubic elements : ";
+    }
+    
+    out << elemName << n_s[0] <<" x "<< n_s[1] << " x " << n_s[2] << " - N refs : " << nrefs << " - Order Skel : " << skeleton_order << " - Order Intern : " << int_order<<"\n";
     return out;
 }
 
@@ -663,11 +484,11 @@ TPZGeoMesh *MHMStokesTest::CreateGMesh(TPZVec<int> &n_div, TPZVec<REAL> &h_s)
     
     int dimmodel = 2;
     TPZManVector<REAL,3> x0(3,0.),x1(3,0.);
-//    x0[0] = 0., x0[1] = -1.;
-//    x1[0] = 2., x1[1] = 1.;
+    x0[0] = 0., x0[1] = -1.;
+    x1[0] = 2., x1[1] = 1.;
     
-    x0[0] = 0., x0[1] = 0.;
-    x1[0] = 4., x1[1] = 2.;
+//    x0[0] = 0., x0[1] = 0.;
+//    x1[0] = 4., x1[1] = 2.;
     
     TPZGenGrid grid(n_div,x0,x1);
     
@@ -1316,44 +1137,44 @@ TPZCompEl *MHMStokesTest::CreateInterfaceEl(TPZGeoEl *gel,TPZCompMesh &mesh,int6
 
 void MHMStokesTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFMatrix<STATE> &dsol){
     
-        dsol.Resize(3,3);
-        sol.Resize(4);
-
-        REAL x1 = x[0];
-        REAL x2 = x[1];
-
-        TPZVec<REAL> v_Dirichlet(3,0.);
-
-        v_Dirichlet[0] = -0.1*x2*x2+0.2*x2;
-//        v_Dirichlet[0] = -1.+x2;
-//        v_Dirichlet[0] = 1.;
-        v_Dirichlet[1] = 0.;
-        v_Dirichlet[2] = 0.;
-
-        STATE pressure = 1.-0.2*x1;
-//        STATE pressure = 0.;
-
-        sol[0]=v_Dirichlet[0];
-        sol[1]=v_Dirichlet[1];
-        sol[2]=v_Dirichlet[2];
-        sol[3]=pressure;
-
-        // vx direction
-        dsol(0,0)= 0.;
-        dsol(0,1)= 0.2-0.2*x2;
-//        dsol(0,1)= 1.;
-        //dsol(0,1)= 0.;
-        dsol(0,2)= 0.;
-
-        // vy direction
-        dsol(1,0)= 0.;
-        dsol(1,1)= 0.;
-        dsol(1,2)= 0.;
-
-        // vz direction
-        dsol(2,0)= 0.;
-        dsol(2,1)= 0.;
-        dsol(2,2)= 0.;
+//        dsol.Resize(3,3);
+//        sol.Resize(4);
+//
+//        REAL x1 = x[0];
+//        REAL x2 = x[1];
+//
+//        TPZVec<REAL> v_Dirichlet(3,0.);
+//
+//        v_Dirichlet[0] = -0.1*x2*x2+0.2*x2;
+////        v_Dirichlet[0] = -1.+x2;
+////        v_Dirichlet[0] = 1.;
+//        v_Dirichlet[1] = 0.;
+//        v_Dirichlet[2] = 0.;
+//
+//        STATE pressure = 1.-0.2*x1;
+////        STATE pressure = 0.;
+//
+//        sol[0]=v_Dirichlet[0];
+//        sol[1]=v_Dirichlet[1];
+//        sol[2]=v_Dirichlet[2];
+//        sol[3]=pressure;
+//
+//        // vx direction
+//        dsol(0,0)= 0.;
+//        dsol(0,1)= 0.2-0.2*x2;
+////        dsol(0,1)= 1.;
+//        //dsol(0,1)= 0.;
+//        dsol(0,2)= 0.;
+//
+//        // vy direction
+//        dsol(1,0)= 0.;
+//        dsol(1,1)= 0.;
+//        dsol(1,2)= 0.;
+//
+//        // vz direction
+//        dsol(2,0)= 0.;
+//        dsol(2,1)= 0.;
+//        dsol(2,2)= 0.;
     
     // General form : : Artigo Botti, Di Pietro, Droniou
     
@@ -1416,77 +1237,77 @@ void MHMStokesTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFMat
     
     // Stokes : : Artigo Botti, Di Pietro, Droniou
     
-//    dsol.Resize(3,3);
-//    sol.Resize(4);
-//
-//
-//    //Applying rotation:
-//    TPZVec<REAL> x_in = x;
-//    TPZVec<REAL> x_rot(3,0.);
-//
-//    f_InvT.Apply(x_in,x_rot);
-//    x[0] = x_rot[0];
-//    x[1] = x_rot[1];
-//
-//    REAL x1 = x[0];
-//    REAL x2 = x[1];
-//
-//    REAL e = exp(1.);
-//
-//    TPZVec<REAL> v_Dirichlet(3,0.), vbc_rot(3,0.);
-//
-//    v_Dirichlet[0] = -1.*sin(x1)*sin(x2);
-//    v_Dirichlet[1] = -1.*cos(x1)*cos(x2);
-//    STATE pressure= cos(x1)*sin(x2);
-//
-//    f_T.Apply(v_Dirichlet, vbc_rot);
-//    v_Dirichlet = vbc_rot;
-//
-//    sol[0]=v_Dirichlet[0];
-//    sol[1]=v_Dirichlet[1];
-//    sol[2]=v_Dirichlet[2];
-//    sol[3]=pressure;
-//
-//
-//    // GradU * Rt
-//    TPZFMatrix<STATE> GradU(3,3,0.), GradURt(3,3,0.), RGradURt(3,3,0.);
-//
-//    // vx direction
-//    GradU(0,0)= -1.*cos(x1)*sin(x2);
-//    GradU(0,1)= cos(x2)*sin(x1);
-//
-//    // vy direction
-//    GradU(1,0)= -1.*cos(x2)*sin(x1);
-//    GradU(1,1)= cos(x1)*sin(x2);
-//
-//    TPZFMatrix<STATE> R = f_T.Mult();
-//    TPZFMatrix<STATE> Rt(3,3,0.);
-//    R.Transpose(&Rt);
-//
-////    GradU.Print("GradU = ");
-////    R.Print("R = ");
-////    Rt.Print("Rt = ");
-//
-//    GradU.Multiply(Rt,GradURt);
-////    GradURt.Print("GradURt = ");
-//
-//    R.Multiply(GradURt,RGradURt);
-////    RGradURt.Print("RGradURt = ");
-//
-//    // vx direction
-//    dsol(0,0)= RGradURt(0,0);
-//    dsol(0,1)= RGradURt(0,1);
-//    dsol(0,2)= RGradURt(0,2);
-//
-//    // vy direction
-//    dsol(1,0)= RGradURt(1,0);
-//    dsol(1,1)= RGradURt(1,1);
-//    dsol(1,2)= RGradURt(1,2);
-//
-//    // vz direction
-//    dsol(2,0)= RGradURt(2,0);
-//    dsol(2,1)= RGradURt(2,1);
-//    dsol(2,2)= RGradURt(2,2);
+    dsol.Resize(3,3);
+    sol.Resize(4);
+
+
+    //Applying rotation:
+    TPZVec<REAL> x_in = x;
+    TPZVec<REAL> x_rot(3,0.);
+
+    f_InvT.Apply(x_in,x_rot);
+    x[0] = x_rot[0];
+    x[1] = x_rot[1];
+
+    REAL x1 = x[0];
+    REAL x2 = x[1];
+
+    REAL e = exp(1.);
+
+    TPZVec<REAL> v_Dirichlet(3,0.), vbc_rot(3,0.);
+
+    v_Dirichlet[0] = -1.*sin(x1)*sin(x2);
+    v_Dirichlet[1] = -1.*cos(x1)*cos(x2);
+    STATE pressure= cos(x1)*sin(x2);
+
+    f_T.Apply(v_Dirichlet, vbc_rot);
+    v_Dirichlet = vbc_rot;
+
+    sol[0]=v_Dirichlet[0];
+    sol[1]=v_Dirichlet[1];
+    sol[2]=v_Dirichlet[2];
+    sol[3]=pressure;
+
+
+    // GradU * Rt
+    TPZFMatrix<STATE> GradU(3,3,0.), GradURt(3,3,0.), RGradURt(3,3,0.);
+
+    // vx direction
+    GradU(0,0)= -1.*cos(x1)*sin(x2);
+    GradU(0,1)= cos(x2)*sin(x1);
+
+    // vy direction
+    GradU(1,0)= -1.*cos(x2)*sin(x1);
+    GradU(1,1)= cos(x1)*sin(x2);
+
+    TPZFMatrix<STATE> R = f_T.Mult();
+    TPZFMatrix<STATE> Rt(3,3,0.);
+    R.Transpose(&Rt);
+
+//    GradU.Print("GradU = ");
+//    R.Print("R = ");
+//    Rt.Print("Rt = ");
+
+    GradU.Multiply(Rt,GradURt);
+//    GradURt.Print("GradURt = ");
+
+    R.Multiply(GradURt,RGradURt);
+//    RGradURt.Print("RGradURt = ");
+
+    // vx direction
+    dsol(0,0)= RGradURt(0,0);
+    dsol(0,1)= RGradURt(0,1);
+    dsol(0,2)= RGradURt(0,2);
+
+    // vy direction
+    dsol(1,0)= RGradURt(1,0);
+    dsol(1,1)= RGradURt(1,1);
+    dsol(1,2)= RGradURt(1,2);
+
+    // vz direction
+    dsol(2,0)= RGradURt(2,0);
+    dsol(2,1)= RGradURt(2,1);
+    dsol(2,2)= RGradURt(2,2);
     
     // Darcy : : Artigo Botti, Di Pietro, Droniou
     
@@ -1652,16 +1473,16 @@ void MHMStokesTest::F_source(const TPZVec<REAL> &x, TPZVec<STATE> &f, TPZFMatrix
     // Stokes : : Artigo Botti, Di Pietro, Droniou
     
     
-//    f_s[0] = -3.*sin(x1)*sin(x2);
-//    f_s[1] = -1.*cos(x1)*cos(x2);
-//
-//    f_T.Apply(f_s, f_rot);
-//    f_s = f_rot;
-//
-//
-//    f[0] = f_s[0]; // x direction
-//    f[1] = f_s[1]; // y direction
-//    f[2] = f_s[2];
+    f_s[0] = -3.*sin(x1)*sin(x2);
+    f_s[1] = -1.*cos(x1)*cos(x2);
+
+    f_T.Apply(f_s, f_rot);
+    f_s = f_rot;
+
+
+    f[0] = f_s[0]; // x direction
+    f[1] = f_s[1]; // y direction
+    f[2] = f_s[2];
     
     
     // Darcy : : Artigo Botti, Di Pietro, Droniou
@@ -1753,10 +1574,10 @@ void MHMStokesTest::InsertMaterialObjects(TPZMHMeshControl *control)
     REAL visco = fsimData.GetViscosity();
     TPZMHMBrinkmanMaterial *material = new TPZMHMBrinkmanMaterial(fmatID,fdim,1,visco,0,0);
     
-    TPZAutoPointer<TPZFunction<STATE> > fp = new TPZDummyFunction<STATE> (F_source, 6);
-    TPZAutoPointer<TPZFunction<STATE> > solp = new TPZDummyFunction<STATE> (Sol_exact,6);
-    ((TPZDummyFunction<STATE>*)fp.operator->())->SetPolynomialOrder(6);
-    ((TPZDummyFunction<STATE>*)solp.operator->())->SetPolynomialOrder(6);
+    TPZAutoPointer<TPZFunction<STATE> > fp = new TPZDummyFunction<STATE> (F_source, 7);
+    TPZAutoPointer<TPZFunction<STATE> > solp = new TPZDummyFunction<STATE> (Sol_exact,7);
+    ((TPZDummyFunction<STATE>*)fp.operator->())->SetPolynomialOrder(7);
+    ((TPZDummyFunction<STATE>*)solp.operator->())->SetPolynomialOrder(7);
     material->SetForcingFunction(fp); //Caso simples sem termo fonte
     material->SetForcingFunctionExact(solp);
     

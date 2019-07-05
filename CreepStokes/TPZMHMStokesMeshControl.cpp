@@ -38,6 +38,7 @@ TPZMHMStokesMeshControl::TPZMHMStokesMeshControl(TPZAutoPointer<TPZGeoMesh> gmes
     fDistrFluxMesh = new TPZCompMesh(fGMesh);
     fCoarseAveragePressMesh = new TPZCompMesh(fGMesh);
     fCoarseDistrFluxMesh = new TPZCompMesh(fGMesh);
+    fsetCoarseAverageMultipliers = false;
     
     fBCTractionMatIds.clear();
     for(auto it = fMaterialBCIds.begin(); it != fMaterialBCIds.end(); it++)
@@ -53,7 +54,8 @@ TPZMHMStokesMeshControl::TPZMHMStokesMeshControl(int dimension) : TPZMHMixedMesh
     fDistrFluxMesh = new TPZCompMesh(fGMesh);
     fCoarseAveragePressMesh = new TPZCompMesh(fGMesh);
     fCoarseDistrFluxMesh = new TPZCompMesh(fGMesh);
-
+    fsetCoarseAverageMultipliers = false;
+    
     fBCTractionMatIds.clear();
     for(auto it = fMaterialBCIds.begin(); it != fMaterialBCIds.end(); it++)
     {
@@ -67,6 +69,7 @@ TPZMHMStokesMeshControl::TPZMHMStokesMeshControl(TPZAutoPointer<TPZGeoMesh> gmes
     fDistrFluxMesh = new TPZCompMesh(fGMesh);
     fCoarseAveragePressMesh = new TPZCompMesh(fGMesh);
     fCoarseDistrFluxMesh = new TPZCompMesh(fGMesh);
+    fsetCoarseAverageMultipliers = false;
     
     fBCTractionMatIds.clear();
     for(auto it = fMaterialBCIds.begin(); it != fMaterialBCIds.end(); it++)
@@ -88,6 +91,7 @@ TPZMHMStokesMeshControl &TPZMHMStokesMeshControl::operator=(const TPZMHMStokesMe
     fCoarseAveragePressMesh = cp.fCoarseAveragePressMesh;
     fCoarseDistrFluxMesh = cp.fCoarseDistrFluxMesh;
     fBCTractionMatIds = cp.fBCTractionMatIds;
+    fsetCoarseAverageMultipliers = cp.fsetCoarseAverageMultipliers;
     return *this;
 }
 
@@ -120,12 +124,14 @@ void TPZMHMStokesMeshControl::BuildComputationalMesh(bool usersubstructure)
     
     InsertDistributedFluxMaterialObjects();
     CreateDistributedFluxMHMMesh();
-    
+   
     InsertPeriferalAveragePressMaterialObjects();
     CreateAveragePressMHMMesh();
 
-    CreateLagrangeMultiplierMesh();
-    
+    if (fsetCoarseAverageMultipliers) {
+        CreateLagrangeMultiplierMesh();
+    }
+
   //  CreateCoarseAveragePressMHMMesh();
   //  CreateCoarseDistributedFluxMHMMesh();
     
@@ -713,14 +719,16 @@ void TPZMHMStokesMeshControl::CreateCoarseDistributedFluxMHMMesh(){
 
 void TPZMHMStokesMeshControl::CreateMultiPhysicsMHMMesh()
 {
-    TPZManVector<TPZCompMesh *,6 > cmeshes(6);
+    TPZManVector<TPZCompMesh *,6 > cmeshes(4);
     cmeshes[0] = fFluxMesh.operator->();
     cmeshes[1] = fPressureFineMesh.operator->();
     cmeshes[2] = fDistrFluxMesh.operator->();
     cmeshes[3] = fAveragePressMesh.operator->();
-    cmeshes[4] = fCMeshLagrange.operator->();
-    cmeshes[5] = fCMeshConstantPressure.operator->();
-
+    if (fsetCoarseAverageMultipliers) {
+        cmeshes.Resize(6);
+        cmeshes[4] = fCMeshLagrange.operator->();
+        cmeshes[5] = fCMeshConstantPressure.operator->();
+    }
     
     TPZGeoMesh *gmesh = cmeshes[0]->Reference();
     if(!gmesh)
@@ -758,31 +766,32 @@ void TPZMHMStokesMeshControl::CreateMultiPhysicsMHMMesh()
     TPZBuildMultiphysicsMesh::AddConnects(meshvector, MixedFluxPressureCmesh);
     TPZBuildMultiphysicsMesh::TransferFromMeshes(meshvector, MixedFluxPressureCmesh);
     
-#ifdef PZDEBUG
     if(1)
     {
-        std::ofstream file("cmeshmphys.vtk");
+        std::ofstream file("multiphysics.vtk");
         TPZVTKGeoMesh::PrintCMeshVTK(MixedFluxPressureCmesh, file,true);
-        std::ofstream out("cmeshmphys.txt");
+        std::ofstream out("multiphysics_before_condense.txt");
         MixedFluxPressureCmesh->Print(out);
     }
-#endif
+
     std::pair<int,int> skelmatid(fSkeletonMatId,fSecondSkeletonMatId);
     //CreateMultiPhysicsInterfaceElements(fGMesh->Dimension()-1);
     //CreateMultiPhysicsInterfaceElements(fGMesh->Dimension()-2);
     
     CreateMultiPhysicsInterfaceElements();
     CreateMultiPhysicsBCInterfaceElements();
-    
+
     MixedFluxPressureCmesh->CleanUpUnconnectedNodes();
     
     GroupAndCondense(MixedFluxPressureCmesh);
-    
+
+#ifdef PZDEBUG
     if(1)
     {
         std::ofstream out("multiphysics.txt");
         MixedFluxPressureCmesh->Print(out);
     }
+#endif
     
     return;
     
@@ -813,6 +822,10 @@ void TPZMHMStokesMeshControl::CreateMultiPhysicsInterfaceElements(){
         TPZGeoElSide gelside(gel,nsides-1);
         TPZCompElSide celside = gelside.Reference();
         
+        if (!celside ) {
+            DebugStop();
+        }
+        
         TPZStack<TPZGeoElSide> neighbourset;
        // gelside.AllNeighbours(neighbourset);
         
@@ -829,9 +842,7 @@ void TPZMHMStokesMeshControl::CreateMultiPhysicsInterfaceElements(){
             neigh = neigh.Neighbour();
         }
         
-
-        
-        gelside.LowerLevelCompElementList2(1);
+        //gelside.LowerLevelCompElementList2(1);
         
         int nneighs = neighbourset.size();
         if (nneighs!=2) {
@@ -850,9 +861,7 @@ void TPZMHMStokesMeshControl::CreateMultiPhysicsInterfaceElements(){
             }
             
             TPZCompElSide celneigh = neigh.Reference();
-            if (!celside ) {
-                DebugStop();
-            }
+
             
             if(neigh.Element()->HasSubElement()) {
 
@@ -868,7 +877,7 @@ void TPZMHMStokesMeshControl::CreateMultiPhysicsInterfaceElements(){
                     
                     TPZMultiphysicsInterfaceElement *elem_inter = new TPZMultiphysicsInterfaceElement(*cmesh,gbc_sub.CreatedElement(),index,cel_sub_neigh,celside);
                     elem_inter->SetLeftRightElementIndices(LeftElIndices,RightElIndices);
-
+                    
 #ifdef PZDEBUG
                     std::cout << "****Created an interface element between volumetric element " << subel[i_sub].Element()->Index() <<
                     " side " << subel[i_sub].Side() <<
@@ -1084,12 +1093,13 @@ void TPZMHMStokesMeshControl::GroupAndCondense(TPZCompMesh *cmesh_m){
     int nenvel = elgroups.NElements();
     for (int64_t ienv=0; ienv<nenvel; ienv++) {
         TPZElementGroup *elgr = elgroups[ienv];
-        
+
         int nc = elgroups[ienv]->GetElGroup()[0]->NConnects();
         elgroups[ienv]->GetElGroup()[0]->Connect(nc-1).IncrementElConnected();
-        elgroups[ienv]->GetElGroup()[0]->Connect(nc-2).IncrementElConnected();
-        elgroups[ienv]->GetElGroup()[0]->Connect(nc-3).IncrementElConnected();
-        
+        if (fsetCoarseAverageMultipliers) {
+                elgroups[ienv]->GetElGroup()[0]->Connect(nc-2).IncrementElConnected();
+                elgroups[ienv]->GetElGroup()[0]->Connect(nc-3).IncrementElConnected();
+        }
         new TPZCondensedCompEl(elgr);
     }
     

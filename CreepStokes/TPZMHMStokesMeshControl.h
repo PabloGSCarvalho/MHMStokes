@@ -31,6 +31,9 @@ protected:
     /// Computational mesh to contain the coarse distributed flux elements
     TPZAutoPointer<TPZCompMesh> fCoarseDistrFluxMesh;
     
+    /// Set coarse average pressure and distributed flux
+    bool fsetCoarseAverageMultipliers;
+
 
 public:
     
@@ -79,9 +82,15 @@ public:
         return result;
     }
     
+    /// Set the flag for creating Lagrange Dofs for the average pressure and distributed flux on coarse mesh
+    void SetCoarseAverageMultipliers(bool flag)
+    {
+        fsetCoarseAverageMultipliers = flag;
+    }
     
 protected:
 
+    
     /// Insert the necessary pressure material objects to create the pressure mesh
     virtual void InsertPeriferalPressureMaterialObjects();
     
