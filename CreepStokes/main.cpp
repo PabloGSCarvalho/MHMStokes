@@ -64,6 +64,7 @@ int main(int argc, char *argv[])
 {
     
     TPZMaterial::gBigNumber = 1.e10;
+//    gRefDBase.InitializeAllUniformRefPatterns();
     
 #ifdef LOG4CXX
     InitializePZLOG();
@@ -85,7 +86,7 @@ int main(int argc, char *argv[])
         HDivPiola = 1;
         for (int it=0; it<=0; it++) {
             //h_level = pow(2., 1+it);
-            h_level = 4;
+            h_level = 1;
             
             TPZVec<int> n_s(3,0.);
             n_s[0]=h_level,n_s[1]=h_level;
@@ -93,7 +94,7 @@ int main(int argc, char *argv[])
             
             MHMStokesTest  * Test2 = new MHMStokesTest();
             //Test2->Set3Dmesh();
-            //Test2->SetElType(ETriangle);
+            Test2->SetElType(ETetraedro);
             //Test2->SetHdivPlus();
             
             TPZTransform<STATE> Transf(3,3), InvTransf(3,3);
@@ -108,7 +109,7 @@ int main(int argc, char *argv[])
             
             //Test2->SetRotation3DMatrix(rot_x,rot_y,rot_z);
             TPZSimulationData simdata;
-            simdata.SetInternalOrder(2);
+            simdata.SetInternalOrder(1);
             simdata.SetSkeletonOrder(1);
             simdata.SetCoarseDivisions(n_s);
             simdata.SetDomainSize(h_s);

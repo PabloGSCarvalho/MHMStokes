@@ -57,7 +57,6 @@ void TPZMHMBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<T
     
     TPZFNMatrix<9,REAL>  &tan = datavecright[pindex].axes;
     
-    
     TPZFNMatrix<220,REAL> dphiVx1(3,dphiV1.Cols());
     TPZAxesTools<REAL>::Axes2XYZ(dphiV1, dphiVx1, datavecleft[vindex].axes);
     

@@ -26,6 +26,7 @@
 #include "pzelementgroup.h"
 #include "pzcondensedcompel.h"
 #include "TPZExtendGridDimension.h"
+#include "tpzgeoelrefpattern.h"
 #include "TPZMHMStokesMeshControl.h"
 
 using namespace std;
@@ -49,8 +50,8 @@ MHMStokesTest::MHMStokesTest()
     fmatBCtop=-2;
     fmatBCleft=-3;
     fmatBCright=-4;
-    fmatBCtop_z = -5; //3D
-    fmatBCbott_z = -6; //3D normal negativa
+    fmatBCtop_z=-5; //3D
+    fmatBCbott_z=-6; //3D normal negativa
     
     //Material do elemento de interface
     fmatLambda=3; // Multiplier material
@@ -66,8 +67,6 @@ MHMStokesTest::MHMStokesTest()
     fmatInterfaceLeft=5;
     fmatInterfaceRight=6;
     fmatWrap = 7;
-    
-
     
     //Materia de um ponto
     fmatPoint=-15;
@@ -115,17 +114,18 @@ void MHMStokesTest::Run()
     TPZVec<int> n_s = fsimData.GetCoarseDivisions();
     TPZVec<REAL> h_s = fsimData.GetDomainSize();
     int nrefs = fsimData.GetNInterRefs();
- 
+    if(feltype==ECube||feltype==EPrisma||feltype==ETetraedro){
+        Set3Dmesh();
+    }
     //Gerando malha geométrica com elementos coarse, os quais serão subdomínios MHM
     TPZGeoMesh *gmesh;
     
     if (f_3Dmesh) {
-        DebugStop();
+        //DebugStop();
         gmesh = CreateGMesh3D(n_s, h_s);
     }else{
         gmesh = CreateGMesh(n_s, h_s);
     }
-    
     
     //Vetor com os indices dos elementos coarse
     TPZVec<int64_t> coarseindex;
@@ -156,11 +156,20 @@ void MHMStokesTest::Run()
     matids.insert(fmatBCbott);
     matids.insert(fmatBCleft);
     matids.insert(fmatBCright);
+    if (f_3Dmesh) {
+        matids.insert(fmatBCtop_z);
+        matids.insert(fmatBCbott_z);
+    }
+    
     StokesControl->fMaterialBCIds = matids;
     StokesControl->fBCTractionMatIds[fmatBCtop]=fmatLambdaBC_top;
     StokesControl->fBCTractionMatIds[fmatBCbott]=fmatLambdaBC_bott;
     StokesControl->fBCTractionMatIds[fmatBCleft]=fmatLambdaBC_left;
     StokesControl->fBCTractionMatIds[fmatBCright]=fmatLambdaBC_right;
+    if (f_3Dmesh) {
+        StokesControl->fBCTractionMatIds[fmatBCtop_z]=fmatLambdaBC_top_z;
+        StokesControl->fBCTractionMatIds[fmatBCbott_z]=fmatLambdaBC_bott_z;
+    }
     
     InsertMaterialObjects(StokesControl);
     
@@ -174,9 +183,9 @@ void MHMStokesTest::Run()
         StokesControl->SetCoarseAverageMultipliers(true);
     }
 
+
     //Malha computacional
     StokesControl->BuildComputationalMesh(0);
-    
     
 #ifdef PZDEBUG
     std::ofstream fileg1("MalhaGeo_1.txt"); //Impressão da malha geométrica (formato txt)
@@ -184,6 +193,7 @@ void MHMStokesTest::Run()
     StokesControl->GMesh()->Print(fileg1);
     TPZVTKGeoMesh::PrintGMeshVTK(gmesh, filegvtk1,true);
 #endif
+
     
 #ifdef PZDEBUG
     {
@@ -328,6 +338,7 @@ void MHMStokesTest::SolveProblem(TPZAutoPointer<TPZCompMesh> cmesh, TPZVec<TPZAu
     TPZManVector<REAL,6> Errors;
     ofstream ErroOut("Error_Brinkman.txt", std::ofstream::app);
     an.SetExact(Sol_exact);
+    an.SetThreadsForError(4);
     an.PostProcessError(Errors,false);
     
     ConfigPrint(ErroOut);
@@ -539,13 +550,15 @@ TPZGeoMesh *MHMStokesTest::CreateGMesh3D(TPZVec<int> &n_div, TPZVec<REAL> &h_s)
     
     int dimmodel = 2;
     TPZManVector<REAL,3> x0(3,0.),x1(3,0.);
-    //    x0[0] = 0., x0[1] = -1.;
-    //    x1[0] = 2., x1[1] = 1.;
+    x0[0] = 0., x0[1] = -1.;
+    x1[0] = 2., x1[1] = 1.;
     
-    x0[0] = 0., x0[1] = 0., x0[2] = 0.;
-    x1[0] = 2., x1[1] = 2., x1[2] = 2.;
+    x0[2] = 0.;
+    x1[2] = 2.;
     
     TPZGenGrid grid(n_div,x0,x1);
+    
+    
     if (feltype == ETriangle|| feltype == EPrisma ) {
         grid.SetElementType(ETriangle);
     }
@@ -565,6 +578,7 @@ TPZGeoMesh *MHMStokesTest::CreateGMesh3D(TPZVec<int> &n_div, TPZVec<REAL> &h_s)
         REAL thickness = h_s[2]/n_div[2];
         TPZExtendGridDimension extend(gmesh,thickness);
         int numlayers = n_div[2];
+        extend.SetElType(1);///???
         gmesh = extend.ExtendedMesh(numlayers,fmatBCbott_z,fmatBCtop_z);
         gmesh->SetDimension(3);
     
@@ -581,7 +595,7 @@ TPZGeoMesh *MHMStokesTest::CreateGMesh3D(TPZVec<int> &n_div, TPZVec<REAL> &h_s)
                 for(int j = 0; j < nx; j++){
                     id = i*nx + j+ k*nx*ny;
                     coord[0] = (j)*h_s[0]/(nx - 1);
-                    coord[1] = (i)*h_s[1]/(ny - 1);
+                    coord[1] = (i)*h_s[1]/(ny - 1)-1;
                     coord[2] = (k)*h_s[2]/(nz - 1);
                     gmesh->NodeVec()[id].Initialize(coord, *gmesh);
                 }
@@ -602,7 +616,7 @@ TPZGeoMesh *MHMStokesTest::CreateGMesh3D(TPZVec<int> &n_div, TPZVec<REAL> &h_s)
                     nodeindD1[1] = nodeindD1[0]+1;
                     nodeindD1[2] = nodeindD1[0]+nx;
                     nodeindD1[3] = nodeindD1[1] + (1)*nx*ny;
-                    gmesh->CreateGeoElement(ETetraedro, nodeindD1, fmatID, index,0);
+                    gmesh->CreateGeoElement(ETetraedro, nodeindD1, fmatID, index,1);
                     
                     index++;
                     
@@ -610,7 +624,7 @@ TPZGeoMesh *MHMStokesTest::CreateGMesh3D(TPZVec<int> &n_div, TPZVec<REAL> &h_s)
                     nodeindD2[1] = nodeindD1[2];
                     nodeindD2[2] = nodeindD1[1]+nx;
                     nodeindD2[3] = nodeindD1[1] + (1)*nx*ny;
-                    gmesh->CreateGeoElement(ETetraedro, nodeindD2, fmatID, index,0);
+                    gmesh->CreateGeoElement(ETetraedro, nodeindD2, fmatID, index,1);
                     
                     index++;
                     
@@ -618,7 +632,7 @@ TPZGeoMesh *MHMStokesTest::CreateGMesh3D(TPZVec<int> &n_div, TPZVec<REAL> &h_s)
                     nodeindU1[1] = nodeindU1[0]+1;
                     nodeindU1[2] = nodeindU1[0]+nx;
                     nodeindU1[3] = nodeindD1[2];
-                    gmesh->CreateGeoElement(ETetraedro, nodeindU1, fmatID, index,0);
+                    gmesh->CreateGeoElement(ETetraedro, nodeindU1, fmatID, index,1);
                     
                     index++;
                     
@@ -626,7 +640,7 @@ TPZGeoMesh *MHMStokesTest::CreateGMesh3D(TPZVec<int> &n_div, TPZVec<REAL> &h_s)
                     nodeindU2[1] = nodeindU1[2];
                     nodeindU2[2] = nodeindU1[1]+nx;
                     nodeindU2[3] = nodeindD1[2];
-                    gmesh->CreateGeoElement(ETetraedro, nodeindU2, fmatID, index,0);
+                    gmesh->CreateGeoElement(ETetraedro, nodeindU2, fmatID, index,1);
                     
                     index++;
                     
@@ -636,7 +650,7 @@ TPZGeoMesh *MHMStokesTest::CreateGMesh3D(TPZVec<int> &n_div, TPZVec<REAL> &h_s)
                     nodeindL1[1] = nodeindD1[2];
                     nodeindL1[2] = nodeindL1[0]+nx*ny;
                     nodeindL1[3] = nodeindU1[1];
-                    gmesh->CreateGeoElement(ETetraedro, nodeindL1, fmatID, index,0);
+                    gmesh->CreateGeoElement(ETetraedro, nodeindL1, fmatID, index,1);
                     
                     index++;
                     
@@ -645,7 +659,7 @@ TPZGeoMesh *MHMStokesTest::CreateGMesh3D(TPZVec<int> &n_div, TPZVec<REAL> &h_s)
                     nodeindL2[1] = nodeindD1[1]+nx*ny;
                     nodeindL2[2] = nodeindU2[2];
                     nodeindL2[3] = nodeindU2[3];
-                    gmesh->CreateGeoElement(ETetraedro, nodeindL2, fmatID, index,0);
+                    gmesh->CreateGeoElement(ETetraedro, nodeindL2, fmatID, index,1);
                     
                     index++;
                     
@@ -801,6 +815,7 @@ TPZGeoMesh *MHMStokesTest::CreateGMesh3D(TPZVec<int> &n_div, TPZVec<REAL> &h_s)
     
     }
     //Save the original mesh
+    grid.SetRefpatternElements(true);
     
     //SetAllRefine();
     
@@ -811,7 +826,7 @@ TPZGeoMesh *MHMStokesTest::CreateGMesh3D(TPZVec<int> &n_div, TPZVec<REAL> &h_s)
     
     //UniformRefine2(1, gmesh, n_div);
     
-    InsertLowerDimMaterial(gmesh);
+    //InsertLowerDimMaterial(gmesh);
     SetOriginalMesh(gmesh);
     
     //UniformRefine2(1, gmesh, n_div);
@@ -1145,14 +1160,14 @@ void MHMStokesTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFMat
 //
 //        TPZVec<REAL> v_Dirichlet(3,0.);
 //
-//        v_Dirichlet[0] = -0.1*x2*x2+0.2*x2;
-////        v_Dirichlet[0] = -1.+x2;
+////        v_Dirichlet[0] = -0.1*x2*x2+0.2*x2;
+//        v_Dirichlet[0] = -1.+x2;
 ////        v_Dirichlet[0] = 1.;
 //        v_Dirichlet[1] = 0.;
 //        v_Dirichlet[2] = 0.;
 //
-//        STATE pressure = 1.-0.2*x1;
-////        STATE pressure = 0.;
+////        STATE pressure = 1.-0.2*x1;
+//        STATE pressure = 0.;
 //
 //        sol[0]=v_Dirichlet[0];
 //        sol[1]=v_Dirichlet[1];
@@ -1161,8 +1176,8 @@ void MHMStokesTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFMat
 //
 //        // vx direction
 //        dsol(0,0)= 0.;
-//        dsol(0,1)= 0.2-0.2*x2;
-////        dsol(0,1)= 1.;
+////        dsol(0,1)= 0.2-0.2*x2;
+//        dsol(0,1)= 1.;
 //        //dsol(0,1)= 0.;
 //        dsol(0,2)= 0.;
 //
@@ -1564,20 +1579,14 @@ void MHMStokesTest::InsertMaterialObjects(TPZMHMeshControl *control)
 {
 
     TPZCompMesh &cmesh = control->CMesh();
-    /// criar materiais
-    //    int dim = cmesh.Dimension();
-//    TLaplaceExample1 *lapl_examp = dynamic_cast<TLaplaceExample1 *>(example);
-//    if(!lapl_examp) DebugStop();
-//    lapl_examp->fExact = TLaplaceExample1::ESinSin;
-//    control.SetProblemType(TPZMHMeshControl::EScalar);
 
     REAL visco = fsimData.GetViscosity();
     TPZMHMBrinkmanMaterial *material = new TPZMHMBrinkmanMaterial(fmatID,fdim,1,visco,0,0);
     
-    TPZAutoPointer<TPZFunction<STATE> > fp = new TPZDummyFunction<STATE> (F_source, 7);
-    TPZAutoPointer<TPZFunction<STATE> > solp = new TPZDummyFunction<STATE> (Sol_exact,7);
-    ((TPZDummyFunction<STATE>*)fp.operator->())->SetPolynomialOrder(7);
-    ((TPZDummyFunction<STATE>*)solp.operator->())->SetPolynomialOrder(7);
+    TPZAutoPointer<TPZFunction<STATE> > fp = new TPZDummyFunction<STATE> (F_source, 9);
+    TPZAutoPointer<TPZFunction<STATE> > solp = new TPZDummyFunction<STATE> (Sol_exact,9);
+    ((TPZDummyFunction<STATE>*)fp.operator->())->SetPolynomialOrder(9);
+    ((TPZDummyFunction<STATE>*)solp.operator->())->SetPolynomialOrder(9);
     material->SetForcingFunction(fp); //Caso simples sem termo fonte
     material->SetForcingFunctionExact(solp);
     
@@ -1586,18 +1595,8 @@ void MHMStokesTest::InsertMaterialObjects(TPZMHMeshControl *control)
     TPZMaterial * mat1(material);
     cmesh.InsertMaterialObject(mat1);
     
-//    int matCoarse = 44;
     int matSkeleton = 4;
-    
-//    TPZMat1dLin *materialCoarse = new TPZMat1dLin(matCoarse);
-//    TPZFNMatrix<1,STATE> xk(1,1,0.),xb(1,1,0.),xc(1,1,0.),xf(1,1,0.);
-//    materialCoarse->SetMaterial(xk, xc, xb, xf);
-//    cmesh.InsertMaterialObject(materialCoarse);
-//
-//    materialCoarse = new TPZMat1dLin(matSkeleton);
-//    materialCoarse->SetMaterial(xk, xc, xb, xf);
-//    cmesh.InsertMaterialObject(materialCoarse);
-    
+
     control->SwitchLagrangeMultiplierSign(false);
     ///Inserir condicao de contorno
     TPZFMatrix<STATE> val1(3,3,0.), val2(3,1,0.);
@@ -1624,6 +1623,17 @@ void MHMStokesTest::InsertMaterialObjects(TPZMHMeshControl *control)
     BCondD4->SetBCForcingFunction(0, solp);
     cmesh.InsertMaterialObject(BCondD4);
     //control->fMaterialBCIds.insert(fmatBCright);
+
+    if (f_3Dmesh) {
+        TPZBndCond * BCondD5 = material->CreateBC(mat1, fmatBCtop_z, fdirichlet, val1, val2);
+        BCondD5->SetBCForcingFunction(0, solp);
+        cmesh.InsertMaterialObject(BCondD5);
+        
+        TPZBndCond * BCondD6 = material->CreateBC(mat1, fmatBCbott_z, fdirichlet, val1, val2);
+        BCondD6->SetBCForcingFunction(0, solp);
+        cmesh.InsertMaterialObject(BCondD6);
+    }
+    
     
     //Skeleton::
     
@@ -1673,6 +1683,16 @@ void MHMStokesTest::InsertMaterialObjects(TPZMHMeshControl *control)
     matLambdaBC_right->SetBCForcingFunction(0, solp);
     cmesh.InsertMaterialObject(matLambdaBC_right);
  //   control->fMaterialBCIds.insert(fmatLambdaBC_right);
+    
+    if (f_3Dmesh) {
+        TPZBndCond *matLambdaBC_top_z = material->CreateBC(material, fmatLambdaBC_top_z, fneumann, val1, val2);
+        matLambdaBC_top_z->SetBCForcingFunction(0, solp);
+        cmesh.InsertMaterialObject(matLambdaBC_top_z);
+        
+        TPZBndCond *matLambdaBC_bott_z = material->CreateBC(material, fmatLambdaBC_bott_z, fneumann, val1, val2);
+        matLambdaBC_bott_z->SetBCForcingFunction(0, solp);
+        cmesh.InsertMaterialObject(matLambdaBC_bott_z);
+    }
     
 }
 
