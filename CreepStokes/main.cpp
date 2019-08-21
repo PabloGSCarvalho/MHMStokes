@@ -63,7 +63,7 @@ bool HybridBrinkmanDomain = false, MHMStokesDomain = true;
 int main(int argc, char *argv[])
 {
     
-    TPZMaterial::gBigNumber = 1.e10;
+    TPZMaterial::gBigNumber = 1.e12;
 //    gRefDBase.InitializeAllUniformRefPatterns();
     
 #ifdef LOG4CXX
@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
         HDivPiola = 1;
         for (int it=0; it<=0; it++) {
             //h_level = pow(2., 1+it);
-            h_level = 1;
+            h_level = 2;
             
             TPZVec<int> n_s(3,0.);
             n_s[0]=h_level,n_s[1]=h_level;
@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
             
             MHMStokesTest  * Test2 = new MHMStokesTest();
             //Test2->Set3Dmesh();
-            Test2->SetElType(ETetraedro);
+            //Test2->SetElType(ETetraedro);
             //Test2->SetHdivPlus();
             
             TPZTransform<STATE> Transf(3,3), InvTransf(3,3);
@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
             simdata.SetDomainSize(h_s);
             simdata.SetNInterRefs(1);
             simdata.SetViscosity(1.);
-            simdata.SetNthreads(4);
+            simdata.SetNthreads(0);
             Test2->SetSimulationData(simdata);
             Test2->Run();
             
@@ -123,12 +123,12 @@ int main(int argc, char *argv[])
         
     } else if (HybridBrinkmanDomain){
         
-        int pOrder = 2;
+        int pOrder = 1;
         
         HDivPiola = 1;
         for (int it=0; it<=0; it++) {
             //h_level = pow(2., 2+it);
-            h_level = 1;
+            h_level = 2;
             
             TPZVec<int> n_s(3,0.);
             n_s[0]=h_level ,n_s[1]=h_level;
@@ -138,8 +138,8 @@ int main(int argc, char *argv[])
             REAL visc = 1.0; //->Darcy
             
             HybridBrinkmanTest  * Test2 = new HybridBrinkmanTest();
-            Test2->Set3Dmesh();
-            Test2->SetElType(ETetraedro);
+            //Test2->Set3Dmesh();
+            //Test2->SetElType(ETetraedro);
             //Test2->SetHdivPlus();
 
             TPZTransform<STATE> Transf(3,3), InvTransf(3,3);
@@ -153,6 +153,7 @@ int main(int argc, char *argv[])
             rot_z = rot_z*Pi/180.;
             
             //Test2->SetRotation3DMatrix(rot_x,rot_y,rot_z);
+            Test2->SetAllRefine();
             Test2->Run(SpaceHDiv, pOrder, n_s, h_s,visc);
             
         }

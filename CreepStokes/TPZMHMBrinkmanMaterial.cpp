@@ -31,15 +31,15 @@ void TPZMHMBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<T
     
     //2 = 1 Vel space + 1 Press space for datavecleft
     int nrefleft =  datavecleft.size();
-    if (nrefleft != 6 ) {
-        std::cout << " Erro. The size of the datavec is different from 2 \n";
+    if (nrefleft != 4 ) {
+    //    std::cout << " Erro. The size of the datavec is different from 2 \n";
     //    DebugStop();
     }
     
     //2 = 1 Vel space + 1 Press space for datavecright
     int nrefright =  datavecright.size();
-    if (nrefright != 6 ) {
-        std::cout << " Erro. The size of the datavec is different from 2 \n";
+    if (nrefright != 4 ) {
+   //     std::cout << " Erro. The size of the datavec is different from 2 \n";
    //     DebugStop();
     }
     

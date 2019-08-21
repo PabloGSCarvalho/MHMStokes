@@ -133,8 +133,8 @@ void HybridBrinkmanTest::Run(int Space, int pOrder, TPZVec<int> &n_s, TPZVec<REA
     }
     
 #ifdef PZDEBUG
-    std::ofstream fileg("MalhaGeo.txt"); //Impressão da malha geométrica (formato txt)
-    std::ofstream filegvtk("MalhaGeo.vtk"); //Impressão da malha geométrica (formato vtk)
+    std::ofstream fileg("MalhaGeoB.txt"); //Impressão da malha geométrica (formato txt)
+    std::ofstream filegvtk("MalhaGeoB.vtk"); //Impressão da malha geométrica (formato vtk)
     gmesh->Print(fileg);
     TPZVTKGeoMesh::PrintGMeshVTK(gmesh, filegvtk,true);
 #endif
@@ -160,6 +160,7 @@ void HybridBrinkmanTest::Run(int Space, int pOrder, TPZVec<int> &n_s, TPZVec<REA
     
     ChangeExternalOrderConnects(cmesh_v,n_mais);
     // ChangeExternalOrderConnects(cmesh_p,n_mais);
+    
   
     f_mesh_vector[0]=cmesh_v;
     f_mesh_vector[1]=cmesh_p;
@@ -221,7 +222,7 @@ void HybridBrinkmanTest::Run(int Space, int pOrder, TPZVec<int> &n_s, TPZVec<REA
     //Resolvendo o Sistema:
     int numthreads = 4;
     
-    bool optimizeBandwidth = true; //Impede a renumeração das equacoes do problema (para obter o mesmo resultado do Oden)
+    bool optimizeBandwidth = false; //Impede a renumeração das equacoes do problema (para obter o mesmo resultado do Oden)
     TPZAnalysis an(cmesh_m, optimizeBandwidth); //Cria objeto de análise que gerenciará a analise do problema
     
     TPZSymetricSpStructMatrix struct_mat(cmesh_m);
@@ -257,7 +258,7 @@ void HybridBrinkmanTest::Run(int Space, int pOrder, TPZVec<int> &n_s, TPZVec<REA
 //
 //    }
     std::cout << "Solving Matrix " << std::endl;
-    an.Solve();
+    //an.Solve();
     
 //        {
 //            int eqGm= cmesh_gM->Solution().Rows();
@@ -301,6 +302,27 @@ void HybridBrinkmanTest::Run(int Space, int pOrder, TPZVec<int> &n_s, TPZVec<REA
         an.Solution().Print("Alpha = ",fileAlpha,EMathematicaInput);
     }
 #endif
+    
+    
+    // Shape functions plot :
+    
+    if(1){
+        int64_t target_index = 1;
+        
+        TPZVec<int64_t> equ_indexes(8);
+        for (int i=8; i<16; i++) {
+            equ_indexes[i-8] = i;
+        }
+        std::string name_phi = "Stokes_shape.vtk";
+        TPZVec<std::string> var_name(2);
+        var_name[0]="V";
+        var_name[1]="P";
+        
+        //TPZBuildMultiphysicsMesh::ShowShape(f_mesh_vector,cmesh_m, an, name_phi, equ_indexes);
+        an.ShowShape(name_phi, equ_indexes, 1, var_name);
+    }
+    
+    
     
     //Calculo do erro
     std::cout << "Comuting Error " << std::endl;
@@ -1897,24 +1919,24 @@ TPZMultiphysicsCompMesh *HybridBrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Spac
     val2(0,0) = 0.0; // vx -> 0
     val2(1,0) = 0.0; // vy -> 0
     
-    val2(1,0) = 1.0;
-    TPZBndCond * BC_bott = material->CreateBC(material, fmatBCbott, fneumann, val1, val2);
-    BC_bott->SetBCForcingFunction(0, solp);
+    val2(1,0) = 0.0;
+    TPZBndCond * BC_bott = material->CreateBC(material, fmatBCbott, fdirichlet, val1, val2);
+    //BC_bott->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(BC_bott);
     
-    val2(1,0) = 1.0; // vx -> 0
-    TPZBndCond * BC_top = material->CreateBC(material, fmatBCtop, fneumann, val1, val2);
-    BC_top->SetBCForcingFunction(0, solp);
+    val2(1,0) = 0.0; // vx -> 0
+    TPZBndCond * BC_top = material->CreateBC(material, fmatBCtop, fdirichlet, val1, val2);
+    //BC_top->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(BC_top);
     
     val2(0,0) = 0.0;
-    TPZBndCond * BC_left = material->CreateBC(material, fmatBCleft, fneumann, val1, val2);
-    BC_left->SetBCForcingFunction(0, solp);
+    TPZBndCond * BC_left = material->CreateBC(material, fmatBCleft, fdirichlet, val1, val2);
+    //BC_left->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(BC_left);
     
     val2(0,0) = 0.0;
-    TPZBndCond * BC_right = material->CreateBC(material, fmatBCright, fneumann, val1, val2);
-    BC_right->SetBCForcingFunction(0, solp);
+    TPZBndCond * BC_right = material->CreateBC(material, fmatBCright, fdirichlet, val1, val2);
+    //BC_right->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(BC_right);
 
     if (f_3Dmesh) {
@@ -1944,20 +1966,20 @@ TPZMultiphysicsCompMesh *HybridBrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Spac
     
     
     // 3.1 - Material para tração tangencial 1D nos contornos
-    TPZBndCond *matLambdaBC_bott = material->CreateBC(material, fmatLambdaBC_bott, fneumann, val1, val2);
-    matLambdaBC_bott->SetBCForcingFunction(0, solp);
+    TPZBndCond *matLambdaBC_bott = material->CreateBC(material, fmatLambdaBC_bott, fdirichlet, val1, val2);
+    //matLambdaBC_bott->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(matLambdaBC_bott);
     
-    TPZBndCond *matLambdaBC_top = material->CreateBC(material, fmatLambdaBC_top, fneumann, val1, val2);
-    matLambdaBC_top->SetBCForcingFunction(0, solp);
+    TPZBndCond *matLambdaBC_top = material->CreateBC(material, fmatLambdaBC_top, fdirichlet, val1, val2);
+    //matLambdaBC_top->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(matLambdaBC_top);
     
-    TPZBndCond *matLambdaBC_left = material->CreateBC(material, fmatLambdaBC_left, fneumann, val1, val2);
-    matLambdaBC_left->SetBCForcingFunction(0, solp);
+    TPZBndCond *matLambdaBC_left = material->CreateBC(material, fmatLambdaBC_left, fdirichlet, val1, val2);
+    //matLambdaBC_left->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(matLambdaBC_left);
     
-    TPZBndCond *matLambdaBC_right = material->CreateBC(material, fmatLambdaBC_right, fneumann, val1, val2);
-    matLambdaBC_right->SetBCForcingFunction(0, solp);
+    TPZBndCond *matLambdaBC_right = material->CreateBC(material, fmatLambdaBC_right, fdirichlet, val1, val2);
+    //matLambdaBC_right->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(matLambdaBC_right);
     
     if (f_3Dmesh) {
@@ -2106,6 +2128,7 @@ void HybridBrinkmanTest::GroupAndCondense(TPZMultiphysicsCompMesh *cmesh_m){
         TPZElementGroup *GroupEl = new TPZElementGroup(*cmesh_m,index);
         elgroups.Push(GroupEl);
         elgroups[count-1]->AddElement(cel);
+        
     }
     
 
@@ -2129,6 +2152,8 @@ void HybridBrinkmanTest::GroupAndCondense(TPZMultiphysicsCompMesh *cmesh_m){
                 }
             }
         }
+        
+        
         
         if (!cel) {
             continue;
@@ -2160,6 +2185,9 @@ void HybridBrinkmanTest::GroupAndCondense(TPZMultiphysicsCompMesh *cmesh_m){
             }
         }
     }
+    
+    
+    
     
     cmesh_m->ComputeNodElCon();
     // create condensed elements

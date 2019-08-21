@@ -174,23 +174,14 @@ public:
     TPZCompEl *CreateInterfaceEl(TPZGeoEl *gel,TPZCompMesh &mesh, int64_t &index);
     
     void InsertMaterialObjects(TPZMHMeshControl *control);
-    
-    TPZCompMesh *CMesh_v(TPZGeoMesh *gmesh, int pOrder);
-    TPZCompMesh *CMesh_p(TPZGeoMesh *gmesh, int pOrder);
-    
-    TPZCompMesh *CMesh_pM(TPZGeoMesh *gmesh, int pOrder);
-    TPZCompMesh *CMesh_gM(TPZGeoMesh *gmesh, int pOrder);
-
-    TPZCompMesh *CMesh_pM_0(TPZGeoMesh *gmesh, int pOrder);
-    TPZCompMesh *CMesh_gM_0(TPZGeoMesh *gmesh, int pOrder);
-    
+        
     
     //TPZCompMesh *CMesh_St(TPZGeoMesh *gmesh, int Space, int pOrder);
     TPZMultiphysicsCompMesh *CMesh_m(TPZGeoMesh *gmesh, int pOrder);
 
     void SetOriginalMesh(TPZGeoMesh *gmesh){
         f_mesh0 = gmesh;
-        ComputeSkelNeighbours();
+        ComputeSkelNeighbours(); //papapa ?????
     };
 
     void SetSimulationData(TPZSimulationData simdata){

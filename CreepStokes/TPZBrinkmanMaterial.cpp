@@ -113,6 +113,7 @@ int TPZBrinkmanMaterial::VariableIndex(const std::string &name) {
     if (!strcmp("P", name.c_str()))  return 0;
     if (!strcmp("Pressure", name.c_str()))  return 0;
     if (!strcmp("V", name.c_str()))  return 1;
+    if (!strcmp("State", name.c_str()))  return 0;
     if (!strcmp("f", name.c_str()))         return 2;
     if (!strcmp("V_exact", name.c_str()))   return 3;
     if (!strcmp("P_exact", name.c_str()))   return 4;

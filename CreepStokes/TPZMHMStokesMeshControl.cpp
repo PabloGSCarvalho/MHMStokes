@@ -119,6 +119,14 @@ void TPZMHMStokesMeshControl::BuildComputationalMesh(bool usersubstructure)
     }
 #endif
     
+#ifdef PZDEBUG
+    std::ofstream fileg1("MalhaGeo_test.txt"); //Impressão da malha geométrica (formato txt)
+    std::ofstream filegvtk1("MalhaGeo_test.vtk"); //Impressão da malha geométrica (formato vtk)
+    fGMesh->Print(fileg1);
+    TPZVTKGeoMesh::PrintGMeshVTK(fGMesh, filegvtk1,true);
+#endif
+    
+    
     InsertPeriferalPressureMaterialObjects();
     CreatePressureAndTractionMHMMesh();
     
@@ -154,6 +162,27 @@ void TPZMHMStokesMeshControl::BuildComputationalMesh(bool usersubstructure)
     //GroupAndCondense(fCMesh.operator->());
     //}
     fNumeq = fCMesh->NEquations();
+    
+   
+    
+#ifdef PZDEBUG
+    if(0){
+        int64_t nel = fCMesh->NElements();
+        for(int64_t el = 0; el<nel; el++)
+        {
+            TPZCompEl *cel = fCMesh->Element(el);
+            TPZSubCompMesh *sub = dynamic_cast<TPZSubCompMesh *>(cel);
+            if(sub)
+            {
+                std::stringstream sout;
+                sout << "submesh_" << el << ".vtk";
+                std::ofstream file(sout.str());
+                TPZVTKGeoMesh::PrintCMeshVTK(sub, file,true);
+            }
+        }
+        
+    }
+#endif
     
 }
 
@@ -220,28 +249,68 @@ void TPZMHMStokesMeshControl::CreatePressureAndTractionMHMMesh(){
         cmeshTraction->ConnectVec()[ic].SetLagrangeMultiplier(1);
     }
     gmesh->ResetReference();
+    
+    
+    // associate the connects with the proper subdomain
     int64_t nel = cmeshTraction->NElements();
-//    for (int64_t el=0; el<nel; el++)
-//    {
-//        TPZCompEl *cel = cmeshTraction->Element(el);
-//#ifdef PZDEBUG
-//        if (! cel) {
-//            DebugStop();
-//        }
-//#endif
-//        TPZGeoEl *gel = cel->Reference();
-//        if(fMaterialIds.find (gel->MaterialId()) == fMaterialIds.end())
-//        {
-//            continue;
-//        }
-//#ifdef PZDEBUG
-//        if (fGeoToMHMDomain[gel->Index()] == -1) {
-//            DebugStop();
-//        }
-//#endif
-//
-//        SetSubdomain(cel, fGeoToMHMDomain[gel->Index()]);
-//    }
+    
+    for (int64_t el=0; el<nel; el++)
+    {
+        TPZCompEl *cel = cmeshTraction->Element(el);
+#ifdef PZDEBUG
+        if (! cel) {
+            DebugStop();
+        }
+#endif
+        TPZGeoEl *gel = cel->Reference();
+        
+        int dim = gmesh->Dimension();
+        
+        if (gel->Dimension()==dim) {
+            continue;
+        }
+        int gelindex = gel->Index();
+        
+        int nsides = gel->NSides();
+
+        TPZGeoElSide gelside(gel,nsides-1);
+        TPZGeoElSide neighbour = gel->Neighbour(nsides-1);
+        
+        int notintern = 0;
+        
+        while(neighbour != gelside)
+        {
+            if (neighbour.Element()->MaterialId()==fInternalWrapMatId||neighbour.Element()->MaterialId()==fBoundaryWrapMatId) {
+                notintern = 1;
+                break;
+            }
+            neighbour = neighbour.Neighbour();
+        }
+        
+        if (notintern==1) {
+            
+            neighbour = gel->Neighbour(nsides-1);
+            
+            while(neighbour != gelside)
+            {
+                if (neighbour.Element()->Dimension() == dim) {
+                    break;
+                }
+                neighbour = neighbour.Neighbour();
+            }
+            
+            int domain = fGeoToMHMDomain[neighbour.Element()->Index()];
+#ifdef PZDEBUG
+            if (domain == -1) {
+                DebugStop();
+            }
+#endif
+            
+            SetSubdomain(cel, domain);
+        }
+
+
+    }
 
 }
 
@@ -258,10 +327,8 @@ void TPZMHMStokesMeshControl::InsertInternalSkeleton(){
         }
         int nsides = gel->NSides();
         TPZGeoElSide gelside(gel,nsides-1);
-        if (gel->MaterialId()==fInternalWrapMatId) {
-            TPZGeoElBC(gelside, fTractionMatId);
-        }
-        if (gel->MaterialId()==fSkeletonMatId) {
+        
+        if (gel->MaterialId()==fSkeletonMatId||gel->MaterialId()==fInternalWrapMatId) {
             TPZGeoElBC(gelside, fTractionMatId);
         }
         
@@ -276,6 +343,10 @@ void TPZMHMStokesMeshControl::InsertBCSkeleton(){
         TPZGeoEl *gel = fGMesh->Element(el);
         int nsides = gel->NSides();
         TPZGeoElSide gelside(gel,nsides-1);
+        
+        if(gel->HasSubElement()){
+            continue;
+        }
         
         for(auto it = fMaterialBCIds.begin(); it != fMaterialBCIds.end(); it++)
         {
@@ -745,7 +816,7 @@ void TPZMHMStokesMeshControl::CreateMultiPhysicsMHMMesh()
     MixedFluxPressureCmesh->SetAllCreateFunctionsMultiphysicElem();
     
     BuildMultiPhysicsMesh();
-    TPZManVector<TPZCompMesh * ,3> meshvector;
+    TPZManVector<TPZCompMesh * ,6> meshvector;
     
     if(0)
     {
@@ -766,14 +837,8 @@ void TPZMHMStokesMeshControl::CreateMultiPhysicsMHMMesh()
     TPZBuildMultiphysicsMesh::AddConnects(meshvector, MixedFluxPressureCmesh);
     TPZBuildMultiphysicsMesh::TransferFromMeshes(meshvector, MixedFluxPressureCmesh);
     
-    if(1)
-    {
-        std::ofstream file("multiphysics.vtk");
-        TPZVTKGeoMesh::PrintCMeshVTK(MixedFluxPressureCmesh, file,true);
-        std::ofstream out("multiphysics_before_condense.txt");
-        MixedFluxPressureCmesh->Print(out);
-    }
-
+    MixedFluxPressureCmesh->LoadReferences();
+    
     std::pair<int,int> skelmatid(fSkeletonMatId,fSecondSkeletonMatId);
     //CreateMultiPhysicsInterfaceElements(fGMesh->Dimension()-1);
     //CreateMultiPhysicsInterfaceElements(fGMesh->Dimension()-2);
@@ -781,9 +846,27 @@ void TPZMHMStokesMeshControl::CreateMultiPhysicsMHMMesh()
     CreateMultiPhysicsInterfaceElements();
     CreateMultiPhysicsBCInterfaceElements();
 
-    MixedFluxPressureCmesh->CleanUpUnconnectedNodes();
+//    std::map<int64_t,int64_t> submeshindices;
+//    TPZCompMeshTools::PutinSubmeshes(mixed_cmesh, ElementGroups, submeshindices, KeepOneLagrangian);
+
+    if(1)
+    {
+        std::ofstream file("multiphysics.vtk");
+        TPZVTKGeoMesh::PrintCMeshVTK(MixedFluxPressureCmesh, file,true);
+        std::ofstream out("multiphysics_before_condense.txt");
+        MixedFluxPressureCmesh->Print(out);
+    }
     
-    GroupAndCondense(MixedFluxPressureCmesh);
+
+    BuildSubMeshes();
+    MixedFluxPressureCmesh->CleanUpUnconnectedNodes();
+    MixedFluxPressureCmesh->ExpandSolution();
+    
+    
+
+
+    
+    //GroupAndCondense(MixedFluxPressureCmesh);
 
 #ifdef PZDEBUG
     if(1)
@@ -796,6 +879,72 @@ void TPZMHMStokesMeshControl::CreateMultiPhysicsMHMMesh()
     return;
     
 }
+
+void TPZMHMStokesMeshControl::BuildSubMeshes(){
+    
+    bool KeepOneLagrangian = true;
+    if (fHybridize) {
+        KeepOneLagrangian = false;
+    }
+    typedef std::set<int64_t> TCompIndexes;
+    std::map<int64_t, TCompIndexes> ElementGroups;
+    TPZGeoMesh *gmesh = fCMesh->Reference();
+    gmesh->ResetReference();
+    int dim = gmesh->Dimension();
+    fCMesh->LoadReferences();
+    int64_t nel = fCMesh->NElements();
+    for (int64_t el=0; el<nel; el++) {
+        TPZCompEl *cel = fCMesh->Element(el);
+        
+        TPZBndCond *elBC = dynamic_cast<TPZBndCond *>(cel->Material());
+        if (elBC) {
+            continue;
+            if (cel->Reference()->HasSubElement()) {
+                continue;
+            }else
+            if (cel->Reference()->MaterialId()==fSkeletonMatId) {
+                continue;
+            }
+            
+        }
+        
+        int64_t domain = WhichSubdomain(cel);
+        if (domain == -1) {
+            continue;
+        }
+        ElementGroups[domain].insert(el);
+    }
+    
+    
+#ifdef PZDEBUG
+    std::map<int64_t,TCompIndexes>::iterator it;
+    for (it=ElementGroups.begin(); it != ElementGroups.end(); it++) {
+        std::cout << "Group " << it->first << " with size " << it->second.size() << std::endl;
+        std::cout << " elements ";
+        std::set<int64_t>::iterator its;
+        for (its = it->second.begin(); its != it->second.end(); its++) {
+            std::cout << *its << " ";
+        }
+        std::cout << std::endl;
+    }
+#endif
+
+    std::map<int64_t,int64_t> submeshindices;
+    TPZCompMeshTools::PutinSubmeshes(fCMesh.operator->(), ElementGroups, submeshindices, KeepOneLagrangian);
+    std::cout << "After putting in substructures\n";
+    fMHMtoSubCMesh = submeshindices;
+    fCMesh->ComputeNodElCon();
+    fCMesh->CleanUpUnconnectedNodes();
+
+    GroupandCondenseSubMeshes();
+//    GroupandCondenseElements();
+
+    std::cout << "Finished substructuring\n";
+    
+    
+}
+
+
 
 void TPZMHMStokesMeshControl::CreateMultiPhysicsInterfaceElements(){
     
@@ -1006,6 +1155,56 @@ void TPZMHMStokesMeshControl::CreateMultiPhysicsBCInterfaceElements(){
     
 }
 
+void TPZMHMStokesMeshControl::GroupandCondenseSubMeshes()
+{
+    for (std::map<int64_t,int64_t>::iterator it=fMHMtoSubCMesh.begin(); it != fMHMtoSubCMesh.end(); it++) {
+        TPZCompEl *cel = fCMesh->Element(it->second);
+        TPZSubCompMesh *subcmesh = dynamic_cast<TPZSubCompMesh *>(cel);
+        if (!subcmesh) {
+            DebugStop();
+        }
+
+        GroupAndCondense(subcmesh);
+        
+        if(fMHMtoSubCMesh.size()<5)
+        {
+            std::ofstream filesub("submesh.vtk");
+            TPZVTKGeoMesh::PrintCMeshVTK(subcmesh, filesub,true);
+            std::ofstream out("submesh.txt");
+            subcmesh->Print(out);
+        }
+//        TPZCompMeshTools::GroupElements(subcmesh);
+//        subcmesh->ComputeNodElCon();
+//
+//#ifdef LOG4CXX2
+//        if(logger->isDebugEnabled())
+//        {
+//            std::stringstream sout;
+//            subcmesh->Print(sout);
+//            LOGPZ_DEBUG(logger, sout.str())
+//        }
+//#endif
+//        // TODO: increment nelconnected of exterior connects
+//        bool keeplagrange = true;
+//        TPZCompMeshTools::CreatedCondensedElements(subcmesh, keeplagrange);
+//        subcmesh->CleanUpUnconnectedNodes();
+        int numthreads = 0;
+        int preconditioned = 0;
+#ifdef LOG4CXX2
+        if(logger->isDebugEnabled())
+        {
+            std::stringstream sout;
+            subcmesh->Print(sout);
+            LOGPZ_DEBUG(logger, sout.str())
+        }
+#endif
+        TPZAutoPointer<TPZGuiInterface> guiInterface;
+        subcmesh->SetAnalysisSkyline(numthreads, preconditioned, guiInterface);
+    }
+    
+}
+
+
 void TPZMHMStokesMeshControl::GroupAndCondense(TPZCompMesh *cmesh_m){
     
     //Criando agrupamento de elementos
@@ -1024,6 +1223,7 @@ void TPZMHMStokesMeshControl::GroupAndCondense(TPZCompMesh *cmesh_m){
         if (cel->Dimension()!=dim) {
             continue;
         }
+        
         //GroupIndex[el] = cel->Index();
         count++;
         GroupIndex.resize(count);
@@ -1066,7 +1266,7 @@ void TPZMHMStokesMeshControl::GroupAndCondense(TPZCompMesh *cmesh_m){
             if (!elBC) {
                 continue;
             }
-            
+
             TPZStack<TPZCompElSide> celstack;
             TPZGeoElSide gelside(gel, gel->NSides() - 1);
             
@@ -1095,10 +1295,10 @@ void TPZMHMStokesMeshControl::GroupAndCondense(TPZCompMesh *cmesh_m){
         TPZElementGroup *elgr = elgroups[ienv];
 
         int nc = elgroups[ienv]->GetElGroup()[0]->NConnects();
-        elgroups[ienv]->GetElGroup()[0]->Connect(nc-1).IncrementElConnected();
+//        elgroups[ienv]->GetElGroup()[0]->Connect(nc-1).IncrementElConnected();
         if (fsetCoarseAverageMultipliers) {
-                elgroups[ienv]->GetElGroup()[0]->Connect(nc-2).IncrementElConnected();
-                elgroups[ienv]->GetElGroup()[0]->Connect(nc-3).IncrementElConnected();
+//                elgroups[ienv]->GetElGroup()[0]->Connect(nc-2).IncrementElConnected();
+                elgroups[ienv]->GetElGroup()[0]->Connect(nc-3).IncrementElConnected(); //pressão média
         }
         new TPZCondensedCompEl(elgr);
     }

@@ -50,7 +50,7 @@ protected:
     int m_n_threads;
 
     /** Viscosity coeficient */
-    REAL m_visco;
+    REAL m_visco;    
     
 public:
     

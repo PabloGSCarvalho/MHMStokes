@@ -133,8 +133,12 @@ protected:
     /// Create the multiphysics BC interface elements between elements of BC traction material id
     void CreateMultiPhysicsBCInterfaceElements();
 
+    void GroupandCondenseSubMeshes();
+    
     void GroupAndCondense(TPZCompMesh *cmesh_m);
 
+    void BuildSubMeshes();
+    
     
 public:
     
