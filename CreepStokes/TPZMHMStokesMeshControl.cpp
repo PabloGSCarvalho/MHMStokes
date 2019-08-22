@@ -275,7 +275,7 @@ void TPZMHMStokesMeshControl::CreatePressureAndTractionMHMMesh(){
         
         while(neighbour != gelside)
         {
-        if(neighbour.Element()->MaterialId()==fInternalWrapMatId||neighbour.Element()->MaterialId()==fBoundaryWrapMatId) {
+            if(neighbour.Element()->MaterialId()==fInternalWrapMatId) {
                 notintern = 1;
                 break;
             }
@@ -302,6 +302,8 @@ void TPZMHMStokesMeshControl::CreatePressureAndTractionMHMMesh(){
 #endif
             
             SetSubdomain(cel, domain);
+        }else{
+            SetSubdomain(cel, -1);
         }
 
 
@@ -853,6 +855,7 @@ void TPZMHMStokesMeshControl::CreateMultiPhysicsMHMMesh()
     
 
     BuildSubMeshes();
+//    GroupAndCondense(MixedFluxPressureCmesh);
     MixedFluxPressureCmesh->CleanUpUnconnectedNodes();
     MixedFluxPressureCmesh->ExpandSolution();
     
@@ -916,6 +919,7 @@ void TPZMHMStokesMeshControl::BuildSubMeshes(){
 //        if (notintern == 1) {
 //        //    continue;
 //        }
+
         
         int64_t domain = WhichSubdomain(cel);
         if (domain == -1) {
