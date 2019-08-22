@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
             simdata.SetSkeletonOrder(1);
             simdata.SetCoarseDivisions(n_s);
             simdata.SetDomainSize(h_s);
-            simdata.SetNInterRefs(1);
+            simdata.SetNInterRefs(3);
             simdata.SetViscosity(1.);
             simdata.SetNthreads(0);
             Test2->SetSimulationData(simdata);

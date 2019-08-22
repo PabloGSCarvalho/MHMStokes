@@ -219,12 +219,7 @@ void TPZMHMStokesMeshControl::CreatePressureAndTractionMHMMesh(){
     
     cmeshTraction->AutoBuild(matids);
     fPressureFineMesh->ExpandSolution();
-    
-//    if(0)
-//    {
-        std::ofstream out("PressureAndTractionFineMesh.txt");
-        fPressureFineMesh->Print(out);
-//    }
+
     
 
 #ifdef PZDEBUG
@@ -280,7 +275,7 @@ void TPZMHMStokesMeshControl::CreatePressureAndTractionMHMMesh(){
         
         while(neighbour != gelside)
         {
-            if (neighbour.Element()->MaterialId()==fInternalWrapMatId||neighbour.Element()->MaterialId()==fBoundaryWrapMatId) {
+        if(neighbour.Element()->MaterialId()==fInternalWrapMatId||neighbour.Element()->MaterialId()==fBoundaryWrapMatId) {
                 notintern = 1;
                 break;
             }
@@ -312,6 +307,9 @@ void TPZMHMStokesMeshControl::CreatePressureAndTractionMHMMesh(){
 
     }
 
+    std::ofstream out("PressureAndTractionFineMesh.txt");
+    fPressureFineMesh->Print(out);
+    
 }
 
 void TPZMHMStokesMeshControl::InsertInternalSkeleton(){
@@ -448,13 +446,7 @@ void TPZMHMStokesMeshControl::CreateAveragePressMHMMesh(){
     }
     cmeshAverPressute->AutoBuild(matids);
     fAveragePressMesh->ExpandSolution();
-    
-    if(1)
-    {
-        std::ofstream out("AveragePressureMesh.txt");
-        fAveragePressMesh->Print(out);
-    }
-    
+
     
     int64_t nel = fAveragePressMesh->NElements();
     for(int64_t i=0; i<nel; i++){
@@ -497,8 +489,12 @@ void TPZMHMStokesMeshControl::CreateAveragePressMHMMesh(){
         SetSubdomain(cel, fGeoToMHMDomain[gel->Index()]);
     }
     
+    if(1)
+    {
+        std::ofstream out("AveragePressureMesh.txt");
+        fAveragePressMesh->Print(out);
+    }
     
-    return;
     
 }
 
@@ -637,12 +633,6 @@ void TPZMHMStokesMeshControl::CreateDistributedFluxMHMMesh(){
     cmeshDistributedFlux->AutoBuild(matids);
     fDistrFluxMesh->ExpandSolution();
     
-    if(1)
-    {
-        std::ofstream out("DistributedFluxMesh.txt");
-        fDistrFluxMesh->Print(out);
-    }
-    
     
     int64_t nel = fDistrFluxMesh->NElements();
     for(int64_t i=0; i<nel; i++){
@@ -686,7 +676,11 @@ void TPZMHMStokesMeshControl::CreateDistributedFluxMHMMesh(){
     }
     
     
-    return;
+    if(1)
+    {
+        std::ofstream out("DistributedFluxMesh.txt");
+        fDistrFluxMesh->Print(out);
+    }
     
 }
 
@@ -895,18 +889,33 @@ void TPZMHMStokesMeshControl::BuildSubMeshes(){
     int64_t nel = fCMesh->NElements();
     for (int64_t el=0; el<nel; el++) {
         TPZCompEl *cel = fCMesh->Element(el);
-        
+        if (cel->Reference()->HasSubElement()) {
+            continue;
+        }
         TPZBndCond *elBC = dynamic_cast<TPZBndCond *>(cel->Material());
         if (elBC) {
             continue;
-            if (cel->Reference()->HasSubElement()) {
-                continue;
-            }else
-            if (cel->Reference()->MaterialId()==fSkeletonMatId) {
-                continue;
-            }
-            
         }
+        
+        TPZGeoEl *gel = cel->Reference();
+        int nsides=cel->Reference()->NSides();
+        TPZGeoElSide gelside(gel,nsides-1);
+        TPZGeoElSide neighbour = gel->Neighbour(nsides-1);
+        
+        int notintern = 0;
+        
+//        while(neighbour != gelside)
+//        {
+//            if(neighbour.Element()->MaterialId()!=fInternalWrapMatId) {
+//                notintern = 1;
+//                break;
+//            }
+//            neighbour = neighbour.Neighbour();
+//        }
+//        
+//        if (notintern == 1) {
+//        //    continue;
+//        }
         
         int64_t domain = WhichSubdomain(cel);
         if (domain == -1) {

@@ -179,9 +179,9 @@ void MHMStokesTest::Run()
     StokesControl->DivideSkeletonElements(0); //Insere material id do skeleton wrap
 
     
-    if (fsimData.GetNInterRefs()>0) {
+    //if (fsimData.GetNInterRefs()>0) {
         StokesControl->SetCoarseAverageMultipliers(true);
-    }
+    //}
 
 
     //Malha computacional
@@ -278,7 +278,7 @@ void MHMStokesTest::SolveProblem(TPZAutoPointer<TPZCompMesh> cmesh, TPZVec<TPZAu
     }
 #endif
     std::cout << "Solving\n";
-    an.Solve();
+   // an.Solve();
     std::cout << "Finished\n";
     an.LoadSolution(); // compute internal dofs
     
@@ -332,12 +332,13 @@ void MHMStokesTest::SolveProblem(TPZAutoPointer<TPZCompMesh> cmesh, TPZVec<TPZAu
     an.PostProcess(resolution,cmesh->Dimension());
     
     // Shape functions plot :
-    if(0){
+    if(1){
         
-        TPZVec<int64_t> equ_indexes(8);
-        for (int i=8; i<16; i++) {
-            equ_indexes[i-8] = i;
-        }
+        TPZVec<int64_t> equ_indexes(1);
+        equ_indexes[0] = 38;
+//        for (int i=37; i<38; i++) {
+//            equ_indexes[i-37] = i;
+//        }
         std::string name_phi = "MHMStokes_shape.vtk";
         TPZVec<std::string> var_name(2);
         var_name[0]="V";
@@ -1511,16 +1512,16 @@ void MHMStokesTest::F_source(const TPZVec<REAL> &x, TPZVec<STATE> &f, TPZFMatrix
     // Stokes : : Artigo Botti, Di Pietro, Droniou
     
     
-    f_s[0] = -3.*sin(x1)*sin(x2);
-    f_s[1] = -1.*cos(x1)*cos(x2);
-
-    f_T.Apply(f_s, f_rot);
-    f_s = f_rot;
-
-
-    f[0] = f_s[0]; // x direction
-    f[1] = f_s[1]; // y direction
-    f[2] = f_s[2];
+//    f_s[0] = -3.*sin(x1)*sin(x2);
+//    f_s[1] = -1.*cos(x1)*cos(x2);
+//
+//    f_T.Apply(f_s, f_rot);
+//    f_s = f_rot;
+//
+//
+//    f[0] = f_s[0]; // x direction
+//    f[1] = f_s[1]; // y direction
+//    f[2] = f_s[2];
     
     
     // Darcy : : Artigo Botti, Di Pietro, Droniou
@@ -1625,25 +1626,25 @@ void MHMStokesTest::InsertMaterialObjects(TPZMHMeshControl *control)
     TPZFMatrix<STATE> val1(3,3,0.), val2(3,1,0.);
 
     TPZBndCond * BCondD1 = material->CreateBC(mat1, fmatBCbott, fneumann, val1, val2);
-    BCondD1->SetBCForcingFunction(0, solp);
+    //BCondD1->SetBCForcingFunction(0, solp);
     cmesh.InsertMaterialObject(BCondD1);
     //control->fMaterialBCIds.insert(fmatBCbott);
     
     val1.Zero();
     TPZBndCond * BCondD2 = material->CreateBC(mat1, fmatBCtop, fneumann, val1, val2);
-    BCondD2->SetBCForcingFunction(0, solp);
+    //BCondD2->SetBCForcingFunction(0, solp);
     cmesh.InsertMaterialObject(BCondD2);
     //control->fMaterialBCIds.insert(fmatBCtop);
     
     val1.Zero();
     val2.Zero();
     TPZBndCond * BCondD3 = material->CreateBC(mat1, fmatBCleft, fneumann, val1, val2);
-    BCondD3->SetBCForcingFunction(0, solp);
+    //BCondD3->SetBCForcingFunction(0, solp);
     cmesh.InsertMaterialObject(BCondD3);
     //control->fMaterialBCIds.insert(fmatBCleft);
     
     TPZBndCond * BCondD4 = material->CreateBC(mat1, fmatBCright, fneumann, val1, val2);
-    BCondD4->SetBCForcingFunction(0, solp);
+    //BCondD4->SetBCForcingFunction(0, solp);
     cmesh.InsertMaterialObject(BCondD4);
     //control->fMaterialBCIds.insert(fmatBCright);
 
@@ -1688,22 +1689,22 @@ void MHMStokesTest::InsertMaterialObjects(TPZMHMeshControl *control)
     
     // 3.1 - Material para tração tangencial 1D nos contornos
     TPZBndCond *matLambdaBC_bott = material->CreateBC(material, fmatLambdaBC_bott, fneumann, val1, val2);
-    matLambdaBC_bott->SetBCForcingFunction(0, solp);
+    //matLambdaBC_bott->SetBCForcingFunction(0, solp);
     cmesh.InsertMaterialObject(matLambdaBC_bott);
  //   control->fMaterialBCIds.insert(fmatLambdaBC_bott);
     
     TPZBndCond *matLambdaBC_top = material->CreateBC(material, fmatLambdaBC_top, fneumann, val1, val2);
-    matLambdaBC_top->SetBCForcingFunction(0, solp);
+    //matLambdaBC_top->SetBCForcingFunction(0, solp);
     cmesh.InsertMaterialObject(matLambdaBC_top);
  //   control->fMaterialBCIds.insert(fmatLambdaBC_top);
     
     TPZBndCond *matLambdaBC_left = material->CreateBC(material, fmatLambdaBC_left, fneumann, val1, val2);
-    matLambdaBC_left->SetBCForcingFunction(0, solp);
+    //matLambdaBC_left->SetBCForcingFunction(0, solp);
     cmesh.InsertMaterialObject(matLambdaBC_left);
  //   control->fMaterialBCIds.insert(fmatLambdaBC_left);
     
     TPZBndCond *matLambdaBC_right = material->CreateBC(material, fmatLambdaBC_right, fneumann, val1, val2);
-    matLambdaBC_right->SetBCForcingFunction(0, solp);
+    //matLambdaBC_right->SetBCForcingFunction(0, solp);
     cmesh.InsertMaterialObject(matLambdaBC_right);
  //   control->fMaterialBCIds.insert(fmatLambdaBC_right);
     
