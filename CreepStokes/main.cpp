@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
         HDivPiola = 1;
         for (int it=0; it<=0; it++) {
             //h_level = pow(2., 1+it);
-            h_level = 2;
+            h_level = 4;
             
             TPZVec<int> n_s(3,0.);
             n_s[0]=h_level,n_s[1]=h_level;
@@ -113,9 +113,11 @@ int main(int argc, char *argv[])
             simdata.SetSkeletonOrder(1);
             simdata.SetCoarseDivisions(n_s);
             simdata.SetDomainSize(h_s);
-            simdata.SetNInterRefs(3);
+            simdata.SetNInterRefs(0);
             simdata.SetViscosity(1.);
             simdata.SetNthreads(0);
+            //simdata.SetShapeTest(); // Test for shape functions
+            
             Test2->SetSimulationData(simdata);
             Test2->Run();
             

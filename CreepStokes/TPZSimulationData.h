@@ -50,7 +50,10 @@ protected:
     int m_n_threads;
 
     /** Viscosity coeficient */
-    REAL m_visco;    
+    REAL m_visco;
+    
+    /** Testing shape function */
+    bool m_testshape;
     
 public:
     
@@ -148,7 +151,16 @@ public:
     REAL GetViscosity(){
         return m_visco;
     }
+
+    /** Set shape test true */
+    void SetShapeTest(){
+        m_testshape = true;
+    }
     
+    /** Get shape test true */
+    bool GetShapeTest(){
+        return m_testshape;
+    }
 };
 
 #endif /* TPZSimulationData_h */
