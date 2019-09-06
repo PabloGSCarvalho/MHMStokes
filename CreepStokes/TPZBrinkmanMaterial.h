@@ -76,13 +76,13 @@ public:
      * only the necessary data.
      * @since April 10, 2007
      */
-    void FillDataRequirements(TPZVec<TPZMaterialData> &datavec);
+    void FillDataRequirements(TPZVec<TPZMaterialData> &datavec) override;
     
-    void FillBoundaryConditionDataRequirement(int type,TPZVec<TPZMaterialData> &datavec);
+    void FillBoundaryConditionDataRequirement(int type,TPZVec<TPZMaterialData> &datavec) override;
     
-    virtual void FillDataRequirementsInterface(TPZMaterialData &data);
+    virtual void FillDataRequirementsInterface(TPZMaterialData &data) override;
     
-    virtual void FillDataRequirementsInterface(TPZMaterialData &data, TPZVec<TPZMaterialData > &datavec_left, TPZVec<TPZMaterialData > &datavec_right);
+    virtual void FillDataRequirementsInterface(TPZMaterialData &data, TPZVec<TPZMaterialData > &datavec_left, TPZVec<TPZMaterialData > &datavec_right) override;
     
 //    void SetTranform(TPZTransform<STATE> Transf, TPZTransform<STATE> InvTransf)
 //    {

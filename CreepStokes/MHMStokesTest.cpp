@@ -362,7 +362,7 @@ void MHMStokesTest::SolveProblem(TPZAutoPointer<TPZCompMesh> cmesh, TPZVec<TPZAu
     TPZManVector<REAL,6> Errors;
     ofstream ErroOut("Error_Brinkman.txt", std::ofstream::app);
     an.SetExact(Sol_exact);
-    an.SetThreadsForError(4);
+    an.SetThreadsForError(3);
     an.PostProcessError(Errors,false);
     
     ConfigPrint(ErroOut);
@@ -527,7 +527,7 @@ TPZGeoMesh *MHMStokesTest::CreateGMesh(TPZVec<int> &n_div, TPZVec<REAL> &h_s)
     
     TPZGenGrid grid(n_div,x0,x1);
     
-    //grid.SetDistortion(0.2);
+    //grid.SetDistortion(0.5);
     grid.SetRefpatternElements(true);
     if (feltype==ETriangle) {
         grid.SetElementType(ETriangle);

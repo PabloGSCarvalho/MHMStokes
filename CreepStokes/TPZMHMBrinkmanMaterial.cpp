@@ -66,6 +66,21 @@ void TPZMHMBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<T
     nshapeP = datavecleft[pindex].phi.Rows();
     nshapeLambda = datavecright[pindex].phi.Rows();
     
+    
+    int normvecRows = datavecleft[vindex].fNormalVec.Rows();
+    int normvecCols = datavecleft[vindex].fNormalVec.Cols();
+    TPZFNMatrix<3,REAL> Normalvec(normvecRows,normvecCols,0.);
+    
+#ifdef _AUTODIFF
+    for (int e = 0; e < normvecRows; e++) {
+        for (int s = 0; s < normvecCols; s++) {
+            Normalvec(e,s)=datavecleft[vindex].fNormalVecFad(e,s).val();
+        }
+    }
+#else
+        Normalvec=datavecleft[vindex].fNormalVec;
+#endif
+    
     for(int i1 = 0; i1 < nshapeV; i1++)
     {
         int iphi1 = datavecleft[vindex].fVecShapeIndex[i1].second;
@@ -73,7 +88,7 @@ void TPZMHMBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<T
         
         TPZFNMatrix<9, STATE> phiVi(3,1);
         for (int e=0; e< 3 ; e++) {
-            phiVi(e,0)=datavecleft[vindex].fNormalVec(e,ivec1)*datavecleft[vindex].phi(iphi1,0);
+            phiVi(e,0)=Normalvec(e,ivec1)*datavecleft[vindex].phi(iphi1,0);
         }
         
         // K12 e K21 - (test V left) * (trial Lambda right)

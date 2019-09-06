@@ -782,154 +782,178 @@ TPZCompEl *BrinkmanTest::CreateInterfaceEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64
 
 void BrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFMatrix<STATE> &dsol){
 
-    dsol.Resize(3,2);
-    sol.Resize(3);
-    
-    REAL x1 = x[0];
-    REAL x2 = x[1];
-    
-    STATE v_1 = x2;
-    STATE v_2 = 0.;
-    STATE pressure= 1.;
-    
-    sol[0]=v_1;
-    sol[1]=v_2;
-    sol[2]=pressure;
-    
-    // vx direction
-    dsol(0,0)= 0.;
-    dsol(0,1)= 1.;
-    
-    // vy direction
-    dsol(1,0)= 0.;
-    dsol(1,1)= 0.;
-    
-    // Gradiente pressão
-    dsol(2,0)= 0.;
-    dsol(2,1)= 0.;
-    
+    //        dsol.Resize(3,3);
+    //        sol.Resize(4);
+    //
+    //        REAL x1 = x[0];
+    //        REAL x2 = x[1];
+    //
+    //        TPZVec<REAL> v_Dirichlet(3,0.);
+    //
+    ////        v_Dirichlet[0] = -0.1*x2*x2+0.2*x2;
+    //        v_Dirichlet[0] = -1.+x2;
+    ////        v_Dirichlet[0] = 1.;
+    //        v_Dirichlet[1] = 0.;
+    //        v_Dirichlet[2] = 0.;
+    //
+    ////        STATE pressure = 1.-0.2*x1;
+    //        STATE pressure = 0.;
+    //
+    //        sol[0]=v_Dirichlet[0];
+    //        sol[1]=v_Dirichlet[1];
+    //        sol[2]=v_Dirichlet[2];
+    //        sol[3]=pressure;
+    //
+    //        // vx direction
+    //        dsol(0,0)= 0.;
+    ////        dsol(0,1)= 0.2-0.2*x2;
+    //        dsol(0,1)= 1.;
+    //        //dsol(0,1)= 0.;
+    //        dsol(0,2)= 0.;
+    //
+    //        // vy direction
+    //        dsol(1,0)= 0.;
+    //        dsol(1,1)= 0.;
+    //        dsol(1,2)= 0.;
+    //
+    //        // vz direction
+    //        dsol(2,0)= 0.;
+    //        dsol(2,1)= 0.;
+    //        dsol(2,2)= 0.;
     
     // General form : : Artigo Botti, Di Pietro, Droniou
-
-//    dsol.Resize(3,2);
-//    sol.Resize(3);
-//
-//    REAL x1 = x[0];
-//    REAL x2 = x[1];
-//
-//    REAL m_v= 1., m_u= 1.0;
-//
-//    REAL Cf=m_v/m_u;
-//
-//    STATE v_1 = -exp(-Cf)*sin(x1)*sin(x2)+(1./m_v)*(1.-exp(-Cf))*sin(x1)*sin(x2);
-//    STATE v_2 = -exp(-Cf)*cos(x1)*cos(x2)-(1./m_v)*(1.-exp(-Cf))*cos(x1)*cos(x2);
-//    STATE pressure= cos(x1)*sin(x2);
-//
-//    sol[0]=v_1;
-//    sol[1]=v_2;
-//    sol[2]=pressure;
-//
-//    // vx direction
-//    dsol(0,0)= -exp(-Cf)*cos(x1)*sin(x2)+(1./m_v)*(1.-exp(-Cf))*cos(x1)*sin(x2);
-//    dsol(0,1)= exp(-Cf)*cos(x2)*sin(x1)+(1./m_v)*(1.-exp(-Cf))*cos(x2)*sin(x1);
-//
-//    // vy direction
-//    dsol(1,0)= -exp(-Cf)*cos(x2)*sin(x1)+(1./m_v)*(1.-exp(-Cf))*cos(x2)*sin(x1);
-//    dsol(1,1)= exp(-Cf)*cos(x1)*sin(x2)+(1./m_v)*(1.-exp(-Cf))*cos(x1)*sin(x2);
-//
-//    // Gradiente pressão
-//    dsol(2,0)= -sin(x1)*sin(x2);
-//    dsol(2,1)= cos(x1)*cos(x2);
+    
+    //    dsol.Resize(3,3);
+    //    sol.Resize(3);
+    //
+    //    REAL x1 = x[0];
+    //    REAL x2 = x[1];
+    //
+    //    REAL m_v= 1., m_u= 1.0;
+    //
+    //    REAL Cf=m_v/m_u;
+    //
+    //    STATE v_1 = -exp(-Cf)*sin(x1)*sin(x2)+(1./m_v)*(1.-exp(-Cf))*sin(x1)*sin(x2);
+    //    STATE v_2 = -exp(-Cf)*cos(x1)*cos(x2)-(1./m_v)*(1.-exp(-Cf))*cos(x1)*cos(x2);
+    //    STATE pressure= cos(x1)*sin(x2);
+    //
+    //    sol[0]=v_1;
+    //    sol[1]=v_2;
+    //    sol[2]=pressure;
+    //
+    //    // vx direction
+    //    dsol(0,0)= -exp(-Cf)*cos(x1)*sin(x2)+(1./m_v)*(1.-exp(-Cf))*cos(x1)*sin(x2);
+    //    dsol(0,1)= exp(-Cf)*cos(x2)*sin(x1)+(1./m_v)*(1.-exp(-Cf))*cos(x2)*sin(x1);
+    //
+    //    // vy direction
+    //    dsol(1,0)= -exp(-Cf)*cos(x2)*sin(x1)+(1./m_v)*(1.-exp(-Cf))*cos(x2)*sin(x1);
+    //    dsol(1,1)= exp(-Cf)*cos(x1)*sin(x2)+(1./m_v)*(1.-exp(-Cf))*cos(x1)*sin(x2);
+    //
+    
     
     
     // Brinkman : : Artigo Botti, Di Pietro, Droniou
     
-//    dsol.Resize(3,2);
-//    sol.Resize(3);
-//
-//    REAL x1 = x[0];
-//    REAL x2 = x[1];
-//
-//    REAL e = exp(1.);
-//
-//    STATE v_1 = (1.-2./e)*sin(x1)*sin(x2);
-//    STATE v_2 = -1.*cos(x1)*cos(x2);
-//    STATE pressure= cos(x1)*sin(x2);
-//
-//    sol[0]=v_1;
-//    sol[1]=v_2;
-//    sol[2]=pressure;
-//
-//    // vx direction
-//    dsol(0,0)= (1.-2./e)*cos(x1)*sin(x2);
-//    dsol(0,1)= cos(x2)*sin(x1);
-//
-//    // vy direction
-//    dsol(1,0)= (1.-2./e)*cos(x2)*sin(x1);
-//    dsol(1,1)= cos(x1)*sin(x2);
-//
-//    // Gradiente pressão
-//    dsol(2,0)= -sin(x1)*sin(x2);
-//    dsol(2,1)= cos(x1)*cos(x2);
-
+    //    dsol.Resize(3,3);
+    //    sol.Resize(3);
+    //
+    //    REAL x1 = x[0];
+    //    REAL x2 = x[1];
+    //
+    //    REAL e = exp(1.);
+    //
+    //    STATE v_1 = (1.-2./e)*sin(x1)*sin(x2);
+    //    STATE v_2 = -1.*cos(x1)*cos(x2);
+    //    STATE pressure= cos(x1)*sin(x2);
+    //
+    //    sol[0]=v_1;
+    //    sol[1]=v_2;
+    //    sol[2]=pressure;
+    //
+    //    // vx direction
+    //    dsol(0,0)= (1.-2./e)*cos(x1)*sin(x2);
+    //    dsol(0,1)= cos(x2)*sin(x1);
+    //
+    //    // vy direction
+    //    dsol(1,0)= (1.-2./e)*cos(x2)*sin(x1);
+    //    dsol(1,1)= cos(x1)*sin(x2);
+    //
+    
+    
     // Stokes : : Artigo Botti, Di Pietro, Droniou
     
-//    dsol.Resize(3,2);
-//    sol.Resize(3);
-//
-//    REAL x1 = x[0];
-//    REAL x2 = x[1];
-//
-//    REAL e = exp(1.);
-//
-//    STATE v_1 = -1.*sin(x1)*sin(x2);
-//    STATE v_2 = -1.*cos(x1)*cos(x2);
-//    STATE pressure= cos(x1)*sin(x2);
-//
-//    sol[0]=v_1;
-//    sol[1]=v_2;
-//    sol[2]=pressure;
-//
-//    // vx direction
-//    dsol(0,0)= -1.*cos(x1)*sin(x2);
-//    dsol(0,1)= cos(x2)*sin(x1);
-//
-//    // vy direction
-//    dsol(1,0)= -1.*cos(x2)*sin(x1);
-//    dsol(1,1)= cos(x1)*sin(x2);
-//
-//    // Gradiente pressão
-//    dsol(2,0)= -sin(x1)*sin(x2);
-//    dsol(2,1)= cos(x1)*cos(x2);
+    dsol.Resize(3,3);
+    sol.Resize(4);
     
-
+    REAL x1 = x[0];
+    REAL x2 = x[1];
+    
+    REAL e = exp(1.);
+    
+    TPZVec<REAL> v_Dirichlet(3,0.), vbc_rot(3,0.);
+    
+    v_Dirichlet[0] = -1.*sin(x1)*sin(x2);
+    v_Dirichlet[1] = -1.*cos(x1)*cos(x2);
+    STATE pressure= cos(x1)*sin(x2);
+    
+    sol[0]=v_Dirichlet[0];
+    sol[1]=v_Dirichlet[1];
+    sol[2]=v_Dirichlet[2];
+    sol[3]=pressure;
+    
+    
+    // GradU * Rt
+    TPZFMatrix<STATE> GradU(3,3,0.), GradURt(3,3,0.), RGradURt(3,3,0.);
+    
+    // vx direction
+    GradU(0,0)= -1.*cos(x1)*sin(x2);
+    GradU(0,1)= cos(x2)*sin(x1);
+    
+    // vy direction
+    GradU(1,0)= -1.*cos(x2)*sin(x1);
+    GradU(1,1)= cos(x1)*sin(x2);
+    
+    // vx direction
+    dsol(0,0)= GradU(0,0);
+    dsol(0,1)= GradU(0,1);
+    dsol(0,2)= GradU(0,2);
+    
+    // vy direction
+    dsol(1,0)= GradU(1,0);
+    dsol(1,1)= GradU(1,1);
+    dsol(1,2)= GradU(1,2);
+    
+    // vz direction
+    dsol(2,0)= GradU(2,0);
+    dsol(2,1)= GradU(2,1);
+    dsol(2,2)= GradU(2,2);
+    
     // Darcy : : Artigo Botti, Di Pietro, Droniou
     
-//        dsol.Resize(3,2);
-//        sol.Resize(3);
-//
-//        REAL x1 = x[0];
-//        REAL x2 = x[1];
-//
-//        STATE v_1 = sin(x1)*sin(x2);
-//        STATE v_2 = -1.*cos(x1)*cos(x2);
-//        STATE pressure= cos(x1)*sin(x2);
-//
-//        sol[0]=v_1;
-//        sol[1]=v_2;
-//        sol[2]=pressure;
-//
-//        // vx direction
-//        dsol(0,0)= cos(x1)*sin(x2);
-//        dsol(0,1)= cos(x2)*sin(x1);
-//
-//        // vy direction
-//        dsol(1,0)= cos(x2)*sin(x1);
-//        dsol(1,1)= cos(x1)*sin(x2);
-//
-//        // Gradiente pressão
-//        dsol(2,0)= -sin(x1)*sin(x2);
-//        dsol(2,1)= cos(x1)*cos(x2);
+    //        dsol.Resize(3,3);
+    //        sol.Resize(3);
+    //
+    //        REAL x1 = x[0];
+    //        REAL x2 = x[1];
+    //
+    //        STATE v_1 = sin(x1)*sin(x2);
+    //        STATE v_2 = -1.*cos(x1)*cos(x2);
+    //        STATE pressure= cos(x1)*sin(x2);
+    //
+    //        sol[0]=v_1;
+    //        sol[1]=v_2;
+    //        sol[2]=pressure;
+    //
+    //        // vx direction
+    //        dsol(0,0)= cos(x1)*sin(x2);
+    //        dsol(0,1)= cos(x2)*sin(x1);
+    //
+    //        // vy direction
+    //        dsol(1,0)= cos(x2)*sin(x1);
+    //        dsol(1,1)= cos(x1)*sin(x2);
+    
+    
+    
 
     
 }
@@ -939,63 +963,63 @@ void BrinkmanTest::F_source(const TPZVec<REAL> &x, TPZVec<STATE> &f, TPZFMatrix<
     f.resize(3);
     REAL x1 = x[0];
     REAL x2 = x[1];
-    STATE f_1 =0., f_2=0.;
-
-    f[0] = f_1; // x direction
-    f[1] = f_2; // y direction
-    f[2] = 0.;
+    REAL x3 = x[2];
+    
+    f[0] =0.;
+    f[1] =0.;
+    f[2] =0.;
+    
+    TPZVec<REAL> f_s(3,0), f_rot(3,0);
     
     // General form : : Artigo Botti, Di Pietro, Droniou
     
-//    REAL m_v= 1., m_u= 1.0;
-//
-//    REAL Cf=m_v/m_u;
-//
-//        f_1 = -sin(x1)*sin(x2)-exp(-Cf)*sin(x1)*sin(x2)+(1./m_v)*(1.-exp(-Cf))*sin(x1)*sin(x2)-m_u*(2.*exp(-Cf)*sin(x1)*sin(x2)-(1./m_v)*4.*(1-exp(-Cf))*sin(x1)*sin(x2));
-//
-//        f_2 = cos(x1)*cos(x2)-exp(-Cf)*cos(x1)*cos(x2)-(1./m_v)*(1.-exp(-Cf))*cos(x1)*cos(x2)-m_u*(2.*exp(-Cf)*cos(x1)*cos(x2)+(1./m_v)*4.*(1-exp(-Cf))*cos(x1)*cos(x2));
-//        STATE g_1 = (2./m_v)*(1.-exp(-Cf))*cos(x1)*sin(x2);
-//
-//        f[0] = f_1; // x direction
-//        f[1] = f_2; // y direction
-//
-//        f[2] = g_1; // g source
+    //    REAL m_v= 1., m_u= 1.0;
+    //
+    //    REAL Cf=m_v/m_u;
+    //
+    //        f_1 = -sin(x1)*sin(x2)-exp(-Cf)*sin(x1)*sin(x2)+(1./m_v)*(1.-exp(-Cf))*sin(x1)*sin(x2)-m_u*(2.*exp(-Cf)*sin(x1)*sin(x2)-(1./m_v)*4.*(1-exp(-Cf))*sin(x1)*sin(x2));
+    //
+    //        f_2 = cos(x1)*cos(x2)-exp(-Cf)*cos(x1)*cos(x2)-(1./m_v)*(1.-exp(-Cf))*cos(x1)*cos(x2)-m_u*(2.*exp(-Cf)*cos(x1)*cos(x2)+(1./m_v)*4.*(1-exp(-Cf))*cos(x1)*cos(x2));
+    //        STATE g_1 = (2./m_v)*(1.-exp(-Cf))*cos(x1)*sin(x2);
+    //
+    //        f[0] = f_1; // x direction
+    //        f[1] = f_2; // y direction
+    //
+    //        f[2] = g_1; // g source
     
     
     // Brinkman : : Artigo Botti, Di Pietro, Droniou
-
-//    REAL e = exp(1.);
-//
-//    f_1 = (-8./e+ 4.)*sin(x1)*sin(x2);
-//    f_2 = (2./e- 4.)*cos(x1)*cos(x2);
-//    STATE g_1 = 2.*(1.-1./e)*cos(x1)*sin(x2);
-//
-//    f[0] = f_1; // x direction
-//    f[1] = f_2; // y direction
-//
-//    f[2] = g_1; // g source
-
+    
+    //    REAL e = exp(1.);
+    //
+    //    f_1 = (-8./e+ 4.)*sin(x1)*sin(x2);
+    //    f_2 = (2./e- 4.)*cos(x1)*cos(x2);
+    //    STATE g_1 = 2.*(1.-1./e)*cos(x1)*sin(x2);
+    //
+    //    f[0] = f_1; // x direction
+    //    f[1] = f_2; // y direction
+    //
+    //    f[2] = g_1; // g source
+    
     // Stokes : : Artigo Botti, Di Pietro, Droniou
     
-
-//    f_1 = -3.*sin(x1)*sin(x2);
-//    f_2 = -1.*cos(x1)*cos(x2);
-//
-//    f[0] = f_1; // x direction
-//    f[1] = f_2; // y direction
-//    f[2] = 0.;
-
+    
+    f_s[0] = -3.*sin(x1)*sin(x2);
+    f_s[1] = -1.*cos(x1)*cos(x2);
+    
+    f[0] = f_s[0]; // x direction
+    f[1] = f_s[1]; // y direction
+    f[2] = f_s[2];
+    
     
     // Darcy : : Artigo Botti, Di Pietro, Droniou
     
-//        f_1 = 0.;
-//        f_2 = 0.;
-//
-//        f[0] = f_1; // x direction
-//        f[1] = f_2; // y direction
-//        f[2] = 2.*cos(x1)*sin(x2);
-
-
+    //        f_1 = 0.;
+    //        f_2 = 0.;
+    //
+    //        f[0] = f_1; // x direction
+    //        f[1] = f_2; // y direction
+    //        f[2] = 2.*cos(x1)*sin(x2);
 
 }
 
@@ -1101,16 +1125,16 @@ TPZCompMesh *BrinkmanTest::CMesh_v(TPZGeoMesh *gmesh, int Space, int pOrder)
     
     TPZFMatrix<STATE> val1(1,1,0.), val2(2,1,0.);
     
-    TPZMaterial * BCond0 = material->CreateBC(material, fmatBCbott, fdirichlet, val1, val2); //Cria material que implementa a condição de contorno inferior
+    TPZBndCond * BCond0 = material->CreateBC(material, fmatBCbott, fdirichlet, val1, val2); //Cria material que implementa a condição de contorno inferior
     cmesh->InsertMaterialObject(BCond0); //Insere material na malha
     
-    TPZMaterial * BCond1 = material->CreateBC(material, fmatBCtop, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno superior
+    TPZBndCond * BCond1 = material->CreateBC(material, fmatBCtop, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno superior
     cmesh->InsertMaterialObject(BCond1); //Insere material na malha
     
-    TPZMaterial * BCond2 = material->CreateBC(material, fmatBCleft, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno esquerda
+    TPZBndCond * BCond2 = material->CreateBC(material, fmatBCleft, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno esquerda
     cmesh->InsertMaterialObject(BCond2); //Insere material na malha
     
-    TPZMaterial * BCond3 = material->CreateBC(material, fmatBCright, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno direita
+    TPZBndCond * BCond3 = material->CreateBC(material, fmatBCright, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno direita
     cmesh->InsertMaterialObject(BCond3); //Insere material na malha
     
     
@@ -1194,7 +1218,7 @@ TPZCompMesh *BrinkmanTest::CMesh_p(TPZGeoMesh *gmesh, int Space, int pOrder)
     //
     TPZFMatrix<STATE> val3(1,1,0.), val4(1,1,0.);
     ////
-    TPZMaterial * BCPoint = material->CreateBC(material, fmatPoint, fpointtype, val3, val4); //Cria material que implementa um ponto para a pressao
+    TPZBndCond * BCPoint = material->CreateBC(material, fmatPoint, fpointtype, val3, val4); //Cria material que implementa um ponto para a pressao
     cmesh->InsertMaterialObject(BCPoint); //Insere material na malha
     
     //    //    Ponto de pressao2:
@@ -1271,20 +1295,20 @@ TPZCompMesh *BrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STA
     val2(1,0) = 0.0; // vy -> 0
     
   
-        TPZMaterial * BCond0 = material->CreateBC(material, fmatBCbott, fdirichlet, val1, val2); //Cria material que implementa a condição de contorno inferior
-        BCond0->SetForcingFunction(Sol_exact,bc_inte_order);
+        TPZBndCond * BCond0 = material->CreateBC(material, fmatBCbott, fdirichlet, val1, val2); //Cria material que implementa a condição de contorno inferior
+        BCond0->SetBCForcingFunction(0, solp);
         cmesh->InsertMaterialObject(BCond0); //Insere material na malha
         
-        TPZMaterial * BCond1 = material->CreateBC(material, fmatBCtop, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno superior
-        BCond1->SetForcingFunction(Sol_exact,bc_inte_order);
+        TPZBndCond * BCond1 = material->CreateBC(material, fmatBCtop, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno superior
+        BCond1->SetBCForcingFunction(0, solp);
         cmesh->InsertMaterialObject(BCond1); //Insere material na malha
         
-        TPZMaterial * BCond2 = material->CreateBC(material, fmatBCleft, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno esquerda
-        BCond2->SetForcingFunction(Sol_exact,bc_inte_order);
+        TPZBndCond * BCond2 = material->CreateBC(material, fmatBCleft, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno esquerda
+        BCond2->SetBCForcingFunction(0, solp);
         cmesh->InsertMaterialObject(BCond2); //Insere material na malha
         
-        TPZMaterial * BCond3 = material->CreateBC(material, fmatBCright, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno direita
-        BCond3->SetForcingFunction(Sol_exact,bc_inte_order);
+        TPZBndCond * BCond3 = material->CreateBC(material, fmatBCright, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno direita
+        BCond3->SetBCForcingFunction(0, solp);
         cmesh->InsertMaterialObject(BCond3); //Insere material na malha
         //Ponto
         
@@ -1294,7 +1318,7 @@ TPZCompMesh *BrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STA
     
         val4(0,0)=1;
         
-        TPZMaterial * BCPoint = material->CreateBC(material, fmatPoint, fpointtype, val3, val4); //Cria material que implementa um ponto para a pressão
+        TPZBndCond * BCPoint = material->CreateBC(material, fmatPoint, fpointtype, val3, val4); //Cria material que implementa um ponto para a pressão
         cmesh->InsertMaterialObject(BCPoint); //Insere material na malha
    
 
