@@ -28,6 +28,8 @@
 #include "TPZExtendGridDimension.h"
 #include "tpzgeoelrefpattern.h"
 #include "TPZMHMStokesMeshControl.h"
+#include "tpzarc3d.h"
+#include "tpzgeoblend.h"
 
 using namespace std;
 
@@ -124,6 +126,7 @@ void MHMStokesTest::Run()
         //DebugStop();
         gmesh = CreateGMesh3D(n_s, h_s);
     }else{
+    //    gmesh = CreateGMeshCurve();
         gmesh = CreateGMesh(n_s, h_s);
     }
     
@@ -871,6 +874,119 @@ TPZGeoMesh *MHMStokesTest::CreateGMesh3D(TPZVec<int> &n_div, TPZVec<REAL> &h_s)
     
 }
 
+TPZGeoMesh *MHMStokesTest::CreateGMeshCurve()
+{
+    
+    TPZGeoMesh * geomesh = new TPZGeoMesh;
+    geomesh->SetDimension(2);
+    
+    int nodes = 6;
+    REAL radius = 1.0;
+    REAL innerradius = radius/2.0;
+    geomesh->SetMaxNodeId(nodes-1);
+    geomesh->NodeVec().Resize(nodes);
+    TPZManVector<TPZGeoNode,7> Node(nodes);
+    
+    TPZManVector<int64_t,6> TopolQQuadrilateral(6);
+    TPZManVector<int64_t,8> TopolQuadrilateral(4);
+    TPZManVector<int64_t,6> TopolQTriangle(6);
+    TPZManVector<int64_t,2> TopolLine(2);
+    TPZManVector<int64_t,3> TopolArc(3);
+    TPZManVector<REAL,3> coord(3,0.);
+    TPZVec<REAL> xc(3,0.);
+    
+    
+    int64_t nodeindex = 0;
+    
+    for (int inode = 0; inode < 3 ; inode++) {
+        // i node
+        coord = ParametricCircle(radius, inode * M_PI/4.0);
+        geomesh->NodeVec()[nodeindex].SetCoord(coord);
+        geomesh->NodeVec()[nodeindex].SetNodeId(nodeindex);
+        nodeindex++;
+    }
+    
+    for (int inode = 0; inode < 3 ; inode++) {
+        // i node
+        coord = ParametricCircle(innerradius, inode * M_PI/4.0);
+        geomesh->NodeVec()[nodeindex].SetCoord(coord);
+        geomesh->NodeVec()[nodeindex].SetNodeId(nodeindex);
+        nodeindex++;
+    }
+    
+    //Ponto 1
+    int64_t elementid = 0;
+    
+    TopolQuadrilateral[0] = 3;
+    TopolQuadrilateral[1] = 0;
+    TopolQuadrilateral[2] = 2;
+    TopolQuadrilateral[3] = 5;
+    
+    new TPZGeoElRefPattern< pzgeom::TPZGeoBlend<pzgeom::TPZGeoQuad > > (elementid,TopolQuadrilateral, fmatID,*geomesh);
+    elementid++;
+    
+    // outer arcs bc's
+    
+    TopolLine[0] = 3;
+    TopolLine[1] = 0;
+    new TPZGeoElRefPattern< pzgeom::TPZGeoLinear > (elementid,TopolLine, fmatBCbott,*geomesh);
+    elementid++;
+    
+    TopolLine[0] = 2;
+    TopolLine[1] = 5;
+    new TPZGeoElRefPattern< pzgeom::TPZGeoLinear > (elementid,TopolLine, fmatBCtop,*geomesh);
+    elementid++;
+    
+    TopolArc[0] = 0;
+    TopolArc[1] = 2;
+    TopolArc[2] = 1;
+    new TPZGeoElRefPattern< pzgeom::TPZArc3D > (elementid,TopolArc, fmatBCright,*geomesh);
+    elementid++;
+    
+    TopolArc[0] = 5;
+    TopolArc[1] = 3;
+    TopolArc[2] = 4;
+    new TPZGeoElRefPattern< pzgeom::TPZArc3D > (elementid,TopolArc, fmatBCleft,*geomesh);
+    elementid++;
+    
+    
+    
+    geomesh->BuildConnectivity();
+    
+    int nref = 0;
+    TPZVec<TPZGeoEl *> sons;
+    for (int iref = 0; iref < nref; iref++) {
+        int nel = geomesh->NElements();
+        for (int iel = 0; iel < nel; iel++) {
+            TPZGeoEl *gel = geomesh->ElementVec()[iel];
+            if (gel->HasSubElement()) {
+                continue;
+            }
+            gel->Divide(sons);
+        }
+    }
+    
+    TPZCheckGeom check(geomesh);
+    check.CheckUniqueId();
+    geomesh->BuildConnectivity();
+    
+    
+    std::ofstream out("CurvedGeometry.vtk");
+    TPZVTKGeoMesh::PrintGMeshVTK(geomesh, out, true);
+    
+    return geomesh;
+    
+}
+
+TPZManVector<REAL,3>  MHMStokesTest::ParametricCircle(REAL radius,REAL theta)
+{
+    TPZManVector<REAL,3> xcoor(3,0.0);
+    xcoor[0] = radius * cos(theta);
+    xcoor[1] = radius * sin(theta);
+    xcoor[2] = 0.0 ;
+    return xcoor;
+}
+
 void MHMStokesTest::TetrahedralMeshCubo(TPZVec<int> &n_s){
     
 //    TPZGeoMesh *gmesh = new TPZGeoMesh;
@@ -1612,22 +1728,22 @@ void MHMStokesTest::InsertMaterialObjects(TPZMHMeshControl *control)
     TPZCompMesh &cmesh = control->CMesh();
 
     REAL visco = fsimData.GetViscosity();
-    TPZMHMBrinkmanMaterial *material = new TPZMHMBrinkmanMaterial(fmatID,fdim,1,visco,0,0);
+    TPZMHMBrinkmanMaterial *mat1 = new TPZMHMBrinkmanMaterial(fmatID,fdim,1,visco,0,0);
     
     TPZAutoPointer<TPZFunction<STATE> > fp = new TPZDummyFunction<STATE> (F_source, 9);
     TPZAutoPointer<TPZFunction<STATE> > solp = new TPZDummyFunction<STATE> (Sol_exact,9);
     ((TPZDummyFunction<STATE>*)fp.operator->())->SetPolynomialOrder(9);
     ((TPZDummyFunction<STATE>*)solp.operator->())->SetPolynomialOrder(9);
     
-    material->SetForcingFunction(fp); //Caso simples sem termo fonte
-    material->SetForcingFunctionExact(solp);
+    mat1->SetForcingFunction(fp); //Caso simples sem termo fonte
+    mat1->SetForcingFunctionExact(solp);
     
     if (fsimData.GetShapeTest()) {
-        material->SetForcingFunction(NULL);
-        material->SetForcingFunctionExact(NULL);
+        mat1->SetForcingFunction(NULL);
+        mat1->SetForcingFunctionExact(NULL);
     }
     
-    TPZMaterial * mat1(material);
+    //TPZMaterial * mat1(material);
     cmesh.InsertMaterialObject(mat1);
     
     int matSkeleton = 4;
@@ -1636,35 +1752,35 @@ void MHMStokesTest::InsertMaterialObjects(TPZMHMeshControl *control)
     ///Inserir condicao de contorno
     TPZFMatrix<STATE> val1(3,3,0.), val2(3,1,0.);
 
-    TPZBndCond * BCondD1 = material->CreateBC(mat1, fmatBCbott, fneumann, val1, val2);
+    TPZBndCond * BCondD1 = mat1->CreateBC(mat1, fmatBCbott, fneumann, val1, val2);
     BCondD1->SetBCForcingFunction(0, solp);
     cmesh.InsertMaterialObject(BCondD1);
     //control->fMaterialBCIds.insert(fmatBCbott);
     
     val1.Zero();
-    TPZBndCond * BCondD2 = material->CreateBC(mat1, fmatBCtop, fneumann, val1, val2);
+    TPZBndCond * BCondD2 = mat1->CreateBC(mat1, fmatBCtop, fneumann, val1, val2);
     BCondD2->SetBCForcingFunction(0, solp);
     cmesh.InsertMaterialObject(BCondD2);
     //control->fMaterialBCIds.insert(fmatBCtop);
     
     val1.Zero();
     val2.Zero();
-    TPZBndCond * BCondD3 = material->CreateBC(mat1, fmatBCleft, fneumann, val1, val2);
+    TPZBndCond * BCondD3 = mat1->CreateBC(mat1, fmatBCleft, fneumann, val1, val2);
     BCondD3->SetBCForcingFunction(0, solp);
     cmesh.InsertMaterialObject(BCondD3);
     //control->fMaterialBCIds.insert(fmatBCleft);
     
-    TPZBndCond * BCondD4 = material->CreateBC(mat1, fmatBCright, fneumann, val1, val2);
+    TPZBndCond * BCondD4 = mat1->CreateBC(mat1, fmatBCright, fneumann, val1, val2);
     BCondD4->SetBCForcingFunction(0, solp);
     cmesh.InsertMaterialObject(BCondD4);
     //control->fMaterialBCIds.insert(fmatBCright);
 
     if (f_3Dmesh) {
-        TPZBndCond * BCondD5 = material->CreateBC(mat1, fmatBCtop_z, fdirichlet, val1, val2);
+        TPZBndCond * BCondD5 = mat1->CreateBC(mat1, fmatBCtop_z, fdirichlet, val1, val2);
         BCondD5->SetBCForcingFunction(0, solp);
         cmesh.InsertMaterialObject(BCondD5);
         
-        TPZBndCond * BCondD6 = material->CreateBC(mat1, fmatBCbott_z, fdirichlet, val1, val2);
+        TPZBndCond * BCondD6 = mat1->CreateBC(mat1, fmatBCbott_z, fdirichlet, val1, val2);
         BCondD6->SetBCForcingFunction(0, solp);
         cmesh.InsertMaterialObject(BCondD6);
     }
@@ -1673,7 +1789,7 @@ void MHMStokesTest::InsertMaterialObjects(TPZMHMeshControl *control)
     //Skeleton::
     
     
-    TPZBndCond * bcFlux = material->CreateBC(mat1, matSkeleton, fneumann, val1, val2);
+    TPZBndCond * bcFlux = mat1->CreateBC(mat1, matSkeleton, fneumann, val1, val2);
     //bcFlux->SetBCForcingFunction(0, solp);
     cmesh.InsertMaterialObject(bcFlux);
     
@@ -1699,32 +1815,32 @@ void MHMStokesTest::InsertMaterialObjects(TPZMHMeshControl *control)
  //   control->fLagrangeMatIdRight=fmatInterfaceRight;
     
     // 3.1 - Material para tração tangencial 1D nos contornos
-    TPZBndCond *matLambdaBC_bott = material->CreateBC(material, fmatLambdaBC_bott, fneumann, val1, val2);
+    TPZBndCond *matLambdaBC_bott = mat1->CreateBC(mat1, fmatLambdaBC_bott, fneumann, val1, val2);
     matLambdaBC_bott->SetBCForcingFunction(0, solp);
     cmesh.InsertMaterialObject(matLambdaBC_bott);
  //   control->fMaterialBCIds.insert(fmatLambdaBC_bott);
     
-    TPZBndCond *matLambdaBC_top = material->CreateBC(material, fmatLambdaBC_top, fneumann, val1, val2);
+    TPZBndCond *matLambdaBC_top = mat1->CreateBC(mat1, fmatLambdaBC_top, fneumann, val1, val2);
     matLambdaBC_top->SetBCForcingFunction(0, solp);
     cmesh.InsertMaterialObject(matLambdaBC_top);
  //   control->fMaterialBCIds.insert(fmatLambdaBC_top);
     
-    TPZBndCond *matLambdaBC_left = material->CreateBC(material, fmatLambdaBC_left, fneumann, val1, val2);
+    TPZBndCond *matLambdaBC_left = mat1->CreateBC(mat1, fmatLambdaBC_left, fneumann, val1, val2);
     matLambdaBC_left->SetBCForcingFunction(0, solp);
     cmesh.InsertMaterialObject(matLambdaBC_left);
  //   control->fMaterialBCIds.insert(fmatLambdaBC_left);
     
-    TPZBndCond *matLambdaBC_right = material->CreateBC(material, fmatLambdaBC_right, fneumann, val1, val2);
+    TPZBndCond *matLambdaBC_right = mat1->CreateBC(mat1, fmatLambdaBC_right, fneumann, val1, val2);
     matLambdaBC_right->SetBCForcingFunction(0, solp);
     cmesh.InsertMaterialObject(matLambdaBC_right);
  //   control->fMaterialBCIds.insert(fmatLambdaBC_right);
     
     if (f_3Dmesh) {
-        TPZBndCond *matLambdaBC_top_z = material->CreateBC(material, fmatLambdaBC_top_z, fneumann, val1, val2);
+        TPZBndCond *matLambdaBC_top_z = mat1->CreateBC(mat1, fmatLambdaBC_top_z, fneumann, val1, val2);
         matLambdaBC_top_z->SetBCForcingFunction(0, solp);
         cmesh.InsertMaterialObject(matLambdaBC_top_z);
         
-        TPZBndCond *matLambdaBC_bott_z = material->CreateBC(material, fmatLambdaBC_bott_z, fneumann, val1, val2);
+        TPZBndCond *matLambdaBC_bott_z = mat1->CreateBC(mat1, fmatLambdaBC_bott_z, fneumann, val1, val2);
         matLambdaBC_bott_z->SetBCForcingFunction(0, solp);
         cmesh.InsertMaterialObject(matLambdaBC_bott_z);
     }

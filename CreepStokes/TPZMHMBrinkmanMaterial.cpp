@@ -20,11 +20,12 @@ void TPZMHMBrinkmanMaterial::FillDataRequirementsInterface(TPZMaterialData &data
     TPZMaterial::FillDataRequirementsInterface(data, datavec_left, datavec_right);
     int nref_left = datavec_left.size();
     datavec_left[0].fNeedsNormal = true;
+    datavec_left[0].fNeedsNormalVecFad = NeedsNormalVecFad;
     
 }
 
 void TPZMHMBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMaterialData> &datavecleft, TPZVec<TPZMaterialData> &datavecright, REAL weight, TPZFMatrix<STATE> &ek,TPZFMatrix<STATE> &ef){
-
+ 
     //DebugStop();
     // Verificar que
     // os termos mistos devem estar sem viscosidade!
@@ -71,15 +72,19 @@ void TPZMHMBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<T
     int normvecCols = datavecleft[vindex].fNormalVec.Cols();
     TPZFNMatrix<3,REAL> Normalvec(normvecRows,normvecCols,0.);
     
+    if(datavecleft[vindex].fNeedsNormalVecFad){
 #ifdef _AUTODIFF
-    for (int e = 0; e < normvecRows; e++) {
-        for (int s = 0; s < normvecCols; s++) {
-            Normalvec(e,s)=datavecleft[vindex].fNormalVecFad(e,s).val();
+        for (int e = 0; e < normvecRows; e++) {
+            for (int s = 0; s < normvecCols; s++) {
+                Normalvec(e,s)=datavecleft[vindex].fNormalVecFad(e,s).val();
+            }
         }
-    }
 #else
-        Normalvec=datavecleft[vindex].fNormalVec;
+        DebugStop();
 #endif
+    }else{
+        Normalvec=datavecleft[vindex].fNormalVec;
+    }
     
     for(int i1 = 0; i1 < nshapeV; i1++)
     {
@@ -148,6 +153,7 @@ void TPZMHMBrinkmanMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL
     {
         
         bc.BCForcingFunction()->Execute(x,vbc,gradu);
+        
         v_Dirichlet[0] = vbc[0];
         v_Dirichlet[1] = vbc[1];
         v_Dirichlet[2] = vbc[2];
@@ -188,7 +194,7 @@ void TPZMHMBrinkmanMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL
     if(nshapeV!=0){
         
         if (bc.Type()==0) {
-            
+
             for (int i = 0; i<3; i++) {
                 value += v_Dirichlet[i]*datavec[0].normal[i];
             }
@@ -207,6 +213,9 @@ void TPZMHMBrinkmanMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL
         for (int i = 0; i<3; i++) {
             value += v_Dirichlet[i]*datavec[1].axes(0,i);
         }
+        std::cout<<v_Dirichlet<<std::endl;
+        std::cout<<datavec[1].axes<<std::endl;
+        
         phi = &datavec[1].phi;
         
     }else if (bc.Type()==5){

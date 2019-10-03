@@ -151,9 +151,14 @@ public:
     void Run(int Space, int pOrder, TPZVec<int> &n_s, TPZVec<REAL> &h_s, STATE visco);
     
     /*  Malhas geometricas */
+    
+    TPZGeoMesh *CreateGMeshCurve();
+    
     TPZGeoMesh *CreateGMesh(TPZVec<int> &n_s, TPZVec<REAL> &h_s);
 
     TPZGeoMesh *CreateGMesh3D(TPZVec<int> &n_s, TPZVec<REAL> &h_s);
+    
+    TPZManVector<REAL,3>  ParametricCircle(REAL radius,REAL theta);
     
     static void GenerateNodes(TPZGeoMesh *gmesh, int64_t nelem);
     

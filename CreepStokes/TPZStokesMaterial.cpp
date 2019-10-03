@@ -277,7 +277,6 @@ void TPZStokesMaterial::ComputeDivergenceOnMaster(TPZVec<TPZMaterialData> &datav
     int ivectorindex = 0;
     int ishapeindex = 0;
     
-    if (HDivPiola == 1)
     {
         
         for (int iq = 0; iq < nphiuHdiv; iq++)
@@ -300,21 +299,6 @@ void TPZStokesMaterial::ComputeDivergenceOnMaster(TPZVec<TPZMaterialData> &datav
         }
         
         
-    }
-    else
-    {
-        for (int iq = 0; iq < nphiuHdiv; iq++)
-        {
-            ivectorindex = datavec[ublock].fVecShapeIndex[iq].first;
-            ishapeindex = datavec[ublock].fVecShapeIndex[iq].second;
-            
-            /* Computing the divergence for constant jacobian elements */
-            REAL dot = 0.0;
-            for (int i = 0;  i < 2; i++) {
-                dot += datavec[ublock].fNormalVec(i,ivectorindex)*GradphiuH1(i,ishapeindex);
-            }
-            DivergenceofPhi(iq,0) = dot;
-        }
     }
     
     return;
@@ -461,10 +445,8 @@ void TPZStokesMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weight
         
         divui = Tr( GradVi );
         
-        if (HDivPiola == 1) {
-            
-    //        divui = divphi(i,0);
-        }
+        //divui = divphi(i,0);
+        
         //////////////////////////////////////////////////////
         
         

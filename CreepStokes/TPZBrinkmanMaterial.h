@@ -48,7 +48,7 @@ protected:
     
 public:
     
-    
+    bool NeedsNormalVecFad = true;
     /**
      * Empty Constructor
      */
@@ -78,7 +78,9 @@ public:
      */
     void FillDataRequirements(TPZVec<TPZMaterialData> &datavec) override;
     
-    void FillBoundaryConditionDataRequirement(int type,TPZVec<TPZMaterialData> &datavec) override;
+    virtual void FillBoundaryConditionDataRequirement(int type,TPZVec<TPZMaterialData> &datavec) override;
+    
+    virtual void FillBoundaryConditionDataRequirement(int type,TPZMaterialData &data) override;
     
     virtual void FillDataRequirementsInterface(TPZMaterialData &data) override;
     

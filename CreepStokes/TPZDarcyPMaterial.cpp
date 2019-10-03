@@ -251,7 +251,6 @@ void TPZDarcyPMaterial::ComputeDivergenceOnDeformed(TPZVec<TPZMaterialData> &dat
     int ivectorindex = 0;
     int ishapeindex = 0;
     
-    if (HDivPiola == 1)
     {
         for (int iq = 0; iq < nphiuHdiv; iq++)
         {
@@ -269,19 +268,6 @@ void TPZDarcyPMaterial::ComputeDivergenceOnDeformed(TPZVec<TPZMaterialData> &dat
             DivergenceofPhi(iq,0) =  (1.0/JacobianDet) * ( dphiuH1(0,ishapeindex)*VectorOnMaster(0,0) +
                                                           dphiuH1(1,ishapeindex)*VectorOnMaster(1,0) +
                                                           dphiuH1(2,ishapeindex)*VectorOnMaster(2,0) );
-        }
-    }
-    else
-    {
-        for (int iq = 0; iq < nphiuHdiv; iq++)
-        {
-            ivectorindex = datavec[ublock].fVecShapeIndex[iq].first;
-            ishapeindex = datavec[ublock].fVecShapeIndex[iq].second;
-            
-            /* Computing the divergence for constant jacobian elements */
-            DivergenceofPhi(iq,0) =  datavec[ublock].fNormalVec(0,ivectorindex)*GradphiuH1(0,ishapeindex) +
-            datavec[ublock].fNormalVec(1,ivectorindex)*GradphiuH1(1,ishapeindex) +
-            datavec[ublock].fNormalVec(2,ivectorindex)*GradphiuH1(2,ishapeindex) ;
         }
     }
     
@@ -344,7 +330,6 @@ void TPZDarcyPMaterial::ComputeDivergenceOnMaster(TPZVec<TPZMaterialData> &datav
     int ivectorindex = 0;
     int ishapeindex = 0;
     
-    if (HDivPiola == 1)
     {
         for (int iq = 0; iq < nphiuHdiv; iq++)
         {
@@ -366,21 +351,6 @@ void TPZDarcyPMaterial::ComputeDivergenceOnMaster(TPZVec<TPZMaterialData> &datav
             DivergenceofPhi(iq,0) = (1.0/JacobianDet) * dot;
         }
         
-    }
-    else
-    {
-        for (int iq = 0; iq < nphiuHdiv; iq++)
-        {
-            ivectorindex = datavec[ublock].fVecShapeIndex[iq].first;
-            ishapeindex = datavec[ublock].fVecShapeIndex[iq].second;
-            
-            /* Computing the divergence for constant jacobian elements */
-            REAL dot = 0.0;
-            for (int i = 0;  i < fDimension; i++) {
-                dot += datavec[ublock].fNormalVec(i,ivectorindex)*GradphiuH1(i,ishapeindex);
-            }
-            DivergenceofPhi(iq,0) = dot;
-        }
     }
     
     return;
@@ -513,13 +483,14 @@ void TPZDarcyPMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weight
             }
             
             STATE fact;
-            if (HDivPiola == 1) {
-                fact  = weight * phiP(j,0) * divphi(i,0); ///p*div(U)
-                
-            }
-            else{
-                fact = weight * phiP(j,0) * Tr( GradVi ); ///p*div(U)
-            }
+//            if (HDivPiola == 1) {
+            
+            fact  = weight * phiP(j,0) * divphi(i,0); ///p*div(U)
+
+            //            }
+//            else{
+//                fact = weight * phiP(j,0) * Tr( GradVi ); ///p*div(U)
+//            }
             
             
             // colocar vectoriais vezes pressao

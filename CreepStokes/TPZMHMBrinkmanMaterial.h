@@ -20,7 +20,10 @@
 #ifndef TPZMHMBrinkmanMATERIAL
 #define TPZMHMBrinkmanMATERIAL
 
-
+#ifdef _AUTODIFF
+#include "fad.h"
+#include "tfad.h"
+#endif
 
 class TPZMHMBrinkmanMaterial : public TPZBrinkmanMaterial  {
     

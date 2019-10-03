@@ -151,6 +151,10 @@ public:
 
     TPZGeoMesh *CreateGMesh3D(TPZVec<int> &n_s, TPZVec<REAL> &h_s);
     
+    TPZGeoMesh *CreateGMeshCurve();
+
+    TPZManVector<REAL,3> ParametricCircle(REAL radius,REAL theta);
+    
     static void GenerateNodes(TPZGeoMesh *gmesh, int64_t nelem);
     
     void TetrahedralMeshCubo(TPZVec<int> &n_s);
