@@ -415,30 +415,39 @@ void HybridBrinkmanTest::InsertLowerDimMaterial(TPZGeoMesh *gmesh){
                         continue;
                     }
                     
+                    if(neighbour.Element()->HasSubElement())
+                    {
+                        continue;
+                    }
+                    
                     while (neighbour != gelside) {
+
                         if (neighbour.Element()->Dimension() == gmesh->Dimension() - 1) {
+                            
+
+                            
                             int neigh_matID = neighbour.Element()->MaterialId();
-        
+                            
                             if(neigh_matID==fmatBCbott){
-                                    TPZGeoElBC(neighbour, fmatLambdaBC_bott);
+                                TPZGeoElBC(gelside, fmatLambdaBC_bott);
                                 elementid++;
                             }else if(neigh_matID==fmatBCtop){
-                                    TPZGeoElBC(neighbour, fmatLambdaBC_top);
+                                TPZGeoElBC(gelside, fmatLambdaBC_top);
                                 elementid++;
                             }else if(neigh_matID==fmatBCleft){
-                                TopolArc[0] = 5;
-                                TopolArc[1] = 3;
-                                TopolArc[2] = 4;
-                                new TPZGeoElRefPattern< pzgeom::TPZArc3D > (elementid,TopolArc, fmatLambdaBC_left,*gmesh);
-                                elementid++;
-                                //    TPZGeoElBC(neighbour, fmatLambdaBC_left);
+//                                TopolArc[0] = 5;
+//                                TopolArc[1] = 3;
+//                                TopolArc[2] = 4;
+//                                new TPZGeoElRefPattern< pzgeom::TPZArc3D > (elementid,TopolArc, fmatLambdaBC_left,*gmesh);
+//                                elementid++;
+                                TPZGeoElBC(gelside, fmatLambdaBC_left);
                             }else if(neigh_matID==fmatBCright){
-                                TopolArc[0] = 0;
-                                TopolArc[1] = 2;
-                                TopolArc[2] = 1;
-                                new TPZGeoElRefPattern< pzgeom::TPZArc3D > (elementid,TopolArc, fmatLambdaBC_right,*gmesh);
-                                elementid++;
-                                //TPZGeoElBC(neighbour, fmatLambdaBC_right);
+//                                TopolArc[0] = 0;
+//                                TopolArc[1] = 2;
+//                                TopolArc[2] = 1;
+//                                new TPZGeoElRefPattern< pzgeom::TPZArc3D > (elementid,TopolArc, fmatLambdaBC_right,*gmesh);
+//                                elementid++;
+                                TPZGeoElBC(gelside, fmatLambdaBC_right);
                             }else if(f_3Dmesh && neigh_matID==fmatBCbott_z){
                                     TPZGeoElBC(gelside, fmatLambdaBC_bott_z);
                             }else if(f_3Dmesh && neigh_matID==fmatBCtop_z){
@@ -460,7 +469,6 @@ void HybridBrinkmanTest::InsertLowerDimMaterial(TPZGeoMesh *gmesh){
                         neighbour = neighbour.Neighbour();
         
                     }
-        
         
                     if (neighbour == gelside) {
                             TPZGeoElBC(gelside, fmatLambda);
@@ -920,8 +928,6 @@ TPZGeoMesh *HybridBrinkmanTest::CreateGMeshCurve()
     new TPZGeoElRefPattern< pzgeom::TPZArc3D > (elementid,TopolArc, fmatBCleft,*geomesh);
     elementid++;
     
-    
-    
     geomesh->BuildConnectivity();
     
     int nref = 0;
@@ -936,12 +942,13 @@ TPZGeoMesh *HybridBrinkmanTest::CreateGMeshCurve()
             gel->Divide(sons);
         }
     }
-    
+
     InsertLowerDimMaterial(geomesh);
     SetOriginalMesh(geomesh);
-    
+
     TPZCheckGeom check(geomesh);
     check.CheckUniqueId();
+
     geomesh->BuildConnectivity();
     
     
@@ -1229,7 +1236,7 @@ void HybridBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TP
     STATE v_x =  -r*sin(theta);
     STATE v_y =  r*cos(theta);
     STATE v_norm =  sqrt(v_x*v_x+v_y*v_y);
-    STATE p =   0.;
+    STATE p =   3.;
     
     //    STATE v_x =  xv;
     //    STATE v_y =  0;
@@ -1239,11 +1246,16 @@ void HybridBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TP
     sol[0] = v_x; // x direction
     sol[1] = v_y; // y direction
     sol[2] = 0.;
-    sol[2] = p; //
+    sol[3] = p; //
     
-    dsol(0,0)= -(sqrt(1+(yv*yv)/(xv*xv))*xv)/r;
-    dsol(1,1)= (sqrt(1+(yv*yv)/(xv*xv))*xv)/r;
+    dsol(0,1)= -(sqrt(1+(yv*yv)/(xv*xv))*xv)/r;
+    dsol(1,0)= (sqrt(1+(yv*yv)/(xv*xv))*xv)/r;
     
+    
+//    sol[0] = 0.; // x direction
+//    sol[1] = 0.; // y direction
+//    dsol(0,0)= 0.;
+//    dsol(1,1)= 0.;
     
 //        dsol.Resize(3,3);
 //        sol.Resize(4);
@@ -2062,10 +2074,10 @@ TPZMultiphysicsCompMesh *HybridBrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Spac
     // 1 - Material volumétrico 2D
     TPZMHMBrinkmanMaterial *material = new TPZMHMBrinkmanMaterial(fmatID,fdim,Space,visco,0,0);
     
-    TPZAutoPointer<TPZFunction<STATE> > fp = new TPZDummyFunction<STATE> (F_source, 6);
-    TPZAutoPointer<TPZFunction<STATE> > solp = new TPZDummyFunction<STATE> (Sol_exact,6);
-    ((TPZDummyFunction<STATE>*)fp.operator->())->SetPolynomialOrder(6);
-    ((TPZDummyFunction<STATE>*)solp.operator->())->SetPolynomialOrder(6);
+    TPZAutoPointer<TPZFunction<STATE> > fp = new TPZDummyFunction<STATE> (F_source, 5);
+    TPZAutoPointer<TPZFunction<STATE> > solp = new TPZDummyFunction<STATE> (Sol_exact,5);
+    ((TPZDummyFunction<STATE>*)fp.operator->())->SetPolynomialOrder(5);
+    ((TPZDummyFunction<STATE>*)solp.operator->())->SetPolynomialOrder(5);
     material->SetForcingFunction(fp); //Caso simples sem termo fonte
     material->SetForcingFunctionExact(solp);
     
@@ -2078,25 +2090,25 @@ TPZMultiphysicsCompMesh *HybridBrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Spac
     val2(0,0) = 0.0; // vx -> 0
     val2(1,0) = 0.0; // vy -> 0
     
-//    val2(1,0) = 0.0;
-//    TPZBndCond * BC_bott = material->CreateBC(material, fmatBCbott, fneumann, val1, val2);
-//    BC_bott->SetBCForcingFunction(0, solp);
-//    cmesh->InsertMaterialObject(BC_bott);
-//
-//    val2(1,0) = 0.0; // vx -> 0
-//    TPZBndCond * BC_top = material->CreateBC(material, fmatBCtop, fdirichlet, val1, val2);
-//    BC_top->SetBCForcingFunction(0, solp);
-//    cmesh->InsertMaterialObject(BC_top);
+    val2(1,0) = 0.0;
+    TPZBndCond * BC_bott = material->CreateBC(material, fmatBCbott, fneumann, val1, val2);
+    BC_bott->SetBCForcingFunction(0, solp);
+    cmesh->InsertMaterialObject(BC_bott);
 
-//    val2(0,0) = 0.0;
-//    TPZBndCond * BC_left = material->CreateBC(material, fmatBCleft, fdirichlet, val1, val2);
-//    BC_left->SetBCForcingFunction(0, solp);
-//    cmesh->InsertMaterialObject(BC_left);
-//
-//    val2(0,0) = 0.0;
-//    TPZBndCond * BC_right = material->CreateBC(material, fmatBCright, fdirichlet, val1, val2);
-//    BC_right->SetBCForcingFunction(0, solp);
-//    cmesh->InsertMaterialObject(BC_right);
+    val2(1,0) = 0.0; // vx -> 0
+    TPZBndCond * BC_top = material->CreateBC(material, fmatBCtop, fneumann, val1, val2);
+    BC_top->SetBCForcingFunction(0, solp);
+    cmesh->InsertMaterialObject(BC_top);
+
+    val2(0,0) = 0.0;
+    TPZBndCond * BC_left = material->CreateBC(material, fmatBCleft, fdirichlet, val1, val2);
+    BC_left->SetBCForcingFunction(0, solp);
+    cmesh->InsertMaterialObject(BC_left);
+
+    val2(0,0) = 0.0;
+    TPZBndCond * BC_right = material->CreateBC(material, fmatBCright, fdirichlet, val1, val2);
+    BC_right->SetBCForcingFunction(0, solp);
+    cmesh->InsertMaterialObject(BC_right);
 
     if (f_3Dmesh) {
         TPZBndCond * BC_bott_z = material->CreateBC(material, fmatBCbott_z, fdirichlet, val1, val2);

@@ -70,6 +70,9 @@ public:
      */
     ~TPZBrinkmanMaterial();
     
+    
+    
+    void FillDataRequirements(TPZMaterialData &data) override;
     /** Fill material data parameter with necessary requirements for the
      * Contribute method. Here, in base class, all requirements are considered
      * as necessary. Each derived class may optimize performance by selecting

@@ -70,7 +70,7 @@ bool HybridBrinkmanDomain = true, MHMStokesDomain = false;
 int main(int argc, char *argv[])
 {
     
-    TPZMaterial::gBigNumber = 1.e12;
+    TPZMaterial::gBigNumber = 1.e16;
 //    gRefDBase.InitializeAllUniformRefPatterns();
     
 #ifdef LOG4CXX
@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
         
         for (int it=0; it<=0; it++) {
             //h_level = pow(2., 2+it);
-            h_level = 4;
+            h_level = 3;
             
             TPZVec<int> n_s(3,0.);
             n_s[0]=h_level ,n_s[1]=h_level;
@@ -874,8 +874,7 @@ TPZGeoMesh *CreateGMeshSpecial()
         }
         
         if (gel->Dimension() == 1) {
-            
-            
+
             int nsides = gel->NSides();
             
             TPZGeoElSide gelside(gel,nsides-1);

@@ -213,8 +213,6 @@ void TPZMHMBrinkmanMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL
         for (int i = 0; i<3; i++) {
             value += v_Dirichlet[i]*datavec[1].axes(0,i);
         }
-        std::cout<<v_Dirichlet<<std::endl;
-        std::cout<<datavec[1].axes<<std::endl;
         
         phi = &datavec[1].phi;
         

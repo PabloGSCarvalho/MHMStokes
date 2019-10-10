@@ -58,6 +58,17 @@ TPZBrinkmanMaterial::~TPZBrinkmanMaterial(){
 
 ////////////////////////////////////////////////////////////////////
 
+void TPZBrinkmanMaterial::FillDataRequirements(TPZMaterialData &data)
+{
+    data.SetAllRequirements(false);
+    data.fNeedsSol = true;
+    data.fNeedsNormal = true;
+    data.fNeedsNormalVecFad = NeedsNormalVecFad;
+}
+
+
+////////////////////////////////////////////////////////////////////
+
 void TPZBrinkmanMaterial::FillDataRequirements(TPZVec<TPZMaterialData> &datavec)
 {
     int ndata = datavec.size();
@@ -535,7 +546,7 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
     TPZFMatrix<REAL> &dphiP = datavec[pindex].dphix;
     
     TPZFNMatrix<220,REAL> dphiVx(fDimension,dphiV.Cols());
-    std::cout<<datavec[vindex].axes<<std::endl;
+    
     TPZAxesTools<REAL>::Axes2XYZ(dphiV, dphiVx, datavec[vindex].axes);
 
     
@@ -665,7 +676,7 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
                 }
             }
         
-            Duj.Print(std::cout);
+            //Duj.Print(std::cout);
             
             STATE val = Inner(Dui, Duj);
             STATE val1 = InnerVec(phiVi, phiVj);
