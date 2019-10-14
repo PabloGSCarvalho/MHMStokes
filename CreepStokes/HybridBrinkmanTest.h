@@ -136,6 +136,8 @@ private:
     
     bool f_allrefine = false;
     
+    int f_inter_ref = 0.;
+    
     TPZGeoMesh *f_mesh0;
     
     TPZStack<TPZGeoElSide> f_skellNeighs;
@@ -225,6 +227,10 @@ public:
     void SetTransform(TPZTransform<STATE> Transf, TPZTransform<STATE> InvTransf){
         f_T = Transf;
         f_InvT = InvTransf;
+    }
+    
+    void SetInternRef(int inter_ref){
+        f_inter_ref = inter_ref;
     }
     
 //    void SetTransfMatrix(TPZFMatrix<STATE> TfMatrix){

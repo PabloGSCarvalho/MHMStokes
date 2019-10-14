@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
         
         for (int it=0; it<=0; it++) {
             //h_level = pow(2., 2+it);
-            h_level = 3;
+            h_level = 2;
             
             TPZVec<int> n_s(3,0.);
             n_s[0]=h_level ,n_s[1]=h_level;
@@ -146,7 +146,8 @@ int main(int argc, char *argv[])
             
             HybridBrinkmanTest  * Test2 = new HybridBrinkmanTest();
             //Test2->Set3Dmesh();
-            //Test2->SetElType(ETetraedro);
+            //Test2->SetElType(ETriangle);
+            Test2->SetInternRef(2);
             //Test2->SetHdivPlus();
 
             TPZTransform<STATE> Transf(3,3), InvTransf(3,3);

@@ -28,6 +28,7 @@
 #include "TPZExtendGridDimension.h"
 #include "tpzarc3d.h"
 #include "tpzgeoblend.h"
+#include "tpzgeoelmapped.h"
 
 using namespace std;
 
@@ -103,6 +104,8 @@ HybridBrinkmanTest::HybridBrinkmanTest()
     fSpaceV=0;
     
     fphi_r=0;
+    
+    f_inter_ref = 0.;
     
     f_is_hdivFull = false;
     
@@ -228,7 +231,7 @@ void HybridBrinkmanTest::Run(int Space, int pOrder, TPZVec<int> &n_s, TPZVec<REA
     //Resolvendo o Sistema:
     int numthreads = 0;
     
-    bool optimizeBandwidth = false; //Impede a renumeração das equacoes do problema (para obter o mesmo resultado do Oden)
+    bool optimizeBandwidth = true; //Impede a renumeração das equacoes do problema (para obter o mesmo resultado do Oden)
     TPZAnalysis an(cmesh_m, optimizeBandwidth); //Cria objeto de análise que gerenciará a analise do problema
     
     TPZSymetricSpStructMatrix struct_mat(cmesh_m);
@@ -358,7 +361,7 @@ void HybridBrinkmanTest::Run(int Space, int pOrder, TPZVec<int> &n_s, TPZVec<REA
     scalnames.Push("Div");
     
     
-    int postProcessResolution = 3; //  keep low as possible
+    int postProcessResolution = 0; //  keep low as possible
 
     int dim = gmesh->Dimension();
     an.DefineGraphMesh(dim,scalnames,vecnames,plotfile);
@@ -868,7 +871,7 @@ TPZGeoMesh *HybridBrinkmanTest::CreateGMeshCurve()
     
     TPZManVector<int64_t,6> TopolQQuadrilateral(6);
     TPZManVector<int64_t,8> TopolQuadrilateral(4);
-    TPZManVector<int64_t,6> TopolQTriangle(6);
+    TPZManVector<int64_t,6> TopolQTriangle(3);
     TPZManVector<int64_t,2> TopolLine(2);
     TPZManVector<int64_t,3> TopolArc(3);
     TPZManVector<REAL,3> coord(3,0.);
@@ -895,15 +898,15 @@ TPZGeoMesh *HybridBrinkmanTest::CreateGMeshCurve()
     
     //Ponto 1
     int64_t elementid = 0;
-    
+
     TopolQuadrilateral[0] = 3;
     TopolQuadrilateral[1] = 0;
     TopolQuadrilateral[2] = 2;
     TopolQuadrilateral[3] = 5;
-    
+        
     new TPZGeoElRefPattern< pzgeom::TPZGeoBlend<pzgeom::TPZGeoQuad > > (elementid,TopolQuadrilateral, fmatID,*geomesh);
     elementid++;
-    
+        
     // outer arcs bc's
     
     TopolLine[0] = 3;
@@ -929,8 +932,62 @@ TPZGeoMesh *HybridBrinkmanTest::CreateGMeshCurve()
     elementid++;
     
     geomesh->BuildConnectivity();
+
+    char buf2[] =
+    "6     5  "
+    "-50       UnifTri3 "
+    " 1.    -1.     0. "
+    " 1.     0.     0. "
+    " 1.    1.     0. "
+    " -1     -1.     0. "
+    " -1.     0.     0. "
+    " -1.     1.     0. "
+    " 3     4     3     0     2     5 "
+    " 2     3     3     0     4 "
+    " 2     3     0     1     4 "
+    " 2     3     4     1     5 "
+    " 2     3     1     2     5 ";
+//    " 2     3     3     0     1 "
+//    " 2     3     3     1     4 "
+//    " 2     3     4     1     2 "
+//    " 2     3     4     2     5 ";
     
-    int nref = 0;
+    char buf[] =
+    "6     3  "
+    "-50       UnifTri2 "
+    " 1.    -1.     0. "
+    " 1.     0.     0. "
+    " 1.    1.     0. "
+    " -1     -1.     0. "
+    " -1.     0.     0. "
+    " -1.     1.     0. "
+    " 3     4     3     0     2     5 "
+    " 2     3     3     0     5 "
+    " 2     3     2     5     0 ";
+    
+    std::istringstream str(buf);
+    TPZAutoPointer<TPZRefPattern> refpattri = new TPZRefPattern(str);
+    
+    if(feltype==ETriangle){
+        int nreft = 1;
+        TPZVec<TPZGeoEl *> sons1;
+        for (int iref = 0; iref < nreft; iref++) {
+            int nel = geomesh->NElements();
+            for (int iel = 0; iel < nel; iel++) {
+                TPZGeoEl *gel = geomesh->ElementVec()[iel];
+                if (gel->HasSubElement()) {
+                    continue;
+                }
+                MElementType elType = gel->Type();
+                if(gel->MaterialId()==1&&elType==EQuadrilateral){
+                    gel->SetRefPattern(refpattri);
+                    gel->Divide(sons1);
+                }
+            }
+        }
+    }
+    
+    int nref = f_inter_ref;
     TPZVec<TPZGeoEl *> sons;
     for (int iref = 0; iref < nref; iref++) {
         int nel = geomesh->NElements();
@@ -942,7 +999,10 @@ TPZGeoMesh *HybridBrinkmanTest::CreateGMeshCurve()
             gel->Divide(sons);
         }
     }
+    
 
+    
+    
     InsertLowerDimMaterial(geomesh);
     SetOriginalMesh(geomesh);
 
@@ -1236,7 +1296,7 @@ void HybridBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TP
     STATE v_x =  -r*sin(theta);
     STATE v_y =  r*cos(theta);
     STATE v_norm =  sqrt(v_x*v_x+v_y*v_y);
-    STATE p =   3.;
+    STATE p =   0.;
     
     //    STATE v_x =  xv;
     //    STATE v_y =  0;
@@ -2063,7 +2123,7 @@ TPZMultiphysicsCompMesh *HybridBrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Spac
 {
     
     //Criando malha computacional:
-    int bc_inte_order = 10;
+    
     TPZMultiphysicsCompMesh * cmesh = new TPZMultiphysicsCompMesh(gmesh);
     cmesh->SetDefaultOrder(pOrder); //Insere ordem polimonial de aproximação
     cmesh->SetDimModel(fdim); //Insere dimensão do modelo
@@ -2073,11 +2133,11 @@ TPZMultiphysicsCompMesh *HybridBrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Spac
     
     // 1 - Material volumétrico 2D
     TPZMHMBrinkmanMaterial *material = new TPZMHMBrinkmanMaterial(fmatID,fdim,Space,visco,0,0);
-    
-    TPZAutoPointer<TPZFunction<STATE> > fp = new TPZDummyFunction<STATE> (F_source, 5);
-    TPZAutoPointer<TPZFunction<STATE> > solp = new TPZDummyFunction<STATE> (Sol_exact,5);
-    ((TPZDummyFunction<STATE>*)fp.operator->())->SetPolynomialOrder(5);
-    ((TPZDummyFunction<STATE>*)solp.operator->())->SetPolynomialOrder(5);
+    int fexact_order = 5;
+    TPZAutoPointer<TPZFunction<STATE> > fp = new TPZDummyFunction<STATE> (F_source, fexact_order);
+    TPZAutoPointer<TPZFunction<STATE> > solp = new TPZDummyFunction<STATE> (Sol_exact,fexact_order);
+    ((TPZDummyFunction<STATE>*)fp.operator->())->SetPolynomialOrder(fexact_order);
+    ((TPZDummyFunction<STATE>*)solp.operator->())->SetPolynomialOrder(fexact_order);
     material->SetForcingFunction(fp); //Caso simples sem termo fonte
     material->SetForcingFunctionExact(solp);
     
