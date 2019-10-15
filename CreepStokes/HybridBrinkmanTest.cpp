@@ -363,7 +363,7 @@ void HybridBrinkmanTest::Run(int Space, int pOrder, TPZVec<int> &n_s, TPZVec<REA
     scalnames.Push("Div");
     
     
-    int postProcessResolution = 0; //  keep low as possible
+    int postProcessResolution = 3; //  keep low as possible
 
     int dim = gmesh->Dimension();
     an.DefineGraphMesh(dim,scalnames,vecnames,plotfile);
@@ -1455,7 +1455,7 @@ void HybridBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TP
     STATE v_x =  -r*sin(theta);
     STATE v_y =  r*cos(theta);
     STATE v_norm =  sqrt(v_x*v_x+v_y*v_y);
-    STATE p =   0.;
+    STATE p =   3.;
     
     //    STATE v_x =  xv;
     //    STATE v_y =  0;
@@ -2310,7 +2310,7 @@ TPZMultiphysicsCompMesh *HybridBrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Spac
     val2(1,0) = 0.0; // vy -> 0
     
     val2(1,0) = 0.0;
-    TPZBndCond * BC_bott = material->CreateBC(material, fmatBCbott, fneumann, val1, val2);
+    TPZBndCond * BC_bott = material->CreateBC(material, fmatBCbott, fdirichlet, val1, val2);
     BC_bott->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(BC_bott);
 
@@ -2364,12 +2364,12 @@ TPZMultiphysicsCompMesh *HybridBrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Spac
     matLambdaBC_top->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(matLambdaBC_top);
     
-    TPZBndCond *matLambdaBC_left = material->CreateBC(material, fmatLambdaBC_left, fneumann, val1, val2);
-    matLambdaBC_left->SetBCForcingFunction(0, solp);
+    TPZBndCond *matLambdaBC_left = material->CreateBC(material, fmatLambdaBC_left, fdirichlet, val1, val2);
+//    matLambdaBC_left->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(matLambdaBC_left);
     
-    TPZBndCond *matLambdaBC_right = material->CreateBC(material, fmatLambdaBC_right, fneumann, val1, val2);
-    matLambdaBC_right->SetBCForcingFunction(0, solp);
+    TPZBndCond *matLambdaBC_right = material->CreateBC(material, fmatLambdaBC_right, fdirichlet, val1, val2);
+//    matLambdaBC_right->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(matLambdaBC_right);
     
     if (f_3Dmesh) {
