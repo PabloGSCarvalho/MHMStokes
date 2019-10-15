@@ -28,6 +28,7 @@
 #include "TPZExtendGridDimension.h"
 #include "tpzarc3d.h"
 #include "tpzgeoblend.h"
+#include "TPZGenSpecialGrid.h"
 #include "tpzgeoelmapped.h"
 
 using namespace std;
@@ -137,6 +138,7 @@ void HybridBrinkmanTest::Run(int Space, int pOrder, TPZVec<int> &n_s, TPZVec<REA
     }else{
         //gmesh = CreateGMesh(n_s, h_s);
         gmesh = CreateGMeshCurve();
+        //gmesh = CreateGMeshCurveBlend();
     }
     
 #ifdef PZDEBUG
@@ -392,7 +394,6 @@ void HybridBrinkmanTest::Rotate(TPZVec<REAL> &co, TPZVec<REAL> &co_r, bool rotat
 void HybridBrinkmanTest::InsertLowerDimMaterial(TPZGeoMesh *gmesh){
     
     // Inserir elmentos fmatLambda and fmatLambdaBCs
-    int elementid = 6;
     TPZManVector<int64_t,3> TopolArc(3);
     
             int64_t nel = gmesh->NElements();
@@ -427,34 +428,26 @@ void HybridBrinkmanTest::InsertLowerDimMaterial(TPZGeoMesh *gmesh){
 
                         if (neighbour.Element()->Dimension() == gmesh->Dimension() - 1) {
                             
-
-                            
                             int neigh_matID = neighbour.Element()->MaterialId();
                             
                             if(neigh_matID==fmatBCbott){
                                 TPZGeoElBC(gelside, fmatLambdaBC_bott);
-                                elementid++;
+                                
                             }else if(neigh_matID==fmatBCtop){
                                 TPZGeoElBC(gelside, fmatLambdaBC_top);
-                                elementid++;
+
                             }else if(neigh_matID==fmatBCleft){
-//                                TopolArc[0] = 5;
-//                                TopolArc[1] = 3;
-//                                TopolArc[2] = 4;
-//                                new TPZGeoElRefPattern< pzgeom::TPZArc3D > (elementid,TopolArc, fmatLambdaBC_left,*gmesh);
-//                                elementid++;
                                 TPZGeoElBC(gelside, fmatLambdaBC_left);
+                                
                             }else if(neigh_matID==fmatBCright){
-//                                TopolArc[0] = 0;
-//                                TopolArc[1] = 2;
-//                                TopolArc[2] = 1;
-//                                new TPZGeoElRefPattern< pzgeom::TPZArc3D > (elementid,TopolArc, fmatLambdaBC_right,*gmesh);
-//                                elementid++;
                                 TPZGeoElBC(gelside, fmatLambdaBC_right);
+                                
                             }else if(f_3Dmesh && neigh_matID==fmatBCbott_z){
                                     TPZGeoElBC(gelside, fmatLambdaBC_bott_z);
+                                
                             }else if(f_3Dmesh && neigh_matID==fmatBCtop_z){
                                     TPZGeoElBC(gelside, fmatLambdaBC_top_z);
+                                
                             }
         
                             break;
@@ -903,10 +896,10 @@ TPZGeoMesh *HybridBrinkmanTest::CreateGMeshCurve()
     TopolQuadrilateral[1] = 0;
     TopolQuadrilateral[2] = 2;
     TopolQuadrilateral[3] = 5;
-        
+
     new TPZGeoElRefPattern< pzgeom::TPZGeoBlend<pzgeom::TPZGeoQuad > > (elementid,TopolQuadrilateral, fmatID,*geomesh);
     elementid++;
-        
+    
     // outer arcs bc's
     
     TopolLine[0] = 3;
@@ -932,21 +925,22 @@ TPZGeoMesh *HybridBrinkmanTest::CreateGMeshCurve()
     elementid++;
     
     geomesh->BuildConnectivity();
-
-    char buf2[] =
-    "6     5  "
-    "-50       UnifTri3 "
-    " 1.    -1.     0. "
-    " 1.     0.     0. "
-    " 1.    1.     0. "
-    " -1     -1.     0. "
-    " -1.     0.     0. "
-    " -1.     1.     0. "
-    " 3     4     3     0     2     5 "
-    " 2     3     3     0     4 "
-    " 2     3     0     1     4 "
-    " 2     3     4     1     5 "
-    " 2     3     1     2     5 ";
+    
+ 
+//    char buf2[] =
+//    "6     5  "
+//    "-50       UnifTri3 "
+//    " 1.    -1.     0. "
+//    " 1.     0.     0. "
+//    " 1.    1.     0. "
+//    " -1     -1.     0. "
+//    " -1.     0.     0. "
+//    " -1.     1.     0. "
+//    " 3     4     3     0     2     5 "
+//    " 2     3     3     0     4 "
+//    " 2     3     0     1     4 "
+//    " 2     3     4     1     5 "
+//    " 2     3     1     2     5 ";
 //    " 2     3     3     0     1 "
 //    " 2     3     3     1     4 "
 //    " 2     3     4     1     2 "
@@ -1000,8 +994,6 @@ TPZGeoMesh *HybridBrinkmanTest::CreateGMeshCurve()
         }
     }
     
-
-    
     
     InsertLowerDimMaterial(geomesh);
     SetOriginalMesh(geomesh);
@@ -1011,6 +1003,20 @@ TPZGeoMesh *HybridBrinkmanTest::CreateGMeshCurve()
 
     geomesh->BuildConnectivity();
     
+//    int nref1 = 4;
+//    TPZVec<TPZGeoEl *> sons2;
+//    for (int iref = 0; iref < nref1; iref++) {
+//        int nel = geomesh->NElements();
+//        for (int iel = 0; iel < nel; iel++) {
+//            TPZGeoEl *gel = geomesh->ElementVec()[iel];
+//            if (gel->HasSubElement()) {
+//                continue;
+//            }
+//            if(gel->MaterialId()==1){
+//                gel->Divide(sons2);
+//            }
+//        }
+//    }
     
     std::ofstream out("CurvedGeometry.vtk");
     TPZVTKGeoMesh::PrintGMeshVTK(geomesh, out, true);
@@ -1018,6 +1024,159 @@ TPZGeoMesh *HybridBrinkmanTest::CreateGMeshCurve()
     return geomesh;
     
 }
+
+TPZGeoMesh *HybridBrinkmanTest::CreateGMeshCurveBlend()
+{
+    
+    TPZGeoMesh * geomesh = new TPZGeoMesh;
+    geomesh->SetDimension(2);
+    
+    int nodes = 10;
+    REAL radius = 1.0;
+    REAL innerradius = radius/2.0;
+    geomesh->SetMaxNodeId(nodes-1);
+    geomesh->NodeVec().Resize(nodes);
+    TPZManVector<TPZGeoNode,7> Node(nodes);
+    
+    TPZManVector<int64_t,6> TopolQQuadrilateral(6);
+    TPZManVector<int64_t,8> TopolQuadrilateral(4);
+    TPZManVector<int64_t,6> TopolQTriangle(3);
+    TPZManVector<int64_t,2> TopolLine(2);
+    TPZManVector<int64_t,3> TopolArc(3);
+    TPZManVector<REAL,3> coord(3,0.);
+    TPZVec<REAL> xc(3,0.);
+    
+    
+    int64_t nodeindex = 0;
+    
+    for (int inode = 0; inode < 5 ; inode++) {
+        // i node
+        coord = ParametricCircle(radius, inode * M_PI/8.0);
+        geomesh->NodeVec()[nodeindex].SetCoord(coord);
+        geomesh->NodeVec()[nodeindex].SetNodeId(nodeindex);
+        nodeindex++;
+    }
+    
+    for (int inode = 0; inode < 5 ; inode++) {
+        // i node
+        coord = ParametricCircle(innerradius, inode * M_PI/8.0);
+        geomesh->NodeVec()[nodeindex].SetCoord(coord);
+        geomesh->NodeVec()[nodeindex].SetNodeId(nodeindex);
+        nodeindex++;
+    }
+    
+    //Ponto 1
+    int64_t elementid = 0;
+    
+    //Tringular elements with GeoBlend:
+    
+    TopolQTriangle[0] =5;
+    TopolQTriangle[1] =0;
+    TopolQTriangle[2] =7;
+    new TPZGeoElRefPattern< pzgeom::TPZGeoBlend<pzgeom::TPZGeoTriangle > > (elementid,TopolQTriangle, fmatID,*geomesh);
+    elementid++;
+    
+    TopolQTriangle[0] =0;
+    TopolQTriangle[1] =2;
+    TopolQTriangle[2] =7;
+    new TPZGeoElRefPattern< pzgeom::TPZGeoBlend<pzgeom::TPZGeoTriangle > > (elementid,TopolQTriangle, fmatID,*geomesh);
+    elementid++;
+    
+    TopolQTriangle[0] =7;
+    TopolQTriangle[1] =2;
+    TopolQTriangle[2] =9;
+    new TPZGeoElRefPattern< pzgeom::TPZGeoBlend<pzgeom::TPZGeoTriangle > > (elementid,TopolQTriangle, fmatID,*geomesh);
+    elementid++;
+    
+    TopolQTriangle[0] =2;
+    TopolQTriangle[1] =4;
+    TopolQTriangle[2] =9;
+    new TPZGeoElRefPattern< pzgeom::TPZGeoBlend<pzgeom::TPZGeoTriangle > > (elementid,TopolQTriangle, fmatID,*geomesh);
+    elementid++;
+    
+    // outer arcs bc's
+    
+    TopolLine[0] = 5;
+    TopolLine[1] = 0;
+    new TPZGeoElRefPattern< pzgeom::TPZGeoLinear > (elementid,TopolLine, fmatBCbott,*geomesh);
+    elementid++;
+    
+    TopolLine[0] = 4;
+    TopolLine[1] = 9;
+    new TPZGeoElRefPattern< pzgeom::TPZGeoLinear > (elementid,TopolLine, fmatBCtop,*geomesh);
+    elementid++;
+    
+    TopolArc[0] = 0;
+    TopolArc[1] = 2;
+    TopolArc[2] = 1;
+    new TPZGeoElRefPattern< pzgeom::TPZArc3D > (elementid,TopolArc, fmatBCright,*geomesh);
+    elementid++;
+    
+    TopolArc[0] = 2;
+    TopolArc[1] = 4;
+    TopolArc[2] = 3;
+    new TPZGeoElRefPattern< pzgeom::TPZArc3D > (elementid,TopolArc, fmatBCright,*geomesh);
+    elementid++;
+
+    TopolArc[0] = 5;
+    TopolArc[1] = 7;
+    TopolArc[2] = 6;
+    new TPZGeoElRefPattern< pzgeom::TPZArc3D > (elementid,TopolArc, fmatBCleft,*geomesh);
+    elementid++;
+    
+    TopolArc[0] = 7;
+    TopolArc[1] = 9;
+    TopolArc[2] = 8;
+    new TPZGeoElRefPattern< pzgeom::TPZArc3D > (elementid,TopolArc, fmatBCleft,*geomesh);
+    elementid++;
+    
+    geomesh->BuildConnectivity();
+    
+    //For GeoBlend
+//    int nreft = 1;
+//    TPZVec<TPZGeoEl *> sons1;
+//    for (int iref = 0; iref < nreft; iref++) {
+//        int nel = geomesh->NElements();
+//        for (int iel = 0; iel < nel; iel++) {
+//            TPZGeoEl *gel = geomesh->ElementVec()[iel];
+//            if (gel->HasSubElement()) {
+//                continue;
+//            }
+//            if(gel->MaterialId()==-3||gel->MaterialId()==-4){
+//                gel->Divide(sons1);
+//            }
+//        }
+//    }
+    
+    int nref = f_inter_ref;
+    TPZVec<TPZGeoEl *> sons;
+    for (int iref = 0; iref < nref; iref++) {
+        int nel = geomesh->NElements();
+        for (int iel = 0; iel < nel; iel++) {
+            TPZGeoEl *gel = geomesh->ElementVec()[iel];
+            if (gel->HasSubElement()) {
+                continue;
+            }
+            gel->Divide(sons);
+        }
+    }
+    
+    
+    InsertLowerDimMaterial(geomesh);
+    SetOriginalMesh(geomesh);
+    
+    TPZCheckGeom check(geomesh);
+    check.CheckUniqueId();
+    
+    geomesh->BuildConnectivity();
+    
+    std::ofstream out("CurvedGeometry.vtk");
+    TPZVTKGeoMesh::PrintGMeshVTK(geomesh, out, true);
+    
+    return geomesh;
+    
+}
+
 
 TPZManVector<REAL,3>  HybridBrinkmanTest::ParametricCircle(REAL radius,REAL theta)
 {

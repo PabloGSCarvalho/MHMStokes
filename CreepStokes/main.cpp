@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
             HybridBrinkmanTest  * Test2 = new HybridBrinkmanTest();
             //Test2->Set3Dmesh();
             //Test2->SetElType(ETriangle);
-            Test2->SetInternRef(2);
+            Test2->SetInternRef(0);
             //Test2->SetHdivPlus();
 
             TPZTransform<STATE> Transf(3,3), InvTransf(3,3);

@@ -156,6 +156,8 @@ public:
     
     TPZGeoMesh *CreateGMeshCurve();
     
+    TPZGeoMesh *CreateGMeshCurveBlend();
+    
     TPZGeoMesh *CreateGMesh(TPZVec<int> &n_s, TPZVec<REAL> &h_s);
 
     TPZGeoMesh *CreateGMesh3D(TPZVec<int> &n_s, TPZVec<REAL> &h_s);
