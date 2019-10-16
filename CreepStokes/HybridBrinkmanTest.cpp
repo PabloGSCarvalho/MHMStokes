@@ -145,7 +145,8 @@ void HybridBrinkmanTest::Run(int Space, int pOrder, TPZVec<int> &n_s, TPZVec<REA
         //gmesh = CreateGMesh(n_s, h_s);
         //gmesh = CreateGMeshCurve();
         //gmesh = CreateGMeshCurveBlend();
-        gmesh = CreateGMeshObstacle();
+        //gmesh = CreateGMeshObstacle();
+        gmesh = CreateGMeshCurveBlendSimple();
     }
     
 #ifdef PZDEBUG
@@ -1326,6 +1327,184 @@ TPZGeoMesh *HybridBrinkmanTest::CreateGMeshObstacle()
     TPZVTKGeoMesh::PrintGMeshVTK(geomesh, out, true);
     
     return geomesh;
+    
+}
+
+TPZGeoMesh *HybridBrinkmanTest::CreateGMeshCurveBlendSimple()
+{
+
+    TPZGeoMesh * geomesh = new TPZGeoMesh;
+    geomesh->SetDimension(2);
+    
+    int nodes = 10;
+    REAL radius = 1.0;
+    REAL innerradius = radius/2.0;
+    geomesh->SetMaxNodeId(nodes-1);
+    geomesh->NodeVec().Resize(nodes);
+    TPZManVector<TPZGeoNode,7> Node(nodes);
+    
+    TPZManVector<int64_t,6> TopolQTriangle(3);
+    TPZManVector<int64_t,6> TopolQQuadrilateral(4);
+    TPZManVector<int64_t,2> TopolLine(2);
+    TPZManVector<REAL,3> coord(3,0.);
+    TPZVec<REAL> xc(3,0.);
+    
+    
+    int64_t nodeindex = 0;
+
+    coord[0]=0.;
+    coord[1]=0.;
+    geomesh->NodeVec()[nodeindex].SetCoord(coord);
+    geomesh->NodeVec()[nodeindex].SetNodeId(nodeindex);
+    nodeindex++;
+
+    coord[0]=1.;
+    coord[1]=0.;
+    geomesh->NodeVec()[nodeindex].SetCoord(coord);
+    geomesh->NodeVec()[nodeindex].SetNodeId(nodeindex);
+    nodeindex++;
+
+    coord[0]=0.;
+    coord[1]=1.;
+    geomesh->NodeVec()[nodeindex].SetCoord(coord);
+    geomesh->NodeVec()[nodeindex].SetNodeId(nodeindex);
+    nodeindex++;
+
+    //Ponto 1
+    int64_t elementid = 0;
+
+    //Tringular elements with GeoBlend:
+
+    TopolQTriangle[0] =0;
+    TopolQTriangle[1] =1;
+    TopolQTriangle[2] =2;
+    new TPZGeoElRefPattern< pzgeom::TPZGeoBlend<pzgeom::TPZGeoTriangle > > (elementid,TopolQTriangle, fmatID,*geomesh);
+    elementid++;
+
+    // outer arcs bc's
+
+    TopolLine[0] = 0;
+    TopolLine[1] = 1;
+    new TPZGeoElRefPattern< pzgeom::TPZGeoLinear > (elementid,TopolLine, fmatBCbott,*geomesh);
+    elementid++;
+
+    TopolLine[0] = 1;
+    TopolLine[1] = 2;
+    new TPZGeoElRefPattern< pzgeom::TPZGeoLinear > (elementid,TopolLine, fmatBCright,*geomesh);
+    elementid++;
+
+    TopolLine[0] = 2;
+    TopolLine[1] = 0;
+    new TPZGeoElRefPattern< pzgeom::TPZGeoLinear > (elementid,TopolLine, fmatBCleft,*geomesh);
+    elementid++;
+
+//    int64_t nodeindex = 0;
+//
+//    coord[0]=-1;
+//    coord[1]=-1;
+//    geomesh->NodeVec()[nodeindex].SetCoord(coord);
+//    geomesh->NodeVec()[nodeindex].SetNodeId(nodeindex);
+//    nodeindex++;
+//
+//    coord[0]=1.;
+//    coord[1]=-1;
+//    geomesh->NodeVec()[nodeindex].SetCoord(coord);
+//    geomesh->NodeVec()[nodeindex].SetNodeId(nodeindex);
+//    nodeindex++;
+//
+//    coord[0]=1.;
+//    coord[1]=1.;
+//    geomesh->NodeVec()[nodeindex].SetCoord(coord);
+//    geomesh->NodeVec()[nodeindex].SetNodeId(nodeindex);
+//    nodeindex++;
+//
+//    coord[0]=-1.;
+//    coord[1]=1.;
+//    geomesh->NodeVec()[nodeindex].SetCoord(coord);
+//    geomesh->NodeVec()[nodeindex].SetNodeId(nodeindex);
+//    nodeindex++;
+//
+//    //Ponto 1
+//    int64_t elementid = 0;
+//
+//    //Tringular elements with GeoBlend:
+//
+//    TopolQQuadrilateral[0] =0;
+//    TopolQQuadrilateral[1] =1;
+//    TopolQQuadrilateral[2] =2;
+//    TopolQQuadrilateral[3] =3;
+//    new TPZGeoElRefPattern< pzgeom::TPZGeoBlend<pzgeom::TPZGeoQuad > > (elementid,TopolQQuadrilateral, fmatID,*geomesh);
+//    elementid++;
+//
+//    // outer arcs bc's
+//
+//    TopolLine[0] = 0;
+//    TopolLine[1] = 1;
+//    new TPZGeoElRefPattern< pzgeom::TPZGeoLinear > (elementid,TopolLine, fmatBCbott,*geomesh);
+//    elementid++;
+//
+//    TopolLine[0] = 1;
+//    TopolLine[1] = 2;
+//    new TPZGeoElRefPattern< pzgeom::TPZGeoLinear > (elementid,TopolLine, fmatBCright,*geomesh);
+//    elementid++;
+//
+//    TopolLine[0] = 2;
+//    TopolLine[1] = 3;
+//    new TPZGeoElRefPattern< pzgeom::TPZGeoLinear > (elementid,TopolLine, fmatBCtop,*geomesh);
+//    elementid++;
+//
+//    TopolLine[0] = 3;
+//    TopolLine[1] = 0;
+//    new TPZGeoElRefPattern< pzgeom::TPZGeoLinear > (elementid,TopolLine, fmatBCleft,*geomesh);
+//    elementid++;
+    
+    
+    geomesh->BuildConnectivity();
+    
+    //For GeoBlend
+    //    int nreft = 1;
+    //    TPZVec<TPZGeoEl *> sons1;
+    //    for (int iref = 0; iref < nreft; iref++) {
+    //        int nel = geomesh->NElements();
+    //        for (int iel = 0; iel < nel; iel++) {
+    //            TPZGeoEl *gel = geomesh->ElementVec()[iel];
+    //            if (gel->HasSubElement()) {
+    //                continue;
+    //            }
+    //            if(gel->MaterialId()==-3||gel->MaterialId()==-4){
+    //                gel->Divide(sons1);
+    //            }
+    //        }
+    //    }
+    
+    int nref = f_inter_ref;
+    TPZVec<TPZGeoEl *> sons;
+    for (int iref = 0; iref < nref; iref++) {
+        int nel = geomesh->NElements();
+        for (int iel = 0; iel < nel; iel++) {
+            TPZGeoEl *gel = geomesh->ElementVec()[iel];
+            if (gel->HasSubElement()) {
+                continue;
+            }
+            gel->Divide(sons);
+        }
+    }
+    
+    
+    InsertLowerDimMaterial(geomesh);
+    SetOriginalMesh(geomesh);
+    
+    TPZCheckGeom check(geomesh);
+    check.CheckUniqueId();
+    
+    geomesh->BuildConnectivity();
+    
+    std::ofstream out("CurvedGeometry.vtk");
+    TPZVTKGeoMesh::PrintGMeshVTK(geomesh, out, true);
+    
+    return geomesh;
+
+    
     
 }
 
