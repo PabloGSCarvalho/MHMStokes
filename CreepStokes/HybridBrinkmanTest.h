@@ -64,7 +64,8 @@ private:
     int fmatBCtop;
     int fmatBCleft;
     int fmatBCright;
-
+    int fmatBChole;
+    
     int fmatBCtop_z;
     int fmatBCbott_z;//normal negativa
     
@@ -76,10 +77,10 @@ private:
     int fmatLambdaBC_top;
     int fmatLambdaBC_left;
     int fmatLambdaBC_right;
+    int fmatLambdaBC_hole;
     
     int fmatLambdaBC_top_z;
     int fmatLambdaBC_bott_z;
-    
     
     int fmatWrapBC_bott;
     int fmatWrapBC_top;
@@ -144,6 +145,8 @@ private:
     
     bool f_3Dmesh = false;
     
+    bool f_Holemesh = false;
+    
 public:
 
     HybridBrinkmanTest();
@@ -155,6 +158,8 @@ public:
     /*  Malhas geometricas */
     
     TPZGeoMesh *CreateGMeshCurve();
+    
+    TPZGeoMesh *CreateGMeshObstacle();
     
     TPZGeoMesh *CreateGMeshCurveBlend();
     

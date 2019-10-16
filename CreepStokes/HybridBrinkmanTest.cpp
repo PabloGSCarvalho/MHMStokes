@@ -52,6 +52,8 @@ HybridBrinkmanTest::HybridBrinkmanTest()
     fmatBCtop=-2;
     fmatBCleft=-3;
     fmatBCright=-4;
+    fmatBChole=-7;
+
     fmatBCtop_z = -5; //3D
     fmatBCbott_z = -6; //3D normal negativa
     
@@ -63,6 +65,8 @@ HybridBrinkmanTest::HybridBrinkmanTest()
     fmatLambdaBC_top=12;
     fmatLambdaBC_left=13;
     fmatLambdaBC_right=14;
+    fmatLambdaBC_hole=17;
+    
     fmatLambdaBC_top_z=15;
     fmatLambdaBC_bott_z=16;
     
@@ -112,6 +116,8 @@ HybridBrinkmanTest::HybridBrinkmanTest()
     
     f_hdivPlus = false;
     
+    f_Holemesh = false;
+    
     feltype = EQuadrilateral;
     
     f_mesh_vector.resize(2);
@@ -137,8 +143,9 @@ void HybridBrinkmanTest::Run(int Space, int pOrder, TPZVec<int> &n_s, TPZVec<REA
         gmesh = CreateGMesh3D(n_s, h_s);
     }else{
         //gmesh = CreateGMesh(n_s, h_s);
-        gmesh = CreateGMeshCurve();
+        //gmesh = CreateGMeshCurve();
         //gmesh = CreateGMeshCurveBlend();
+        gmesh = CreateGMeshObstacle();
     }
     
 #ifdef PZDEBUG
@@ -233,12 +240,12 @@ void HybridBrinkmanTest::Run(int Space, int pOrder, TPZVec<int> &n_s, TPZVec<REA
     //Resolvendo o Sistema:
     int numthreads = 0;
     
-    bool optimizeBandwidth = true; //Impede a renumeração das equacoes do problema (para obter o mesmo resultado do Oden)
+    bool optimizeBandwidth = false; //Impede a renumeração das equacoes do problema (para obter o mesmo resultado do Oden)
     TPZAnalysis an(cmesh_m, optimizeBandwidth); //Cria objeto de análise que gerenciará a analise do problema
     
-    TPZSymetricSpStructMatrix struct_mat(cmesh_m);
-    struct_mat.SetNumThreads(numthreads);
-    an.SetStructuralMatrix(struct_mat);
+//    TPZSymetricSpStructMatrix struct_mat(cmesh_m);
+//    struct_mat.SetNumThreads(numthreads);
+//    an.SetStructuralMatrix(struct_mat);
     
     
     //TPZParSkylineStructMatrix matskl(cmesh_m, numthreads);
@@ -248,9 +255,9 @@ void HybridBrinkmanTest::Run(int Space, int pOrder, TPZVec<int> &n_s, TPZVec<REA
 //        an.SetStructuralMatrix(matskl);
 //    //
 ////        if (Space==1) {
-//            TPZFStructMatrix matsklD(cmesh_m); //caso nao simetrico *** //OK para discont.
-//            matsklD.SetNumThreads(numthreads);
-//            an.SetStructuralMatrix(matsklD);
+            TPZFStructMatrix matsklD(cmesh_m); //caso nao simetrico *** //OK para discont.
+            matsklD.SetNumThreads(numthreads);
+            an.SetStructuralMatrix(matsklD);
 //        }
     
     
@@ -441,6 +448,9 @@ void HybridBrinkmanTest::InsertLowerDimMaterial(TPZGeoMesh *gmesh){
                                 
                             }else if(neigh_matID==fmatBCright){
                                 TPZGeoElBC(gelside, fmatLambdaBC_right);
+                                
+                            }else if(neigh_matID==fmatBChole){
+                                TPZGeoElBC(gelside, fmatLambdaBC_hole);
                                 
                             }else if(f_3Dmesh && neigh_matID==fmatBCbott_z){
                                     TPZGeoElBC(gelside, fmatLambdaBC_bott_z);
@@ -1025,6 +1035,301 @@ TPZGeoMesh *HybridBrinkmanTest::CreateGMeshCurve()
     
 }
 
+
+TPZGeoMesh *HybridBrinkmanTest::CreateGMeshObstacle()
+{
+    f_Holemesh = true;
+    
+    
+    TPZGeoMesh * geomesh = new TPZGeoMesh;
+    geomesh->SetDimension(2);
+    
+    int nodes = 25;
+    REAL radius = 0.5;
+    REAL innerradius = radius/2.0;
+    geomesh->SetMaxNodeId(nodes-1);
+    geomesh->NodeVec().Resize(nodes);
+    TPZManVector<TPZGeoNode,7> Node(nodes);
+    
+    TPZManVector<int64_t,6> TopolQQuadrilateral(6);
+    TPZManVector<int64_t,8> TopolQuadrilateral(4);
+    TPZManVector<int64_t,6> TopolQTriangle(3);
+    TPZManVector<int64_t,2> TopolLine(2);
+    TPZManVector<int64_t,3> TopolArc(3);
+    TPZManVector<REAL,3> coord(3,0.);
+    TPZVec<REAL> xc(3,0.);
+    
+    int nquadnods=3;
+    REAL hx =2.;
+    REAL hy =2.;
+    
+    int64_t nodeindex = 0;
+    
+    //Exterior coordinates
+    for(int i = 0; i < nquadnods; i++){
+        for(int j = 0; j < nquadnods; j++){
+            coord[0] = (j)*hx/(nquadnods - 1);
+            coord[1] = (i)*hy/(nquadnods - 1);
+            geomesh->NodeVec()[nodeindex].SetCoord(coord);
+            geomesh->NodeVec()[nodeindex].SetNodeId(nodeindex);
+            nodeindex++;
+        }
+    }
+    
+    //Circunference coordinates
+    for (int inode = 0; inode < 16 ; inode++) {
+        // i node
+        coord = ParametricCircle(radius, inode * M_PI/8.0);
+        coord[0] +=1.;
+        coord[1] +=1.;
+        geomesh->NodeVec()[nodeindex].SetCoord(coord);
+        geomesh->NodeVec()[nodeindex].SetNodeId(nodeindex);
+        nodeindex++;
+    }
+    
+    
+    int64_t elementid = 0;
+    
+    TopolQuadrilateral[0] = 9;
+    TopolQuadrilateral[1] = 5;
+    TopolQuadrilateral[2] = 8;
+    TopolQuadrilateral[3] = 11;
+    
+    new TPZGeoElRefPattern< pzgeom::TPZGeoBlend<pzgeom::TPZGeoQuad > > (elementid,TopolQuadrilateral, fmatID,*geomesh);
+    elementid++;
+
+    TopolQuadrilateral[0] = 11;
+    TopolQuadrilateral[1] = 8;
+    TopolQuadrilateral[2] = 7;
+    TopolQuadrilateral[3] = 13;
+    
+    new TPZGeoElRefPattern< pzgeom::TPZGeoBlend<pzgeom::TPZGeoQuad > > (elementid,TopolQuadrilateral, fmatID,*geomesh);
+    elementid++;
+
+    TopolQuadrilateral[0] = 13;
+    TopolQuadrilateral[1] = 7;
+    TopolQuadrilateral[2] = 6;
+    TopolQuadrilateral[3] = 15;
+    
+    new TPZGeoElRefPattern< pzgeom::TPZGeoBlend<pzgeom::TPZGeoQuad > > (elementid,TopolQuadrilateral, fmatID,*geomesh);
+    elementid++;
+
+    TopolQuadrilateral[0] = 15;
+    TopolQuadrilateral[1] = 6;
+    TopolQuadrilateral[2] = 3;
+    TopolQuadrilateral[3] = 17;
+    
+    new TPZGeoElRefPattern< pzgeom::TPZGeoBlend<pzgeom::TPZGeoQuad > > (elementid,TopolQuadrilateral, fmatID,*geomesh);
+    elementid++;
+
+    TopolQuadrilateral[0] = 17;
+    TopolQuadrilateral[1] = 3;
+    TopolQuadrilateral[2] = 0;
+    TopolQuadrilateral[3] = 19;
+    
+    new TPZGeoElRefPattern< pzgeom::TPZGeoBlend<pzgeom::TPZGeoQuad > > (elementid,TopolQuadrilateral, fmatID,*geomesh);
+    elementid++;
+
+    TopolQuadrilateral[0] = 19;
+    TopolQuadrilateral[1] = 0;
+    TopolQuadrilateral[2] = 1;
+    TopolQuadrilateral[3] = 21;
+    
+    new TPZGeoElRefPattern< pzgeom::TPZGeoBlend<pzgeom::TPZGeoQuad > > (elementid,TopolQuadrilateral, fmatID,*geomesh);
+    elementid++;
+    
+    TopolQuadrilateral[0] = 21;
+    TopolQuadrilateral[1] = 1;
+    TopolQuadrilateral[2] = 2;
+    TopolQuadrilateral[3] = 23;
+    
+    new TPZGeoElRefPattern< pzgeom::TPZGeoBlend<pzgeom::TPZGeoQuad > > (elementid,TopolQuadrilateral, fmatID,*geomesh);
+    elementid++;
+
+    TopolQuadrilateral[0] = 23;
+    TopolQuadrilateral[1] = 2;
+    TopolQuadrilateral[2] = 5;
+    TopolQuadrilateral[3] = 9;
+    
+    new TPZGeoElRefPattern< pzgeom::TPZGeoBlend<pzgeom::TPZGeoQuad > > (elementid,TopolQuadrilateral, fmatID,*geomesh);
+    elementid++;
+    
+//    InsertLowerDimMaterial(geomesh);
+//    SetOriginalMesh(geomesh);
+    
+    //Outer bc's
+    
+    TopolLine[0] = 1;
+    TopolLine[1] = 0;
+    new TPZGeoElRefPattern< pzgeom::TPZGeoLinear > (elementid,TopolLine, fmatBCbott,*geomesh);
+    elementid++;
+
+    TopolLine[0] = 1;
+    TopolLine[1] = 2;
+    new TPZGeoElRefPattern< pzgeom::TPZGeoLinear > (elementid,TopolLine, fmatBCbott,*geomesh);
+    elementid++;
+
+    TopolLine[0] = 2;
+    TopolLine[1] = 5;
+    new TPZGeoElRefPattern< pzgeom::TPZGeoLinear > (elementid,TopolLine, fmatBCright,*geomesh);
+    elementid++;
+    
+    TopolLine[0] = 5;
+    TopolLine[1] = 8;
+    new TPZGeoElRefPattern< pzgeom::TPZGeoLinear > (elementid,TopolLine, fmatBCright,*geomesh);
+    elementid++;
+    
+    TopolLine[0] = 8;
+    TopolLine[1] = 7;
+    new TPZGeoElRefPattern< pzgeom::TPZGeoLinear > (elementid,TopolLine, fmatBCtop,*geomesh);
+    elementid++;
+
+    TopolLine[0] = 7;
+    TopolLine[1] = 6;
+    new TPZGeoElRefPattern< pzgeom::TPZGeoLinear > (elementid,TopolLine, fmatBCtop,*geomesh);
+    elementid++;
+
+    TopolLine[0] = 6;
+    TopolLine[1] = 3;
+    new TPZGeoElRefPattern< pzgeom::TPZGeoLinear > (elementid,TopolLine, fmatBCleft,*geomesh);
+    elementid++;
+    
+    TopolLine[0] = 3;
+    TopolLine[1] = 0;
+    new TPZGeoElRefPattern< pzgeom::TPZGeoLinear > (elementid,TopolLine, fmatBCleft,*geomesh);
+    elementid++;
+    
+    //Holes
+    
+    TopolArc[0] = 9;
+    TopolArc[1] = 11;
+    TopolArc[2] = 10;
+    new TPZGeoElRefPattern< pzgeom::TPZArc3D > (elementid,TopolArc, fmatBChole,*geomesh);
+    elementid++;
+    
+    TopolArc[0] = 11;
+    TopolArc[1] = 13;
+    TopolArc[2] = 12;
+    new TPZGeoElRefPattern< pzgeom::TPZArc3D > (elementid,TopolArc, fmatBChole,*geomesh);
+    elementid++;
+
+    TopolArc[0] = 13;
+    TopolArc[1] = 15;
+    TopolArc[2] = 14;
+    new TPZGeoElRefPattern< pzgeom::TPZArc3D > (elementid,TopolArc, fmatBChole,*geomesh);
+    elementid++;
+    
+    TopolArc[0] = 15;
+    TopolArc[1] = 17;
+    TopolArc[2] = 16;
+    new TPZGeoElRefPattern< pzgeom::TPZArc3D > (elementid,TopolArc, fmatBChole,*geomesh);
+    elementid++;
+
+    TopolArc[0] = 17;
+    TopolArc[1] = 19;
+    TopolArc[2] = 18;
+    new TPZGeoElRefPattern< pzgeom::TPZArc3D > (elementid,TopolArc, fmatBChole,*geomesh);
+    elementid++;
+    
+    TopolArc[0] = 19;
+    TopolArc[1] = 21;
+    TopolArc[2] = 20;
+    new TPZGeoElRefPattern< pzgeom::TPZArc3D > (elementid,TopolArc, fmatBChole,*geomesh);
+    elementid++;
+    
+    TopolArc[0] = 21;
+    TopolArc[1] = 23;
+    TopolArc[2] = 22;
+    new TPZGeoElRefPattern< pzgeom::TPZArc3D > (elementid,TopolArc, fmatBChole,*geomesh);
+    elementid++;
+    
+    TopolArc[0] = 23;
+    TopolArc[1] = 9;
+    TopolArc[2] = 24;
+    new TPZGeoElRefPattern< pzgeom::TPZArc3D > (elementid,TopolArc, fmatBChole,*geomesh);
+    elementid++;
+    
+    char buf[] =
+    "6     3  "
+    "-50       UnifTri2 "
+    " 1.    -1.     0. "
+    " 1.     0.     0. "
+    " 1.    1.     0. "
+    " -1     -1.     0. "
+    " -1.     0.     0. "
+    " -1.     1.     0. "
+    " 3     4     3     0     2     5 "
+    " 2     3     3     0     5 "
+    " 2     3     2     5     0 ";
+    
+    std::istringstream str(buf);
+    TPZAutoPointer<TPZRefPattern> refpattri = new TPZRefPattern(str);
+    
+    if(feltype==ETriangle){
+        int nreft = 1;
+        TPZVec<TPZGeoEl *> sons1;
+        for (int iref = 0; iref < nreft; iref++) {
+            int nel = geomesh->NElements();
+            for (int iel = 0; iel < nel; iel++) {
+                TPZGeoEl *gel = geomesh->ElementVec()[iel];
+                if (gel->HasSubElement()) {
+                    continue;
+                }
+                MElementType elType = gel->Type();
+                if(gel->MaterialId()==1&&elType==EQuadrilateral){
+                    gel->SetRefPattern(refpattri);
+                    gel->Divide(sons1);
+                }
+            }
+        }
+    }
+    
+//    int nref = f_inter_ref;
+//    TPZVec<TPZGeoEl *> sons;
+//    for (int iref = 0; iref < nref; iref++) {
+//        int nel = geomesh->NElements();
+//        for (int iel = 0; iel < nel; iel++) {
+//            TPZGeoEl *gel = geomesh->ElementVec()[iel];
+//            if (gel->HasSubElement()) {
+//                continue;
+//            }
+//            gel->Divide(sons);
+//        }
+//    }
+    
+    geomesh->BuildConnectivity();
+    
+    InsertLowerDimMaterial(geomesh);
+    SetOriginalMesh(geomesh);
+    
+    TPZCheckGeom check(geomesh);
+    check.CheckUniqueId();
+    
+    geomesh->BuildConnectivity();
+    
+        int nref1 = 0;
+        TPZVec<TPZGeoEl *> sons2;
+        for (int iref = 0; iref < nref1; iref++) {
+            int nel = geomesh->NElements();
+            for (int iel = 0; iel < nel; iel++) {
+                TPZGeoEl *gel = geomesh->ElementVec()[iel];
+                if (gel->HasSubElement()) {
+                    continue;
+                }
+//                if(gel->MaterialId()==1){
+                    gel->Divide(sons2);
+//                }
+            }
+        }
+    
+    std::ofstream out("CurvedGeometry.vtk");
+    TPZVTKGeoMesh::PrintGMeshVTK(geomesh, out, true);
+    
+    return geomesh;
+    
+}
+
+
 TPZGeoMesh *HybridBrinkmanTest::CreateGMeshCurveBlend()
 {
     
@@ -1471,10 +1776,11 @@ void HybridBrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TP
     dsol(1,0)= (sqrt(1+(yv*yv)/(xv*xv))*xv)/r;
     
     
-//    sol[0] = 0.; // x direction
-//    sol[1] = 0.; // y direction
-//    dsol(0,0)= 0.;
-//    dsol(1,1)= 0.;
+    sol[0] = 1.; // x direction
+    sol[1] = 0.; // y direction
+    sol[3] = 0.;
+    dsol(0,0)= 0.;
+    dsol(1,1)= 0.;
     
 //        dsol.Resize(3,3);
 //        sol.Resize(4);
@@ -1940,6 +2246,11 @@ TPZCompMesh *HybridBrinkmanTest::CMesh_v(TPZGeoMesh *gmesh, int Space, int pOrde
         cmesh->InsertMaterialObject(BCond3);
     }
     
+    if (f_Holemesh){
+        TPZMaterial * BCondHole = material->CreateBC(material, fmatBChole, fdirichlet, val1, val2);
+        cmesh->InsertMaterialObject(BCondHole);
+    }
+    
     if (f_3Dmesh) {
         TPZMaterial * BCond4 = material->CreateBC(material, fmatBCtop_z, fdirichlet, val1, val2);
         cmesh->InsertMaterialObject(BCond4);
@@ -2017,6 +2328,12 @@ TPZCompMesh *HybridBrinkmanTest::CMesh_p(TPZGeoMesh *gmesh, int Space, int pOrde
     //matLambdaBC_right->SetMaterial(xkin, xcin, xbin, xfin);
     cmesh->InsertMaterialObject(matLambdaBC_right);
     
+    if (f_Holemesh){
+        TPZVecL2 *matLambdaBC_hole = new TPZVecL2(fmatLambdaBC_hole);
+        cmesh->InsertMaterialObject(matLambdaBC_hole);
+    }
+
+    
     if (f_3Dmesh) {
 
         TPZVecL2 *matLambdaBC_bott_z = new TPZVecL2(fmatLambdaBC_bott_z);
@@ -2072,6 +2389,9 @@ TPZCompMesh *HybridBrinkmanTest::CMesh_p(TPZGeoMesh *gmesh, int Space, int pOrde
     materialids.insert(fmatLambdaBC_top);
     materialids.insert(fmatLambdaBC_left);
     materialids.insert(fmatLambdaBC_right);
+    if (f_Holemesh){
+        materialids.insert(fmatLambdaBC_hole);
+    }
     
     if (f_3Dmesh) {
         materialids.insert(fmatLambdaBC_bott_z);
@@ -2311,24 +2631,32 @@ TPZMultiphysicsCompMesh *HybridBrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Spac
     
     val2(1,0) = 0.0;
     TPZBndCond * BC_bott = material->CreateBC(material, fmatBCbott, fdirichlet, val1, val2);
-    BC_bott->SetBCForcingFunction(0, solp);
+    //BC_bott->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(BC_bott);
 
     val2(1,0) = 0.0; // vx -> 0
-    TPZBndCond * BC_top = material->CreateBC(material, fmatBCtop, fneumann, val1, val2);
-    BC_top->SetBCForcingFunction(0, solp);
+    TPZBndCond * BC_top = material->CreateBC(material, fmatBCtop, fdirichlet, val1, val2);
+    //BC_top->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(BC_top);
 
-    val2(0,0) = 0.0;
+    val2(0,0) = 1.0;
     TPZBndCond * BC_left = material->CreateBC(material, fmatBCleft, fdirichlet, val1, val2);
     BC_left->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(BC_left);
 
     val2(0,0) = 0.0;
-    TPZBndCond * BC_right = material->CreateBC(material, fmatBCright, fdirichlet, val1, val2);
-    BC_right->SetBCForcingFunction(0, solp);
+    TPZBndCond * BC_right = material->CreateBC(material, fmatBCright, fneumann, val1, val2);
+    //BC_right->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(BC_right);
 
+    if (f_Holemesh){
+        val2(0,0) = 0.0;
+        TPZBndCond * BC_hole = material->CreateBC(material, fmatBChole, fdirichlet, val1, val2);
+        //BC_hole->SetBCForcingFunction(0, solp);
+        cmesh->InsertMaterialObject(BC_hole);
+    }
+
+    
     if (f_3Dmesh) {
         TPZBndCond * BC_bott_z = material->CreateBC(material, fmatBCbott_z, fdirichlet, val1, val2);
         BC_bott_z->SetBCForcingFunction(0, solp);
@@ -2356,21 +2684,28 @@ TPZMultiphysicsCompMesh *HybridBrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Spac
     
     
     // 3.1 - Material para tração tangencial 1D nos contornos
-    TPZBndCond *matLambdaBC_bott = material->CreateBC(material, fmatLambdaBC_bott, fneumann, val1, val2);
-    matLambdaBC_bott->SetBCForcingFunction(0, solp);
+    TPZBndCond *matLambdaBC_bott = material->CreateBC(material, fmatLambdaBC_bott, fdirichlet, val1, val2);
+    //matLambdaBC_bott->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(matLambdaBC_bott);
     
-    TPZBndCond *matLambdaBC_top = material->CreateBC(material, fmatLambdaBC_top, fneumann, val1, val2);
-    matLambdaBC_top->SetBCForcingFunction(0, solp);
+    TPZBndCond *matLambdaBC_top = material->CreateBC(material, fmatLambdaBC_top, fdirichlet, val1, val2);
+    //matLambdaBC_top->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(matLambdaBC_top);
-    
-    TPZBndCond *matLambdaBC_left = material->CreateBC(material, fmatLambdaBC_left, fdirichlet, val1, val2);
+  
+    TPZBndCond *matLambdaBC_left = material->CreateBC(material, fmatLambdaBC_left, fneumann, val1, val2);
 //    matLambdaBC_left->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(matLambdaBC_left);
     
-    TPZBndCond *matLambdaBC_right = material->CreateBC(material, fmatLambdaBC_right, fdirichlet, val1, val2);
+    TPZBndCond *matLambdaBC_right = material->CreateBC(material, fmatLambdaBC_right, fneumann, val1, val2);
 //    matLambdaBC_right->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(matLambdaBC_right);
+
+    if (f_Holemesh){
+        val2(0,0) = 0.0;
+        TPZBndCond *matLambdaBC_hole = material->CreateBC(material, fmatLambdaBC_hole, fdirichlet, val1, val2);
+        //    matLambdaBC_hole->SetBCForcingFunction(0, solp);
+        cmesh->InsertMaterialObject(matLambdaBC_hole);
+    }
     
     if (f_3Dmesh) {
         TPZBndCond *matLambdaBC_bott_z = material->CreateBC(material, fmatLambdaBC_bott_z, fneumann, val1, val2);
