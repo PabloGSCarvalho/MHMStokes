@@ -53,6 +53,8 @@
 using namespace std;
 using namespace pzshape;
 
+enum ProblemType {ObstacleP,ConvergenceP};
+
 class HybridBrinkmanTest{
 private:
     
@@ -100,7 +102,6 @@ private:
     int fmatIntBCtop_z;
     int fmatIntBCbott_z;
 
-    
     //Materia de um ponto
     int fmatPoint;
     
@@ -131,6 +132,10 @@ private:
     
     TPZVec<TPZCompMesh * > f_mesh_vector;
     
+    std::map<int,TPZManVector<REAL,3>> f_HoleCoord; //Dado o indice do elemento 2D, devolve a coord do hole associado
+
+    std::map<int,int> f_ArcCentralNode; //Dado o indice do elemento 2D, devolve o indice do nó central do arco
+    
     static TPZTransform<STATE> f_T;
     
     static TPZTransform<STATE> f_InvT;
@@ -147,6 +152,8 @@ private:
     
     bool f_Holemesh = false;
     
+    
+    
 public:
 
     HybridBrinkmanTest();
@@ -159,11 +166,15 @@ public:
     
     TPZGeoMesh *CreateGMeshCurve();
     
-    TPZGeoMesh *CreateGMeshObstacle();
+    //TPZGeoMesh *CreateGMeshObstacle();
+    
+    TPZAutoPointer<TPZRefPattern> CreateGMeshObstacle(TPZManVector<REAL,6> &FirstCoord, TPZManVector<REAL,6> &h_el);
     
     TPZGeoMesh *CreateGMeshCurveBlend();
     
     TPZGeoMesh *CreateGMeshCurveBlendSimple();
+    
+    TPZGeoMesh *CreateGMeshRefPattern(TPZVec<int> &n_s, TPZVec<REAL> &h_s);
     
     TPZGeoMesh *CreateGMesh(TPZVec<int> &n_s, TPZVec<REAL> &h_s);
 
@@ -227,6 +238,15 @@ public:
     void SetFullHdiv(){
         f_is_hdivFull = true;
     };
+
+    void SetProblemType(ProblemType type){
+        if(type==ObstacleP){
+            f_Holemesh = true;
+        }
+    };
+    
+    
+    
     
     void SetElType(MElementType eltype){
         feltype = eltype;
@@ -327,6 +347,7 @@ public:
     void ComputeSkelNeighbours();
     
     bool IsSkellNeighbour(TPZGeoElSide neigh);
+
 
 };
 
