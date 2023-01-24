@@ -102,9 +102,9 @@ void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double 
     
     
     TPZCompMesh *cmesh_v = this->CMesh_v(gmesh, Space, pOrder); //Função para criar a malha computacional da velocidade
-    TPZCompMesh *cmesh_p = this->CMesh_p(gmesh, Space, pOrder+n_mais); //Função para criar a malha computacional da pressão
+    TPZCompMesh *cmesh_p = this->CMesh_p(gmesh, Space, pOrder); //Função para criar a malha computacional da pressão
     
-    ChangeExternalOrderConnects(cmesh_v,n_mais);
+    //ChangeExternalOrderConnects(cmesh_v,n_mais);
     
     TPZCompMesh *cmesh_m = this->CMesh_m(gmesh, Space, pOrder, visco, theta, sigma); //Função para criar a malha computacional multifísica
     
@@ -123,11 +123,14 @@ void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double 
     TPZManVector<TPZCompMesh *, 2> meshvector(2);
     meshvector[0] = cmesh_v;
     meshvector[1] = cmesh_p;
+    std::cout << "cout 0 " << std::endl;
     TPZBuildMultiphysicsMesh::AddElements(meshvector, cmesh_m);
+    std::cout << "cout 1 " << std::endl;
     TPZBuildMultiphysicsMesh::AddConnects(meshvector, cmesh_m);
+    std::cout << "cout 2 " << std::endl;
     TPZBuildMultiphysicsMesh::TransferFromMeshes(meshvector, cmesh_m);
     cmesh_m->LoadReferences();
-
+    
     if(fSpaceV!=2){
         AddMultiphysicsInterfaces(*cmesh_m,fmatInterface,fmatID);
         AddMultiphysicsInterfaces(*cmesh_m,fmatIntBCbott,fmatBCbott);
@@ -135,7 +138,7 @@ void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double 
         AddMultiphysicsInterfaces(*cmesh_m,fmatIntBCleft,fmatBCleft);
         AddMultiphysicsInterfaces(*cmesh_m,fmatIntBCright,fmatBCright);
     }
-    
+        std::cout << "cout 2 " << std::endl;
 #ifdef PZDEBUG
     std::ofstream fileg1("MalhaGeo2.txt"); //Impressão da malha geométrica (formato txt)
     gmesh->Print(fileg1);
@@ -167,7 +170,7 @@ void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double 
 //        an.SetStructuralMatrix(matsklD);
 //    }
 
-
+        std::cout << "cout 3 " << std::endl;
     TPZStepSolver<STATE> step;
     step.SetDirect(ELU);
     an.SetSolver(step);

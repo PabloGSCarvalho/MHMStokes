@@ -14,8 +14,6 @@
 #include "DarcyPTest.h"
 #include "StokesTest.h"
 #include "BrinkmanTest.h"
-#include "HybridBrinkmanTest.h"
-#include "MHMStokesTest.h"
 #include "CoupledTest.h"
 #include "tpzarc3d.h"
 #include "tpzgeoblend.h"
@@ -63,21 +61,19 @@ const REAL Pi=M_PI;
 
 const REAL visco=1., permeability=1., theta=-1.; //Coeficientes: viscosidade, permeabilidade, fator simetria
 
-bool DarcyDomain = false, StokesDomain = false , BrinkmanDomain = false, CoupledDomain = false;
-
-bool HybridBrinkmanDomain = true, MHMStokesDomain = false;
+bool DarcyDomain = false, StokesDomain = false , BrinkmanDomain = true, CoupledDomain = false;
 
 int main(int argc, char *argv[])
 {
     
     TPZMaterial::gBigNumber = 1.e16;
 //    gRefDBase.InitializeAllUniformRefPatterns();
-    
+
 #ifdef LOG4CXX
     InitializePZLOG();
 #endif
     //Dados do problema:
-    
+
     REAL hx=2.,hy=2.; //Dimensões em x e y do domínio
     //double hx=Pi,hy=2.;
     int h_level = 0;
@@ -87,86 +83,7 @@ int main(int argc, char *argv[])
     TPZVec<REAL> h_s(3,0);
     h_s[0]=2.,h_s[1]=2.,h_s[2]=2.; //Dimensões em x e y do domínio
 
-    if (MHMStokesDomain)
-    {
-        
-        for (int it=0; it<=0; it++) {
-            //h_level = pow(2., 1+it);
-            h_level = 4;
-            
-            TPZVec<int> n_s(3,0.);
-            n_s[0]=h_level,n_s[1]=h_level;
-            n_s[2]=h_level; //Obs!!
-            
-            MHMStokesTest  * Test2 = new MHMStokesTest();
-            //Test2->Set3Dmesh();
-            //Test2->SetElType(ECube);
-            //Test2->SetHdivPlus();
-            
-            TPZTransform<STATE> Transf(3,3), InvTransf(3,3);
-            Test2->SetTransform(Transf, InvTransf);
-            
-            REAL rot_x = 5.;
-            REAL rot_z = 44.;
-            REAL rot_y = -85.;
-            rot_z = rot_z*Pi/180.;
-            rot_y = rot_y*Pi/180.;
-            rot_z = rot_z*Pi/180.;
-            
-            //Test2->SetRotation3DMatrix(rot_x,rot_y,rot_z);
-            TPZSimulationData simdata;
-            simdata.SetInternalOrder(2);
-            simdata.SetSkeletonOrder(1);
-            simdata.SetCoarseDivisions(n_s);
-            simdata.SetDomainSize(h_s);
-            simdata.SetNInterRefs(0);
-            simdata.SetViscosity(1.);
-            simdata.SetNthreads(0);
-            //simdata.SetShapeTest(); // Test for shape functions
-            
-            Test2->SetSimulationData(simdata);
-            Test2->Run();
-            
-        }
-        
-    } else if (HybridBrinkmanDomain){
-        
-        int pOrder = 2;
-        
-        for (int it=0; it<=0; it++) {
-            //h_level = pow(2., 2+it);
-            h_level = 2;
-            
-            TPZVec<int> n_s(3,0.);
-            n_s[0]=h_level ,n_s[1]=h_level;
-            
-            n_s[2]=h_level; //Obs!!
-            
-            REAL visc = 1.0; //->Darcy
-            
-            HybridBrinkmanTest  * Test2 = new HybridBrinkmanTest();
-            //Test2->Set3Dmesh();
-            //Test2->SetElType(ETriangle);
-            Test2->SetInternRef(2);
-            //Test2->SetHdivPlus();
-
-            TPZTransform<STATE> Transf(3,3), InvTransf(3,3);
-            Test2->SetTransform(Transf, InvTransf);
-
-            REAL rot_x = 5.;
-            REAL rot_z = 44.;
-            REAL rot_y = -85.;
-            rot_z = rot_z*Pi/180.;
-            rot_y = rot_y*Pi/180.;
-            rot_z = rot_z*Pi/180.;
-            
-            //Test2->SetRotation3DMatrix(rot_x,rot_y,rot_z);
-            //Test2->SetAllRefine();
-            Test2->Run(SpaceHDiv, pOrder, n_s, h_s,visc);
-            
-        }
-        
-    }else if (DarcyDomain) {
+    if (DarcyDomain) {
         DarcyPTest * Test1 = new DarcyPTest();
         Test1->Run(SpaceHDiv, pOrder, nx, ny, hx, hy,visco,permeability,theta);
     }
@@ -179,22 +96,22 @@ int main(int argc, char *argv[])
         
         hx=2., hy=2.;
 
-//        for (int it=0; it<=12; it++) {
-//            //h_level = pow(2., 2+it);
-//            h_level = 8;
-//            //Coeficiente estabilização (Stokes)
-//            STATE hE=hx/h_level;
-//            STATE s0=S0[it];
-//            STATE sigma=s0*(pOrder*pOrder)/hE;
-//
-//
-//            nx=h_level+1 ,ny=h_level+1;
-//            hE=hx/h_level;
-//            sigma=s0*(pOrder*pOrder)/hE;
-//            StokesTest  * Test1 = new StokesTest();
-//            Test1->Run(SpaceHDiv, pOrder, nx, ny, hx, hy,visco,theta,sigma);
-//            //h_level = h_level*2;
-//        }
+       for (int it=0; it<=12; it++) {
+           //h_level = pow(2., 2+it);
+           h_level = 2;
+           //Coeficiente estabilização (Stokes)
+           STATE hE=hx/h_level;
+           STATE s0=S0[it];
+           STATE sigma=s0*(pOrder*pOrder)/hE;
+
+
+           nx=h_level+1 ,ny=h_level+1;
+           hE=hx/h_level;
+           sigma=s0*(pOrder*pOrder)/hE;
+           StokesTest  * Test1 = new StokesTest();
+           Test1->Run(SpaceHDiv, pOrder, nx, ny, hx, hy,visco,theta,sigma);
+           //h_level = h_level*2;
+       }
         
     }
     else if (BrinkmanDomain)
@@ -208,7 +125,7 @@ int main(int argc, char *argv[])
         
         for (int it=0; it<=0; it++) {
             //h_level = pow(2., 2+it);
-            h_level = 4;
+            h_level = 1;
             
             //Coeficiente estabilização (Stokes)
             STATE hE=hx/h_level;
