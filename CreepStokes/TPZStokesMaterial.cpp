@@ -8,53 +8,41 @@
  */
 
 #include "TPZStokesMaterial.h"
-#include "pzbndcond.h"
+#include "TPZBndCond.h"
 #include "pzaxestools.h"
 #include "TPZMatWithMem.h"
 #include "pzfmatrix.h"
 
 using namespace std;
 
-TPZStokesMaterial::TPZStokesMaterial() : TPZMatWithMem<TPZFMatrix<STATE>, TPZDiscontinuousGalerkin >(){
-    //fDim = 1;
-    TPZFNMatrix<3,STATE> Vl(1,1,0.);
-    this->SetDefaultMem(Vl);
+TPZStokesMaterial::TPZStokesMaterial() : TBase(){
     fk=1;
-    
 }
 
 ////////////////////////////////////////////////////////////////////
 
-TPZStokesMaterial::TPZStokesMaterial(int matid, int dimension, int space, STATE viscosity, STATE theta, STATE Sigma) : TPZMatWithMem<TPZFMatrix<STATE>, TPZDiscontinuousGalerkin >(matid),fDimension(dimension),fSpace(space),fViscosity(viscosity),fTheta(theta),fSigma(Sigma)
+TPZStokesMaterial::TPZStokesMaterial(int matid, int dimension, int space, STATE viscosity, STATE theta, STATE Sigma) : 
+TBase(matid),fDimension(dimension),fSpace(space),fViscosity(viscosity),fTheta(theta),fSigma(Sigma)
 {
-    // symmetric version
-    //fTheta = -1;
-    
-    //fDim = 1;
-    TPZFNMatrix<3,STATE> Vl(1,1,0.);
-    this->SetDefaultMem(Vl);
-    fk=1.;
-    
+    fk=1.;   
 }
 
 ////////////////////////////////////////////////////////////////////
 
-TPZStokesMaterial::TPZStokesMaterial(const TPZStokesMaterial &mat) : TPZMatWithMem<TPZFMatrix<STATE>, TPZDiscontinuousGalerkin >(mat),fDimension(mat.fDimension),fSpace(mat.fSpace), fViscosity(mat.fViscosity), fTheta(mat.fTheta), fSigma(mat.fSigma)
+TPZStokesMaterial::TPZStokesMaterial(const TPZStokesMaterial &mat) : 
+TBase(mat),fDimension(mat.fDimension),fSpace(mat.fSpace), fViscosity(mat.fViscosity), fTheta(mat.fTheta), fSigma(mat.fSigma)
 {
-    fk= mat.fk;
-    
+    fk= mat.fk;    
 }
 
 ////////////////////////////////////////////////////////////////////
 
 TPZStokesMaterial::~TPZStokesMaterial(){
-    
-    
 }
 
 ////////////////////////////////////////////////////////////////////
 
-void TPZStokesMaterial::FillDataRequirements(TPZVec<TPZMaterialData> &datavec)
+void TPZStokesMaterial::FillDataRequirements(TPZVec<TPZMaterialDataT<STATE>> &datavec) const
 {
     int ndata = datavec.size();
     for (int idata=0; idata < ndata ; idata++) {
@@ -65,7 +53,7 @@ void TPZStokesMaterial::FillDataRequirements(TPZVec<TPZMaterialData> &datavec)
 
 ////////////////////////////////////////////////////////////////////
 
-void TPZStokesMaterial::FillBoundaryConditionDataRequirement(int type,TPZVec<TPZMaterialData> &datavec)
+void TPZStokesMaterial::FillBoundaryConditionDataRequirements(int type,TPZVec<TPZMaterialDataT<STATE>> &datavec) const
 {
     int ndata = datavec.size();
     for (int idata=0; idata < ndata ; idata++) {
@@ -77,7 +65,8 @@ void TPZStokesMaterial::FillBoundaryConditionDataRequirement(int type,TPZVec<TPZ
 
 ////////////////////////////////////////////////////////////////////
 
-void TPZStokesMaterial::FillDataRequirementsInterface(TPZMaterialData &data)
+void TPZStokesMaterial::FillDataRequirementsInterface(TPZMaterialDataT<STATE> &data, std::map<int, TPZMaterialDataT<STATE>> &datavec_left, 
+std::map<int, TPZMaterialDataT<STATE>> &datavec_right)
 {
     data.fNeedsNormal = true;
 }
@@ -140,13 +129,10 @@ int TPZStokesMaterial::NSolutionVariables(int var) {
 
 ////////////////////////////////////////////////////////////////////
 
-void TPZStokesMaterial::Solution(TPZVec<TPZMaterialData> &datavec, int var, TPZVec<STATE> &Solout) {
-    
-    
-    //itapopo conferir esse metodo
-    
-    int vindex = this->VIndex();
-    int pindex = this->PIndex();
+void TPZStokesMaterial::Solution(const TPZVec<TPZMaterialDataT<STATE>> &datavec, int var, TPZVec<STATE> &Solout) {
+       
+    int vindex = 0;
+    int pindex = 1;
     
     TPZManVector<STATE,3> v_h = datavec[vindex].sol[0];
     REAL p_h = datavec[pindex].sol[0][0];
@@ -181,7 +167,7 @@ void TPZStokesMaterial::Solution(TPZVec<TPZMaterialData> &datavec, int var, TPZV
         {
             TPZVec<STATE> f(2,0.0);
             if(this->HasForcingFunction()){
-                this->ForcingFunction()->Execute(datavec[vindex].x, f, gradu);
+                this->fForcingFunction(datavec[vindex].x, f);
             }
             Solout[0] = f[0]; // fx
             Solout[1] = f[1]; // fy
@@ -191,8 +177,8 @@ void TPZStokesMaterial::Solution(TPZVec<TPZMaterialData> &datavec, int var, TPZV
         case 3: //v_exact
         {
             TPZVec<STATE> sol(3,0.0);
-            if(this->HasForcingFunctionExact()){
-                this->fForcingFunctionExact->Execute(datavec[vindex].x, sol, gradu); // @omar::check it!
+            if(this->HasExactSol()){
+                this->fExactSol(datavec[vindex].x, sol, gradu);
             }
             Solout[0] = sol[0]; // vx
             Solout[1] = sol[1]; // vy
@@ -202,8 +188,8 @@ void TPZStokesMaterial::Solution(TPZVec<TPZMaterialData> &datavec, int var, TPZV
         case 4: //p_exact
         {
             TPZVec<STATE> sol(3,0.0);
-            if(this->HasForcingFunctionExact()){
-                this->fForcingFunctionExact->Execute(datavec[pindex].x, sol, gradu); // @omar::check it!
+            if(this->HasExactSol()){
+                this->fExactSol(datavec[pindex].x, sol, gradu);
             }
             Solout[0] = sol[2]; // px
             
@@ -229,89 +215,26 @@ void TPZStokesMaterial::Solution(TPZVec<TPZMaterialData> &datavec, int var, TPZV
     }
 }
 
-////////////////////////////////////////////////////////////////////
-
-// Divergence on master element
-void TPZStokesMaterial::ComputeDivergenceOnMaster(TPZVec<TPZMaterialData> &datavec, TPZFMatrix<STATE> &DivergenceofPhi)
-
+void TPZStokesMaterial::SolutionInterface(const TPZMaterialDataT<STATE> &data,
+                                          const std::map<int, TPZMaterialDataT<STATE>> &dataleftvec,
+                                          const std::map<int, TPZMaterialDataT<STATE>> &datarightvec,
+                                          int var, TPZVec<STATE> &Solout)
 {
-    int ublock = 0;
-    
-    // Getting test and basis functions
-    TPZFNMatrix<100,REAL> phiuH1        = datavec[ublock].phi;   // For H1  test functions Q
-    TPZFNMatrix<300,REAL> dphiuH1       = datavec[ublock].dphi; // Derivative For H1  test functions
-    TPZFNMatrix<300,REAL> dphiuH1axes   = datavec[ublock].dphix; // Derivative For H1  test functions
-    TPZFNMatrix<9,STATE> gradu = datavec[ublock].dsol[0];
-    TPZFNMatrix<9,STATE> graduMaster;
-    gradu.Transpose();
-    
-    TPZFNMatrix<660> GradphiuH1;
-    TPZAxesTools<REAL>::Axes2XYZ(dphiuH1axes, GradphiuH1, datavec[ublock].axes);
-    
-    int nphiuHdiv = datavec[ublock].fVecShapeIndex.NElements();
-    
-    DivergenceofPhi.Resize(nphiuHdiv,1);
-    
-    REAL JacobianDet = datavec[ublock].detjac;
-    
-    TPZFNMatrix<9,REAL> Qaxes = datavec[ublock].axes;
-    TPZFNMatrix<9,REAL> QaxesT;
-    TPZFNMatrix<9,REAL> Jacobian = datavec[ublock].jacobian;
-    TPZFNMatrix<9,REAL> JacobianInverse = datavec[ublock].jacinv;
-    
-    TPZFNMatrix<9,REAL> GradOfX;
-    TPZFNMatrix<9,REAL> GradOfXInverse;
-    TPZFNMatrix<9,REAL> VectorOnMaster;
-    TPZFNMatrix<9,REAL> VectorOnXYZ(3,1,0.0);
-    Qaxes.Transpose(&QaxesT);
-    QaxesT.Multiply(Jacobian, GradOfX);
-    JacobianInverse.Multiply(Qaxes, GradOfXInverse);
-    
-    TPZFMatrix<STATE> GradOfXInverseSTATE(GradOfXInverse.Rows(), GradOfXInverse.Cols());
-    for (unsigned int i = 0; i < GradOfXInverse.Rows(); ++i) {
-        for (unsigned int j = 0; j < GradOfXInverse.Cols(); ++j) {
-            GradOfXInverseSTATE(i,j) = GradOfXInverse(i,j);
-        }
-    }
-    
-    int ivectorindex = 0;
-    int ishapeindex = 0;
-    
-    {
-        
-        for (int iq = 0; iq < nphiuHdiv; iq++)
-        {
-            ivectorindex = datavec[ublock].fVecShapeIndex[iq].first;
-            ishapeindex = datavec[ublock].fVecShapeIndex[iq].second;
-            
-            for (int k = 0; k < 3; k++) {
-                VectorOnXYZ(k,0) = datavec[ublock].fDeformedDirections(k,ivectorindex);
-            }
-            
-            GradOfXInverse.Multiply(VectorOnXYZ, VectorOnMaster);
-            VectorOnMaster *= JacobianDet;
-            
-            /* Contravariant Piola mapping preserves the divergence */
-            for (int k = 0; k < fDimension; k++) {
-                DivergenceofPhi(iq,0) +=  dphiuH1(k,ishapeindex)*VectorOnMaster(k,0);
-            }
-            
-        }
-        
-        
-    }
-    
-    return;
-    
 }
 
+void TPZStokesMaterial::SolutionInterface(const TPZMaterialDataT<STATE> &data,
+                                          const std::map<int, TPZMaterialDataT<STATE>> &dataleftvec,
+                                          const std::map<int, TPZMaterialDataT<STATE>> &datarightvec,
+                                          int var, TPZVec<STATE> &Solout,
+                                          TPZCompEl *left, TPZCompEl *right)
+{
+}
 
 ////////////////////////////////////////////////////////////////////
 
-void TPZStokesMaterial::Write(TPZStream &buf, int withclassid) const{
-    
-    TPZDiscontinuousGalerkin::Write(buf, withclassid);
-    
+void TPZStokesMaterial::Write(TPZStream &buf, int withclassid) {
+
+    TPZMaterial::Write(buf, withclassid);
     
 }
 
@@ -319,14 +242,13 @@ void TPZStokesMaterial::Write(TPZStream &buf, int withclassid) const{
 
 void TPZStokesMaterial::Read(TPZStream &buf, void *context) {
     
-    TPZDiscontinuousGalerkin::Read(buf, context);
+    TPZMaterial::Read(buf, context);
     
 }
 
 ////////////////////////////////////////////////////////////////////
 
-void TPZStokesMaterial::FillGradPhi(TPZMaterialData &dataV, TPZVec< TPZFMatrix<REAL> > &GradPhi){
-    
+void TPZStokesMaterial::FillGradPhi(TPZMaterialDataT<STATE> &dataV, TPZVec< TPZFMatrix<REAL> > &GradPhi){
     
     TPZFMatrix<REAL> &dphiV = dataV.dphix;
     
@@ -357,22 +279,10 @@ void TPZStokesMaterial::FillGradPhi(TPZMaterialData &dataV, TPZVec< TPZFMatrix<R
 
 // Contricucao dos elementos internos
 
-void TPZStokesMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef){
+void TPZStokesMaterial::Contribute(const TPZVec<TPZMaterialDataT<STATE>> &datavec, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef){
     
-    
-//#ifdef PZDEBUG
-//    //2 = 1 Vel space + 1 Press space
-//    int nref =  datavec.size();
-//    if (nref != 2 ) {
-//        std::cout << " Erro. The size of the datavec is different from 2 \n";
-//        DebugStop();
-//    }
-//#endif
-    
-    
-    
-    const int vindex = this->VIndex();
-    const int pindex = this->PIndex();
+    const int vindex = 0;
+    const int pindex = 1;
     
     if (datavec[vindex].fVecShapeIndex.size() == 0) {
         FillVecShapeIndex(datavec[vindex]);
@@ -408,15 +318,6 @@ void TPZStokesMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weight
     STATE divu;
     TPZFNMatrix<10,STATE> gradV_axes = datavec[vindex].dsol[0];
     
-    STATE jac_det;
-    
-    this->ComputeDivergenceOnMaster(datavec, div_on_master);
-    jac_det = datavec[vindex].detjac;
-    
-    
-//    std::cout<<datavec[0].x<<std::endl;
-//    std::cout<<div_on_master<<std::endl;
-//    std::cout<<"-----"<<std::endl;
     for(int i = 0; i < nshapeV; i++ )
     {
         int iphi = datavec[vindex].fVecShapeIndex[i].second;
@@ -453,11 +354,8 @@ void TPZStokesMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weight
         if(this->HasForcingFunction()){
             TPZFMatrix<STATE> gradu;
             
-            this->ForcingFunction()->Execute(datavec[vindex].x, f, gradu);
+            this->fForcingFunction(datavec[vindex].x, f);
         }
-        
-        
-        
         
         STATE phi_dot_f = 0.0;
         for (int e=0; e<fDimension; e++) {
@@ -523,7 +421,7 @@ void TPZStokesMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weight
 }
 
 
-void TPZStokesMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef, TPZBndCond &bc){
+void TPZStokesMaterial::ContributeBC(const TPZVec<TPZMaterialDataT<STATE>> &datavec, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef, TPZBndCondT<STATE> &bc){
     
     //return;
     
@@ -541,10 +439,9 @@ void TPZStokesMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL weig
         DebugStop();
     }
 #endif
-    
-    
-    const int vindex = this->VIndex();
-    const int pindex = this->PIndex();
+
+    const int vindex = 0;
+    const int pindex = 1;
     
     if (datavec[vindex].fVecShapeIndex.size() == 0) {
         FillVecShapeIndex(datavec[vindex]);
@@ -588,7 +485,7 @@ void TPZStokesMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL weig
     
     TPZFNMatrix<9,STATE> phiVi(fDimension,1,0.),phiVni(1,1,0.), phiVj(fDimension,1,0.),phiVnj(1,1,0.), phiPi(fDimension,1),phiPj(fDimension,1);
     
-    TPZFNMatrix<3,STATE> v_2=bc.Val2();
+    TPZVec<STATE> v_2=bc.Val2();
     TPZFNMatrix<3,STATE> v_1=bc.Val1();
     STATE p_D = bc.Val1()(0,0);
     
@@ -596,13 +493,13 @@ void TPZStokesMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL weig
         case 0: //Dirichlet for continuous formulation
         {
             
-            if(bc.HasForcingFunction())
+            if(bc.HasForcingFunctionBC())
             {
                 TPZManVector<STATE> vbc(3);
                 TPZFMatrix<STATE> gradu;
-                bc.ForcingFunction()->Execute(datavec[vindex].x,vbc,gradu);
-                v_2(0,0) = vbc[0];
-                v_2(1,0) = vbc[1];
+                bc.ForcingFunctionBC()(datavec[vindex].x,vbc,gradu);
+                v_2[0] = vbc[0];
+                v_2[1] = vbc[1];
                 p_D = vbc[2];
             }
             
@@ -618,17 +515,15 @@ void TPZStokesMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL weig
                     REAL vh_n = v_h[0];
                     REAL v_n = n[0] * v_2[0] + n[1] * v_2[1];
                     
-                    ef(i,0) += -weight * gBigNumber * (vh_n - v_n) * phiV(i,0);
+                    ef(i,0) += -weight * fBigNumber * (vh_n - v_n) * phiV(i,0);
                     
                     for(int j = 0; j < nshapeV; j++){
                         
-                        ek(i,j) += weight * gBigNumber * phiV(j,0) * phiV(i,0);
+                        ek(i,j) += weight * fBigNumber * phiV(j,0) * phiV(i,0);
                         
                     }
-                    
+    
                 }
-                
-                
                 
             }else{
                 
@@ -646,16 +541,14 @@ void TPZStokesMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL weig
                     
                     STATE factef=0.0;
                     for(int is=0; is<gy ; is++){
-                        factef += -1.0*(v_h[is] - v_2(is,0)) * phiVi(is,0);
+                        factef += -1.0*(v_h[is] - v_2[is]) * phiVi(is,0);
                     }
                     
-                    ef(i,0) += weight * gBigNumber * factef;
+                    ef(i,0) += weight * fBigNumber * factef;
                     
                     for(int j = 0; j < nshapeV; j++){
                         int jphi = datavec[vindex].fVecShapeIndex[j].second;
                         int jvec = datavec[vindex].fVecShapeIndex[j].first;
-                        
-                        
                         
                         for (int e=0; e<fDimension; e++) {
                             phiVj(e,0)=datavec[vindex].fDeformedDirections(e,jvec)*phiV(jphi,0);
@@ -668,14 +561,12 @@ void TPZStokesMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL weig
                             factek += phiVj(is,0) * phiVi(is,0);
                         }
                         
-                        ek(i,j) += weight * gBigNumber * factek;
+                        ek(i,j) += weight * fBigNumber * factek;
                         
                     }
                     
                 }
             }
-            
-            
             
         }
             break;
@@ -684,17 +575,16 @@ void TPZStokesMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL weig
         {
             
             
-            if(bc.HasForcingFunction())
+            if(bc.HasForcingFunctionBC())
             {
                 TPZManVector<STATE> vbc(3);
-                bc.ForcingFunction()->Execute(datavec[pindex].x,vbc);
-                v_2(0,0) = vbc[0];
-                v_2(1,0) = vbc[1];
+                TPZFNMatrix<9,STATE> gradu(2,1);
+                bc.ForcingFunctionBC()(datavec[pindex].x,vbc,gradu);
+                v_2[0] = vbc[0];
+                v_2[1] = vbc[1];
                 p_D  = vbc[2]*0.;
-                
-                
-            }
             
+            }
             
             for(int i = 0; i < nshapeV; i++ )
             {
@@ -725,7 +615,6 @@ void TPZStokesMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL weig
                 
             }
             
-            
         }
             
             
@@ -736,15 +625,14 @@ void TPZStokesMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL weig
         case 2: //Condição Penetração
         {
             
-            if(bc.HasForcingFunction())
+            if(bc.HasForcingFunctionBC())
             {
                 TPZManVector<STATE> vbc(3);
                 TPZFMatrix<STATE> gradu;
-                bc.ForcingFunction()->Execute(datavec[vindex].x,vbc,gradu);
-                v_2(0,0) = vbc[0];
-                v_2(1,0) = vbc[1];
+                bc.ForcingFunctionBC()(datavec[vindex].x,vbc,gradu);
+                v_2[0] = vbc[0];
+                v_2[1] = vbc[1];
                 p_D = vbc[2];
-                
             }
             
             if(fSpace==1){
@@ -759,11 +647,11 @@ void TPZStokesMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL weig
                     REAL vh_n = v_h[0];
                     REAL v_n = n[0] * v_2[0] + n[1] * v_2[1];
                     
-                    ef(i,0) += -weight * gBigNumber * (vh_n - v_n) * phiV(i,0);
+                    ef(i,0) += -weight * fBigNumber * (vh_n - v_n) * phiV(i,0);
                     
                     for(int j = 0; j < nshapeV; j++){
                         
-                        ek(i,j) += weight * gBigNumber * phiV(j,0) * phiV(i,0);
+                        ek(i,j) += weight * fBigNumber * phiV(j,0) * phiV(i,0);
                         
                     }
                     
@@ -801,8 +689,7 @@ void TPZStokesMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL weig
                     REAL vh_n = v_h[0];
                     REAL v_n = n[0] * v_2[0] + n[1] * v_2[1];
                     
-                    ef(i,0) += -weight * gBigNumber * (vh_n-v_n) * (phiVni(0,0));
-                    
+                    ef(i,0) += -weight * fBigNumber * (vh_n-v_n) * (phiVni(0,0));
                     
                     for(int j = 0; j < nshapeV; j++){
                         
@@ -818,7 +705,7 @@ void TPZStokesMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL weig
                             
                         }
                         
-                        ek(i,j) += weight * gBigNumber * phiVni(0,0) * phiVnj(0,0);
+                        ek(i,j) += weight * fBigNumber * phiVni(0,0) * phiVnj(0,0);
                         
                     }
                     
@@ -828,95 +715,14 @@ void TPZStokesMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL weig
         }
             break;
             
-            
-        case 3: //Contribuicao ponto no x
-        {
-            
-            REAL p_D = v_2(0,0);
-            
-            if(bc.HasForcingFunction())
-            {
-                TPZManVector<STATE> pbc(1);
-                bc.ForcingFunction()->Execute(datavec[vindex].x,pbc);
-                p_D = pbc[0];
-                
-            }
-            
-            TPZManVector<REAL> n = datavec[0].normal;
-            
-            REAL phiVi_n;
-            
-            
-            for(int i = 0; i < 3; i++ )
-            {
-                phiVi_n = 0.0;
-                
-                int iphi = datavec[vindex].fVecShapeIndex[i].second;
-                int ivec = datavec[vindex].fVecShapeIndex[i].first;
-                
-                for (int e=0; e<fDimension; e++) {
-                    phiVi(e,0)=datavec[vindex].fDeformedDirections(e,ivec)*phiV(iphi,0);
-                    phiVi_n += phiVi(e,0)*n[e];
-                }
-                
-                ef(i*2,0) += -1.0*weight * p_D * phiVi_n;
-                
-                
-            }
-            
-            
-        }
-            break;
-            
-        case 4: //Contribuicao ponto no y
-        {
-            
-            REAL p_D = v_2(0,0);
-            
-            if(bc.HasForcingFunction())
-            {
-                TPZManVector<STATE> pbc(1);
-                bc.ForcingFunction()->Execute(datavec[vindex].x,pbc);
-                p_D = pbc[0];
-                
-            }
-            
-            TPZManVector<REAL> n = datavec[0].normal;
-            
-            REAL phiVi_n;
-            
-            
-            for(int i = 0; i < 3; i++ )
-            {
-                phiVi_n = 0.0;
-                
-                int iphi = datavec[vindex].fVecShapeIndex[i].second;
-                int ivec = datavec[vindex].fVecShapeIndex[i].first;
-                
-                for (int e=0; e<fDimension; e++) {
-                    phiVi(e,0)=datavec[vindex].fDeformedDirections(e,ivec)*phiV(iphi,0);
-                    phiVi_n += phiVi(e,0)*n[e];
-                }
-                
-                ef(i*2+1,0) += -1.0*weight * p_D * phiVi_n;
-                
-                
-            }
-            
-            
-        }
-            break;
-            
         case 5: //Ponto pressao
         {
             
             return;
-            p_D = bc.Val2()(0,0);
-            
+            p_D = bc.Val2()[0];
             
             for(int i = 0; i < nshapeP; i++ )
             {
-                
                 
                 ef(i) += 1.0 * p_D * phiP(i,0);
                 
@@ -934,33 +740,28 @@ void TPZStokesMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL weig
         case 6: //Pressao Dirichlet
         {
             
-            if(bc.HasForcingFunction())
+            if(bc.HasForcingFunctionBC())
             {
                 TPZManVector<STATE> vbc(3);
-                bc.ForcingFunction()->Execute(datavec[pindex].x,vbc);
-                v_2(0,0) = vbc[0];
-                v_2(1,0) = vbc[1];
+                TPZFNMatrix<9, STATE> gradu(2, 1);
+                bc.ForcingFunctionBC()(datavec[pindex].x, vbc, gradu);
+                v_2[0] = vbc[0];
+                v_2[1] = vbc[1];
                 p_D  = vbc[2]*0.;
-                
-                
             }
             
             //pressao
             
             for(int i = 0; i < nshapeP; i++ )
             {
-                
-                
-                ef(i) += -weight * gBigNumber * (p_h[0] - p_D) * phiP(i,0);
+                ef(i) += -weight * fBigNumber * (p_h[0] - p_D) * phiP(i,0);
                 
                 for(int j = 0; j < nshapeP; j++){
                     
-                    ek(i,j) += weight * gBigNumber * (phiP(i,0) * phiP(j,0));
+                    ek(i,j) += weight * fBigNumber * (phiP(i,0) * phiP(j,0));
                     
                 }
-                
             }
-            
         }
             
             break;
@@ -987,522 +788,9 @@ void TPZStokesMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL weig
 
 ////////////////////////////////////////////////////////////////////
 
-void TPZStokesMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMaterialData> &datavecleft, TPZVec<TPZMaterialData> &datavecright, REAL weight, TPZFMatrix<STATE> &ek,TPZFMatrix<STATE> &ef){
+void TPZStokesMaterial::ContributeInterface(const TPZMaterialDataT<STATE> &data, std::map<int, TPZMaterialDataT<STATE>> &datavecleft, 
+std::map<int, TPZMaterialDataT<STATE>> &datavecright, REAL weight, TPZFMatrix<STATE> &ek,TPZFMatrix<STATE> &ef){
 
-    
-//    // Verificar que
-//    // os termos mistos devem estar sem viscosidade!
-//
-//
-//#ifdef PZDEBUG
-//    //2 = 1 Vel space + 1 Press space for datavecleft
-//    int nrefleft =  datavecleft.size();
-//    if (nrefleft != 2 ) {
-//        std::cout << " Erro. The size of the datavec is different from 2 \n";
-//        DebugStop();
-//    }
-//
-//    //2 = 1 Vel space + 1 Press space for datavecright
-//    int nrefright =  datavecright.size();
-//    if (nrefright != 2 ) {
-//        std::cout << " Erro. The size of the datavec is different from 2 \n";
-//        DebugStop();
-//    }
-//#endif
-//
-//    const int vindex = this->VIndex();
-//    const int pindex = this->PIndex();
-//
-//    if (datavecleft[vindex].fVecShapeIndex.size() == 0) {
-//        FillVecShapeIndex(datavecleft[vindex]);
-//    }
-//
-//    if (datavecright[vindex].fVecShapeIndex.size() == 0) {
-//        FillVecShapeIndex(datavecright[vindex]);
-//    }
-//
-//    // Setting forcing function
-//    /*STATE force = 0.;
-//     if(this->fForcingFunction) {
-//     TPZManVector<STATE> res(1);
-//     fForcingFunction->Execute(datavec[pindex].x,res);
-//     force = res[0];
-//     }*/
-//
-//    //Gravity
-//    STATE rhoi = 900.; //itapopo
-//    STATE g = 9.81; //itapopo
-//    STATE force = rhoi*g;
-//
-//    // Setting the phis
-//    // V - left
-//    TPZFMatrix<REAL> &phiV1 = datavecleft[vindex].phi;
-//    TPZFMatrix<REAL> &dphiV1 = datavecleft[vindex].dphix;
-//    // V - right
-//    TPZFMatrix<REAL> &phiV2 = datavecright[vindex].phi;
-//    TPZFMatrix<REAL> &dphiV2 = datavecright[vindex].dphix;
-//
-//    // P - left
-//    TPZFMatrix<REAL> &phiP1 = datavecleft[pindex].phi;
-//    TPZFMatrix<REAL> &dphiP1 = datavecleft[pindex].dphix;
-//    // P - right
-//    TPZFMatrix<REAL> &phiP2 = datavecright[pindex].phi;
-//    TPZFMatrix<REAL> &dphiP2 = datavecright[pindex].dphix;
-//
-//    data.fNeedsNormal = true;
-//    //Normal
-//    TPZManVector<REAL,3> &normal = data.normal;
-//
-//    //Detjac
-//    REAL Detjac=fabs(data.detjac);
-//
-//    REAL sigmaConst = fSigma;
-//
-//    //Triangle Verification:
-//    if (fabs(normal[0])<1.&&fabs(normal[1])<1.) {
-//        sigmaConst = fSigma/sqrt(2.);
-//    }
-//
-//
-//
-//
-//    TPZFNMatrix<220,REAL> dphiVx1(fDimension,dphiV1.Cols());
-//    TPZAxesTools<REAL>::Axes2XYZ(dphiV1, dphiVx1, datavecleft[vindex].axes);
-//
-//
-//    TPZFNMatrix<220,REAL> dphiVx2(fDimension,dphiV2.Cols());
-//    TPZAxesTools<REAL>::Axes2XYZ(dphiV2, dphiVx2, datavecright[vindex].axes);
-//
-//
-//    TPZFNMatrix<220,REAL> dphiPx1(fDimension,phiP1.Cols());
-//    TPZAxesTools<REAL>::Axes2XYZ(dphiP1, dphiPx1, datavecleft[pindex].axes);
-//
-//
-//    TPZFNMatrix<220,REAL> dphiPx2(fDimension,phiP2.Cols());
-//    TPZAxesTools<REAL>::Axes2XYZ(dphiP2, dphiPx2, datavecright[pindex].axes);
-//
-//    TPZManVector<REAL, 3> tangent(fDimension,0.);
-//    TPZFNMatrix<3,STATE> tangentV(fDimension,1,0.);
-//    for(int i=0; i<fDimension; i++) tangent[i] = data.axes(0,i);
-//    for(int i=0; i<fDimension; i++) tangentV(i,0) = data.axes(0,i);
-//
-//
-//    //TPZManVector<REAL,3> normalx(fDimension,phiP2.Cols());
-//    //TPZAxesTools<REAL>::Axes2XYZ(normal, normalx, data.axes);
-//
-//    int nshapeV1, nshapeV2, nshapeP1,nshapeP2;
-//
-//    nshapeV1 = datavecleft[vindex].fVecShapeIndex.NElements();
-//    nshapeV2 = datavecright[vindex].fVecShapeIndex.NElements();
-//    nshapeP1 = phiP1.Rows();
-//    nshapeP2 = phiP2.Rows();
-//
-//
-//    for(int i1 = 0; i1 < nshapeV1; i1++ )
-//    {
-//        int iphi1 = datavecleft[vindex].fVecShapeIndex[i1].second;
-//        int ivec1 = datavecleft[vindex].fVecShapeIndex[i1].first;
-//
-//
-//
-//        TPZFNMatrix<9,STATE> GradV1ni(fDimension,1,0.),phiV1i(fDimension,1),phiV1ni(1,1,0.), phiV1ti(fDimension,1,0.);
-//        TPZFNMatrix<4,STATE> GradV1i(fDimension,fDimension,0.),GradV1it(fDimension,fDimension,0.),Du1i(fDimension,fDimension,0.),Du1ni(fDimension,1,0.),  Du1ti(fDimension,1,0.);
-//        STATE phiit = 0.;
-//
-//        for (int e=0; e<fDimension; e++) {
-//
-//            phiV1i(e,0)=datavecleft[vindex].fDeformedDirections(e,ivec1)*datavecleft[vindex].phi(iphi1,0);
-//            phiV1ni(0,0)+=phiV1i(e,0)*normal[e];
-//
-//            for (int f=0; f<fDimension; f++) {
-//                GradV1i(e,f) = datavecleft[vindex].fDeformedDirections(e,ivec1)*dphiVx1(f,iphi1);
-//                //termo transposto:
-//                GradV1it(f,e) = datavecleft[vindex].fDeformedDirections(e,ivec1)*dphiVx1(f,iphi1);
-//            }
-//        }
-//
-//        phiit = InnerVec(phiV1i,tangentV);
-//        for(int e = 0; e<fDimension; e++)
-//        {
-//            phiV1ti(e,0) += phiit*tangent[e];
-//        }
-//
-//        //        phiV1i.Print("phiV1i = ",cout);
-//        //        phiV1ti.Print("phiV1ti = ",cout);
-//
-//
-//        //Du = 0.5(GradU+GradU^T)
-//        for (int e=0; e<fDimension; e++) {
-//            for (int f=0; f<fDimension; f++) {
-//                Du1i(e,f)= (1./2.) * (GradV1i(e,f) + GradV1it(e,f));
-//            }
-//        }
-//
-//        //Du1ni e Du1ti
-//        for (int e=0; e<fDimension; e++) {
-//            for (int f=0; f<fDimension; f++) {
-//                Du1ni(e,0) += Du1i(e,f)*normal[f];
-//                Du1ti(e,0) += Du1i(e,f)*tangent[f];
-//            }
-//        }
-//
-//
-//
-//
-//        TPZFNMatrix<9,STATE> GradV1nj(fDimension,1,0.),phiV1j(fDimension,1),phiV1nj(1,1,0.);
-//
-//        // K11 - (trial V left) * (test V left)
-//        for(int j1 = 0; j1 < nshapeV1; j1++){
-//            int jphi1 = datavecleft[vindex].fVecShapeIndex[j1].second;
-//            int jvec1 = datavecleft[vindex].fVecShapeIndex[j1].first;
-//
-//            TPZFNMatrix<3,STATE> phiV1j(fDimension,1,0.),phiV1tj(fDimension,1,0.), phiV1nj(1,1,0.);
-//            TPZFNMatrix<4,STATE> GradV1j(fDimension,fDimension,0.),GradV1jt(fDimension,fDimension,0.),Du1j(fDimension,fDimension,0.),Du1nj(fDimension,1,0.),Du1tj(fDimension,1,0.);
-//            STATE phijt = 0.;
-//
-//            for (int e=0; e<fDimension; e++) {
-//
-//                phiV1j(e,0)=datavecleft[vindex].fDeformedDirections(e,jvec1)*datavecleft[vindex].phi(jphi1,0);
-//                phiV1nj(0,0)+=phiV1j(e,0)*normal[e];
-//
-//                for (int f=0; f<fDimension; f++) {
-//                    GradV1j(e,f) = datavecleft[vindex].fDeformedDirections(e,jvec1)*dphiVx1(f,jphi1);
-//                    //termo transposto:
-//                    GradV1jt(f,e) = datavecleft[vindex].fDeformedDirections(e,jvec1)*dphiVx1(f,jphi1);
-//
-//                }
-//            }
-//
-//            phijt = InnerVec(phiV1j,tangentV);
-//            for(int e = 0; e<fDimension; e++)
-//            {
-//                phiV1tj(e,0) += phijt*tangent[e];
-//            }
-//
-//            //Du = 0.5(GradU+GradU^T)
-//            for (int e=0; e<fDimension; e++) {
-//                for (int f=0; f<fDimension; f++) {
-//                    Du1j(e,f)= (1./2.) * (GradV1j(e,f) + GradV1jt(e,f));
-//                }
-//            }
-//
-//            //Du1nj
-//            for (int e=0; e<fDimension; e++) {
-//                for (int f=0; f<fDimension; f++) {
-//                    Du1nj(e,0) += Du1j(e,f)*normal[f];
-//                    Du1tj(e,0) += Du1j(e,f)*tangent[f];
-//                }
-//            }
-//
-//            STATE phiV1it = InnerVec(phiV1i,tangentV);
-//            STATE phiV1jt = InnerVec(phiV1j,tangentV);
-//            STATE Du1njt = InnerVec(Du1nj,tangentV);
-//
-//            // 1-1 Inter: v * (Grad u)n
-//
-// //           STATE fact = (-1./2.) * weight * 2.* fViscosity * InnerVec(phiV1i, Du1nj);
-//            STATE fact = (-1./2.) * weight * 2.* fViscosity * phiV1it * Du1njt;
-//            ek(i1,j1) +=fact;
-//            ek(j1,i1) +=-fact*fTheta;
-//
-//
-//            // 1-1 Penalidade:  v * u:
-//
-//
-//
-//            //STATE penalty = sigmaConst * weight * fViscosity * InnerVec(phiV1i, phiV1j);
-//            STATE penalty = sigmaConst * weight * fViscosity * phiV1it * phiV1jt ;
-//            ek(i1,j1) +=penalty;
-//
-//
-//        }
-//
-//        // K12 e K21 - (trial V left) * (test P left)
-//        for(int j1 = 0; j1 < nshapeP1; j1++){
-//
-//
-//            TPZFNMatrix<9,STATE> phiP1j(1,1,0.);
-//            phiP1j(0,0)=phiP1(j1,0);
-//
-//            // 1-1 Inter: vn * p
-//
-//            STATE fact = (1./2.) * weight * Inner(phiV1ni,phiP1j);
-//
-//    //        ek(i1,j1+nshapeV1) += fact;
-//    //        ek(j1+nshapeV1,i1) += fact;
-//
-//        }
-//
-//
-//        // K13 - (trial V left) * (test V right)
-//        for(int j2 = 0; j2 < nshapeV2; j2++){
-//            int jphi2 = datavecright[vindex].fVecShapeIndex[j2].second;
-//            int jvec2 = datavecright[vindex].fVecShapeIndex[j2].first;
-//            TPZFNMatrix<9,STATE> GradV2nj(fDimension,1),phiV2j(fDimension,1),phiV2nj(1,1,0.);
-//            //TPZManVector<REAL,3> phiP1j(fDimension);
-//
-//            TPZFNMatrix<4,STATE> GradV2j(fDimension,fDimension,0.),GradV2jt(fDimension,fDimension,0.),Du2j(fDimension,fDimension,0.),Du2nj(fDimension,1,0.);
-//
-//            for (int e=0; e<fDimension; e++) {
-//
-//                phiV2j(e,0)=datavecright[vindex].fDeformedDirections(e,jvec2)*datavecright[vindex].phi(jphi2,0);
-//                phiV2nj(0,0)+=phiV2j(e,0)*normal[e];
-//
-//                for (int f=0; f<fDimension; f++) {
-//                    GradV2j(e,f) = datavecright[vindex].fDeformedDirections(e,jvec2)*dphiVx2(f,jphi2);
-//                    //termo transposto:
-//                    GradV2jt(f,e) = datavecright[vindex].fDeformedDirections(e,jvec2)*dphiVx2(f,jphi2);
-//
-//                }
-//            }
-//
-//            //Du = 0.5(GradU+GradU^T)
-//            for (int e=0; e<fDimension; e++) {
-//                for (int f=0; f<fDimension; f++) {
-//                    Du2j(e,f)= (1./2.) * (GradV2j(e,f) + GradV2jt(e,f));
-//                }
-//            }
-//
-//            //Du2nj
-//            for (int e=0; e<fDimension; e++) {
-//                for (int f=0; f<fDimension; f++) {
-//                    Du2nj(e,0) += Du2j(e,f)*normal[f] ;
-//                }
-//            }
-//
-//
-//            STATE phiV1it = InnerVec(phiV1i,tangentV);
-//            STATE phiV2jt = InnerVec(phiV2j,tangentV);
-//            STATE Du2njt = InnerVec(Du2nj,tangentV);
-//
-//            // 1-2 Inter: v * (Grad u)n
-//
-////            STATE fact = (-1./2.) * weight * 2. * fViscosity * InnerVec(phiV1i,Du2nj);
-//            STATE fact = (-1./2.) * weight * 2. * fViscosity * phiV1it * Du2njt;
-//
-//            ek(i1,j2+nshapeV1+nshapeP1) += fact;
-//            ek(j2+nshapeV1+nshapeP1,i1) += -fact*fTheta;
-//
-//            // 1-2 Penalidade: v * u
-//
-//
-//
-//            //STATE penalty = sigmaConst * weight * fViscosity * InnerVec(phiV1i, phiV2j);
-//            STATE penalty = sigmaConst * weight * fViscosity * phiV1it * phiV2jt;
-//            ek(i1,j2+nshapeV1+nshapeP1) += -penalty;
-//
-//        }
-//
-//        // K14 e K41 - (trial V left) * (test P right)
-//        for(int j2 = 0; j2 < nshapeP2; j2++){
-//
-//            TPZFNMatrix<9,STATE> phiP2j(1,1,0.);
-//            phiP2j(0,0)=phiP2(j2,0);
-//
-//            // 1-2 Inter: vn * p
-//
-//            STATE fact = (1./2.) * weight * InnerVec(phiV1ni,phiP2j);
-//
-//  //          ek(i1,j2+2*nshapeV1+nshapeP1) += fact;
-//  //          ek(j2+2*nshapeV1+nshapeP1,i1) += fact;
-//
-//        }
-//
-//    }
-//
-//
-//    for(int i2 = 0; i2 < nshapeV2; i2++ ){
-//
-//        TPZFNMatrix<9,STATE> GradV2ni(fDimension,1),phiV2i(fDimension,1),phiV2ni(1,1,0.);
-//        TPZFNMatrix<4,STATE> GradV2i(fDimension,fDimension,0.),GradV2it(fDimension,fDimension,0.),Du2i(fDimension,fDimension,0.),Du2ni(fDimension,1,0.);
-//
-//        int iphi2 = datavecright[vindex].fVecShapeIndex[i2].second;
-//        int ivec2 = datavecright[vindex].fVecShapeIndex[i2].first;
-//
-//        for (int e=0; e<fDimension; e++) {
-//
-//            phiV2i(e,0)=datavecright[vindex].fDeformedDirections(e,ivec2)*datavecright[vindex].phi(iphi2,0);
-//            phiV2ni(0,0)+=phiV2i(e,0)*normal[e];
-//
-//            for (int f=0; f<fDimension; f++) {
-//                GradV2i(e,f) = datavecright[vindex].fDeformedDirections(e,ivec2)*dphiVx2(f,iphi2);
-//                //termo transposto:
-//                GradV2it(f,e) = datavecright[vindex].fDeformedDirections(e,ivec2)*dphiVx2(f,iphi2);
-//            }
-//        }
-//
-//        //Du = 0.5(GradU+GradU^T)
-//        for (int e=0; e<fDimension; e++) {
-//            for (int f=0; f<fDimension; f++) {
-//                Du2i(e,f)= (1./2.) * (GradV2i(e,f) + GradV2it(e,f));
-//            }
-//        }
-//
-//        //Du2ni
-//        for (int e=0; e<fDimension; e++) {
-//            for (int f=0; f<fDimension; f++) {
-//                Du2ni(e,0) += Du2i(e,f)*normal[f] ;
-//            }
-//        }
-//
-//
-//
-//        // K31 - (trial V right) * (test V left)
-//        for(int j1 = 0; j1 < nshapeV1; j1++){
-//            int jphi1 = datavecleft[vindex].fVecShapeIndex[j1].second;
-//            int jvec1 = datavecleft[vindex].fVecShapeIndex[j1].first;
-//
-//            TPZFNMatrix<4,STATE> GradV1j(fDimension,fDimension,0.),GradV1jt(fDimension,fDimension,0.),Du1j(fDimension,fDimension,0.),Du1nj(fDimension,1,0.);
-//
-//            TPZFNMatrix<9,STATE> phiV1j(fDimension,1),phiV1nj(1,1,0.);
-//
-//            for (int e=0; e<fDimension; e++) {
-//
-//                phiV1j(e,0)=datavecleft[vindex].fDeformedDirections(e,jvec1)*datavecleft[vindex].phi(jphi1,0);
-//                phiV1nj(0,0)+=phiV1j(e,0)*normal[e];
-//
-//                for (int f=0; f<fDimension; f++) {
-//                    GradV1j(e,f) = datavecleft[vindex].fDeformedDirections(e,jvec1)*dphiVx1(f,jphi1);
-//                    //termo transposto:
-//                    GradV1jt(f,e) = datavecleft[vindex].fDeformedDirections(e,jvec1)*dphiVx1(f,jphi1);
-//
-//                }
-//            }
-//
-//            //Du = 0.5(GradU+GradU^T)
-//            for (int e=0; e<fDimension; e++) {
-//                for (int f=0; f<fDimension; f++) {
-//                    Du1j(e,f)= (1./2.) * (GradV1j(e,f) + GradV1jt(e,f));
-//                }
-//            }
-//
-//            //Du1nj
-//            for (int e=0; e<fDimension; e++) {
-//                for (int f=0; f<fDimension; f++) {
-//                    Du1nj(e,0) += Du1j(e,f)*normal[f] ;
-//                }
-//            }
-//
-//            STATE phiV2it = InnerVec(phiV2i,tangentV);
-//            STATE phiV1jt = InnerVec(phiV1j,tangentV);
-//            STATE Du1njt = InnerVec(Du1nj,tangentV);
-//
-//
-//           // 2-1 Inter: v * (Grad u)n
-//
-////            STATE fact = (1./2.) * weight * 2. * fViscosity * InnerVec(phiV2i, Du1nj);
-//
-//            STATE fact = (1./2.) * weight * 2. * fViscosity * phiV2it * Du1njt;
-//
-//            ek(i2+nshapeV1+nshapeP1,j1) += fact;
-//            ek(j1,i2+nshapeV1+nshapeP1) += -fact*fTheta;
-//
-//            // 2-1 Penalidade: v * u
-//
-//            //STATE penalty = sigmaConst * weight * fViscosity * InnerVec(phiV2i, phiV1j);
-//            STATE penalty = sigmaConst * weight * fViscosity * phiV2it * phiV1jt;
-//            ek(i2+nshapeV1+nshapeP1,j1) += -penalty;
-//
-//
-//        }
-//
-//        // K32 e K23 - (trial V right) * (test P left)
-//        for(int j1 = 0; j1 < nshapeP1; j1++){
-//
-//            TPZFNMatrix<9,STATE> phiP1j(1,1,0.);
-//            phiP1j(0,0)=phiP1(j1,0);
-//
-//            // 2-1 Inter: v * p
-//
-//            STATE fact = (-1./2.) * weight * InnerVec(phiV2ni,phiP1j);
-//
-////            ek(i2+nshapeV1+nshapeP1,j1+nshapeV1) += fact;
-////            ek(j1+nshapeV1,i2+nshapeV1+nshapeP1) += fact;
-//
-//        }
-//
-//
-//        // K33 - (trial V right) * (test V right)
-//        for(int j2 = 0; j2 < nshapeV2; j2++){
-//            int jphi2 = datavecright[vindex].fVecShapeIndex[j2].second;
-//            int jvec2 = datavecright[vindex].fVecShapeIndex[j2].first;
-//            TPZFNMatrix<9,STATE> GradV2nj(fDimension,1);
-//            //TPZManVector<REAL,3> phiP1j(fDimension);
-//
-//            TPZFNMatrix<4,STATE> GradV2j(fDimension,fDimension,0.),GradV2jt(fDimension,fDimension,0.),Du2j(fDimension,fDimension,0.),Du2nj(fDimension,1,0.);
-//
-//            TPZFNMatrix<9,STATE> phiV2j(fDimension,1),phiV2nj(1,1,0.);
-//
-//
-//            for (int e=0; e<fDimension; e++) {
-//
-//                phiV2j(e,0)=datavecright[vindex].fDeformedDirections(e,jvec2)*datavecright[vindex].phi(jphi2,0);
-//                phiV2nj(0,0)+=phiV2j(e,0)*normal[e];
-//
-//                for (int f=0; f<fDimension; f++) {
-//                    GradV2j(e,f) = datavecright[vindex].fDeformedDirections(e,jvec2)*dphiVx2(f,jphi2);
-//                    //termo transposto:
-//                    GradV2jt(f,e) = datavecright[vindex].fDeformedDirections(e,jvec2)*dphiVx2(f,jphi2);
-//
-//                }
-//            }
-//
-//            //Du = 0.5(GradU+GradU^T)
-//            for (int e=0; e<fDimension; e++) {
-//                for (int f=0; f<fDimension; f++) {
-//                    Du2j(e,f)= (1./2.) * (GradV2j(e,f) + GradV2jt(e,f));
-//                }
-//            }
-//
-//            //Du2nj
-//            for (int e=0; e<fDimension; e++) {
-//                for (int f=0; f<fDimension; f++) {
-//                    Du2nj(e,0) += Du2j(e,f)*normal[f] ;
-//                }
-//            }
-//
-//            STATE phiV2it = InnerVec(phiV2i,tangentV);
-//            STATE phiV2jt = InnerVec(phiV2j,tangentV);
-//            STATE Du2njt = InnerVec(Du2nj,tangentV);
-//
-//
-//            // 2-2 Inter: v * (Grad u)n
-//
-////            STATE fact = (1./2.) * weight *  2. * fViscosity * InnerVec(phiV2i,Du2nj);
-//            STATE fact = (1./2.) * weight *  2. * fViscosity * phiV2it * Du2njt;
-//
-//            ek(i2+nshapeV1+nshapeP1,j2+nshapeV1+nshapeP1) += fact;
-//            ek(j2+nshapeV1+nshapeP1,i2+nshapeV1+nshapeP1) += -fact*fTheta;
-//
-//            // 2-2 Penalidade: v * u
-//
-////            STATE penalty = sigmaConst * weight * fViscosity * InnerVec(phiV2i, phiV2j);
-//            STATE penalty = sigmaConst * weight * fViscosity * phiV2it * phiV2jt;
-//            ek(i2+nshapeV1+nshapeP1,j2+nshapeV1+nshapeP1) +=penalty;
-//
-//
-//        }
-//
-//        // K34 e K43- (trial V right) * (test P right)
-//        for(int j2 = 0; j2 < nshapeP2; j2++){
-//
-//            TPZFNMatrix<9,STATE> phiP2j(1,1,0.);
-//            phiP2j(0,0)=phiP2(j2,0);
-//
-//            // 2-2 Inter: vn * p
-//
-//            STATE fact = (-1./2.) * weight * InnerVec(phiV2ni,phiP2j);
-//
-////            ek(i2+nshapeV1+nshapeP1,j2+2*nshapeV1+nshapeP1) += fact;
-////            ek(j2+2*nshapeV1+nshapeP1,i2+nshapeV1+nshapeP1) += fact;
-//        }
-//
-//    }
-
-    // Verificar que
-    // os termos mistos devem estar sem viscosidade!
-    
-    
 #ifdef PZDEBUG
     //2 = 1 Vel space + 1 Press space for datavecleft
     int nrefleft =  datavecleft.size();
@@ -1519,8 +807,8 @@ void TPZStokesMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMat
     }
 #endif
     
-    const int vindex = this->VIndex();
-    const int pindex = this->PIndex();
+    const int vindex = 0;
+    const int pindex = 1;
     
     if (datavecleft[vindex].fVecShapeIndex.size() == 0) {
         FillVecShapeIndex(datavecleft[vindex]);
@@ -1529,14 +817,6 @@ void TPZStokesMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMat
     if (datavecright[vindex].fVecShapeIndex.size() == 0) {
         FillVecShapeIndex(datavecright[vindex]);
     }
-    
-    // Setting forcing function
-    /*STATE force = 0.;
-     if(this->fForcingFunction) {
-     TPZManVector<STATE> res(1);
-     fForcingFunction->Execute(datavec[pindex].x,res);
-     force = res[0];
-     }*/
     
     //Gravity
     STATE rhoi = 900.; //itapopo
@@ -1557,22 +837,15 @@ void TPZStokesMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMat
     // P - right
     TPZFMatrix<REAL> &phiP2 = datavecright[pindex].phi;
     TPZFMatrix<REAL> &dphiP2 = datavecright[pindex].dphix;
-    
-    data.fNeedsNormal = true;
-    //Normal
-    TPZManVector<REAL,3> &normal = data.normal;
-    
-    //Detjac
-    REAL Detjac=fabs(data.detjac);
-    
-        REAL sigmaConst = fSigma;
-    
-        //Triangle Verification:
-        if (fabs(normal[0])<1.&&fabs(normal[1])<1.) {
-            sigmaConst = fSigma/(sqrt(2.));
-        }
-    
-    
+
+    REAL sigmaConst = fSigma;
+
+    // Triangle Verification:
+    if (fabs(data.normal[0]) < 1. && fabs(data.normal[1]) < 1.)
+    {
+        sigmaConst = fSigma / (sqrt(2.));
+    }
+
     TPZFNMatrix<220,REAL> dphiVx1(fDimension,dphiV1.Cols());
     TPZAxesTools<REAL>::Axes2XYZ(dphiV1, dphiVx1, datavecleft[vindex].axes);
     
@@ -1620,7 +893,7 @@ void TPZStokesMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMat
         for (int e=0; e<fDimension; e++) {
             
             phiV1i(e,0)=datavecleft[vindex].fDeformedDirections(e,ivec1)*datavecleft[vindex].phi(iphi1,0);
-            phiV1ni(0,0)+=phiV1i(e,0)*normal[e];
+            phiV1ni(0,0)+=phiV1i(e,0)*data.normal[e];
             
             for (int f=0; f<fDimension; f++) {
                 GradV1i(e,f) = datavecleft[vindex].fDeformedDirections(e,ivec1)*dphiVx1(f,iphi1);
@@ -1629,21 +902,11 @@ void TPZStokesMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMat
             }
         }
         
-        //        dphiVx1.Print("dphiVx = ",cout);
-        //        datavecleft[vindex].fDeformedDirections.Print("normalvec = ",cout);
-        //        GradV1i.Print("GradV1i = ",cout);
-        //
-        //phiV1i.Print("phiV1i = ",cout);
-        
         phiit = InnerVec(phiV1i,tangentV);
         for(int e = 0; e<fDimension; e++)
         {
             phiV1ti(e,0) += phiit*tangent[e];
         }
-        
-        //        phiV1i.Print("phiV1i = ",cout);
-        //        phiV1ti.Print("phiV1ti = ",cout);
-        
         
         //Du = 0.5(GradU+GradU^T)
         for (int e=0; e<fDimension; e++) {
@@ -1655,7 +918,7 @@ void TPZStokesMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMat
         //Du1ni e Du1ti
         for (int e=0; e<fDimension; e++) {
             for (int f=0; f<fDimension; f++) {
-                Du1ni(e,0) += Du1i(e,f)*normal[f];
+                Du1ni(e,0) += Du1i(e,f)*data.normal[f];
                 Du1ti(e,0) += Du1i(e,f)*tangent[f];
             }
         }
@@ -1677,7 +940,7 @@ void TPZStokesMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMat
             for (int e=0; e<fDimension; e++) {
                 
                 phiV1j(e,0)=datavecleft[vindex].fDeformedDirections(e,jvec1)*datavecleft[vindex].phi(jphi1,0);
-                phiV1nj(0,0)+=phiV1j(e,0)*normal[e];
+                phiV1nj(0,0)+=phiV1j(e,0)*data.normal[e];
                 
                 for (int f=0; f<fDimension; f++) {
                     GradV1j(e,f) = datavecleft[vindex].fDeformedDirections(e,jvec1)*dphiVx1(f,jphi1);
@@ -1703,7 +966,7 @@ void TPZStokesMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMat
             //Du1nj
             for (int e=0; e<fDimension; e++) {
                 for (int f=0; f<fDimension; f++) {
-                    Du1nj(e,0) += Du1j(e,f)*normal[f];
+                    Du1nj(e,0) += Du1j(e,f)*data.normal[f];
                     Du1tj(e,0) += Du1j(e,f)*tangent[f];
                 }
             }
@@ -1752,7 +1015,7 @@ void TPZStokesMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMat
             for (int e=0; e<fDimension; e++) {
                 
                 phiV2j(e,0)=datavecright[vindex].fDeformedDirections(e,jvec2)*datavecright[vindex].phi(jphi2,0);
-                phiV2nj(0,0)+=phiV2j(e,0)*normal[e];
+                phiV2nj(0,0)+=phiV2j(e,0)*data.normal[e];
                 
                 for (int f=0; f<fDimension; f++) {
                     GradV2j(e,f) = datavecright[vindex].fDeformedDirections(e,jvec2)*dphiVx2(f,jphi2);
@@ -1772,7 +1035,7 @@ void TPZStokesMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMat
             //Du2nj
             for (int e=0; e<fDimension; e++) {
                 for (int f=0; f<fDimension; f++) {
-                    Du2nj(e,0) += Du2j(e,f)*normal[f] ;
+                    Du2nj(e,0) += Du2j(e,f)*data.normal[f] ;
                 }
             }
             
@@ -1816,7 +1079,7 @@ void TPZStokesMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMat
         for (int e=0; e<fDimension; e++) {
             
             phiV2i(e,0)=datavecright[vindex].fDeformedDirections(e,ivec2)*datavecright[vindex].phi(iphi2,0);
-            phiV2ni(0,0)+=phiV2i(e,0)*normal[e];
+            phiV2ni(0,0)+=phiV2i(e,0)*data.normal[e];
             
             for (int f=0; f<fDimension; f++) {
                 GradV2i(e,f) = datavecright[vindex].fDeformedDirections(e,ivec2)*dphiVx2(f,iphi2);
@@ -1835,7 +1098,7 @@ void TPZStokesMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMat
         //Du2ni
         for (int e=0; e<fDimension; e++) {
             for (int f=0; f<fDimension; f++) {
-                Du2ni(e,0) += Du2i(e,f)*normal[f] ;
+                Du2ni(e,0) += Du2i(e,f)*data.normal[f] ;
             }
         }
         
@@ -1853,7 +1116,7 @@ void TPZStokesMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMat
             for (int e=0; e<fDimension; e++) {
                 
                 phiV1j(e,0)=datavecleft[vindex].fDeformedDirections(e,jvec1)*datavecleft[vindex].phi(jphi1,0);
-                phiV1nj(0,0)+=phiV1j(e,0)*normal[e];
+                phiV1nj(0,0)+=phiV1j(e,0)*data.normal[e];
                 
                 for (int f=0; f<fDimension; f++) {
                     GradV1j(e,f) = datavecleft[vindex].fDeformedDirections(e,jvec1)*dphiVx1(f,jphi1);
@@ -1873,7 +1136,7 @@ void TPZStokesMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMat
             //Du1nj
             for (int e=0; e<fDimension; e++) {
                 for (int f=0; f<fDimension; f++) {
-                    Du1nj(e,0) += Du1j(e,f)*normal[f] ;
+                    Du1nj(e,0) += Du1j(e,f)*data.normal[f] ;
                 }
             }
             
@@ -1921,7 +1184,7 @@ void TPZStokesMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMat
             for (int e=0; e<fDimension; e++) {
                 
                 phiV2j(e,0)=datavecright[vindex].fDeformedDirections(e,jvec2)*datavecright[vindex].phi(jphi2,0);
-                phiV2nj(0,0)+=phiV2j(e,0)*normal[e];
+                phiV2nj(0,0)+=phiV2j(e,0)*data.normal[e];
                 
                 for (int f=0; f<fDimension; f++) {
                     GradV2j(e,f) = datavecright[vindex].fDeformedDirections(e,jvec2)*dphiVx2(f,jphi2);
@@ -1941,7 +1204,7 @@ void TPZStokesMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMat
             //Du2nj
             for (int e=0; e<fDimension; e++) {
                 for (int f=0; f<fDimension; f++) {
-                    Du2nj(e,0) += Du2j(e,f)*normal[f] ;
+                    Du2nj(e,0) += Du2j(e,f)*data.normal[f] ;
                 }
             }
             
@@ -1978,7 +1241,8 @@ void TPZStokesMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMat
 }
 
 
-void TPZStokesMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZMaterialData> &datavec, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef, TPZBndCond &bc){
+void TPZStokesMaterial::ContributeBCInterface(const TPZMaterialDataT<STATE> &data, std::map<int, TPZMaterialDataT<STATE>> &datavec, REAL weight, 
+TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef, TPZBndCondT<STATE> &bc){
     
     STATE rhsnorm = Norm(ef);
     if(isnan(rhsnorm))
@@ -1996,8 +1260,8 @@ void TPZStokesMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZM
     }
 #endif
     
-    const int vindex = this->VIndex();
-    const int pindex = this->PIndex();
+    const int vindex = 0;
+    const int pindex = 1;
     
     if (datavec[vindex].fVecShapeIndex.size() == 0) {
         FillVecShapeIndex(datavec[vindex]);
@@ -2011,8 +1275,6 @@ void TPZStokesMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZM
     // P
     TPZFMatrix<REAL> &phiP = datavec[pindex].phi;
     TPZFMatrix<REAL> &dphiP = datavec[pindex].dphix;
-    //Normal
-    TPZManVector<REAL,3> &normal = data.normal;
     
     TPZFNMatrix<220,REAL> dphiVx(fDimension,dphiV.Cols());
     TPZAxesTools<REAL>::Axes2XYZ(dphiV, dphiVx, datavec[vindex].axes);
@@ -2029,7 +1291,7 @@ void TPZStokesMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZM
     
     //Dirichlet
     
-    TPZFMatrix<STATE> v_2=bc.Val2();
+    TPZVec<STATE> v_2=bc.Val2();
     TPZFMatrix<STATE> v_1=bc.Val1();
     STATE p_D = bc.Val1()(0,0);
     
@@ -2039,20 +1301,16 @@ void TPZStokesMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZM
         case 0: //Dirichlet for discontinuous
         {
             
-            if(bc.HasForcingFunction())
+            if(bc.HasForcingFunctionBC())
             {
                 TPZManVector<STATE> vbc(3);
                 TPZFMatrix<STATE> gradu;
-                bc.ForcingFunction()->Execute(datavec[vindex].x,vbc,gradu);
-                v_2(0,0) = vbc[0];
-                v_2(1,0) = vbc[1];
+                bc.ForcingFunctionBC()(datavec[vindex].x,vbc,gradu);
+                v_2[0] = vbc[0];
+                v_2[1] = vbc[1];
                 p_D=vbc[2];
-                
             }
-            
-            
-            
-            
+ 
             //Componente tangencial -> imposta fracamente:
             
             for(int i = 0; i < nshapeV; i++ )
@@ -2084,21 +1342,21 @@ void TPZStokesMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZM
                 //Duni
                 for (int e=0; e<fDimension; e++) {
                     for (int f=0; f<fDimension; f++) {
-                        Duni(e,0) += Dui(e,f)*normal[f] ;
+                        Duni(e,0) += Dui(e,f)*data.normal[f] ;
                     }
                 }
                 
                 //GradVni
                 for (int e=0; e<fDimension; e++) {
                     for (int f=0; f<fDimension; f++) {
-                        GradVni(e,0) += GradVi(e,f)*normal[f] ;
+                        GradVni(e,0) += GradVi(e,f)*data.normal[f] ;
                     }
                 }
                 
                 
                 for (int e=0; e<fDimension; e++) {
                     phiVi(e,0)=datavec[vindex].fDeformedDirections(e,ivec)*datavec[vindex].phi(iphi,0);
-                    phiVni(0,0)+=phiVi(e,0)*normal[e];
+                    phiVni(0,0)+=phiVi(e,0)*data.normal[e];
                     
                 }
                 
@@ -2106,9 +1364,7 @@ void TPZStokesMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZM
                 TPZManVector<REAL> t(2);
                 t[0]=-n[1];
                 t[1]=n[0];
-                
-                
-                
+
                 phiVti(0,0)= t[0] * phiVi(0,0) + t[1] * phiVi(1,0);
                 TPZFNMatrix<9,STATE> phiVtit(fDimension,1,0.);
                 phiVtit(0,0)=phiVti(0,0)*t[0];
@@ -2186,7 +1442,7 @@ void TPZStokesMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZM
                         //Du2nj
                         for (int e=0; e<fDimension; e++) {
                             for (int f=0; f<fDimension; f++) {
-                                Dunj(e,0) += Duj(e,f)*normal[f] ;
+                                Dunj(e,0) += Duj(e,f)*data.normal[f] ;
                             }
                         }
                         
@@ -2210,7 +1466,7 @@ void TPZStokesMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZM
                             
                             
                             for (int e=0; e<fDimension; e++) {
-                                v_2n(0,0)+=v_2(e,0)*normal[e];
+                                v_2n(0,0)+=v_2[e]*data.normal[e];
                             }
                             
                             STATE factfp = (1.) * weight * fViscosity * v_2n(0,0)* phiPj(0,0);
@@ -2284,19 +1540,15 @@ void TPZStokesMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZM
         case 10: //Dirichlet for continuous formulation
         {
             
-            if(bc.HasForcingFunction())
+            if(bc.HasForcingFunctionBC())
             {
                 TPZManVector<STATE> vbc(3);
                 TPZFMatrix<STATE> gradu;
-                bc.ForcingFunction()->Execute(datavec[vindex].x,vbc,gradu);
-                v_2(0,0) = vbc[0];
-                v_2(1,0) = vbc[1];
-                p_D=vbc[2];
-                
+                bc.ForcingFunctionBC()(datavec[vindex].x,vbc,gradu);
+                v_2[0] = vbc[0];
+                v_2[1] = vbc[1];
+                p_D = vbc[2];
             }
-            
-            
-            
             
             //Componente tangencial -> imposta fracamente:
             
@@ -2329,21 +1581,21 @@ void TPZStokesMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZM
                 //Duni
                 for (int e=0; e<fDimension; e++) {
                     for (int f=0; f<fDimension; f++) {
-                        Duni(e,0) += Dui(e,f)*normal[f] ;
+                        Duni(e,0) += Dui(e,f)*data.normal[f] ;
                     }
                 }
                 
                 //GradVni
                 for (int e=0; e<fDimension; e++) {
                     for (int f=0; f<fDimension; f++) {
-                        GradVni(e,0) += GradVi(e,f)*normal[f] ;
+                        GradVni(e,0) += GradVi(e,f)*data.normal[f] ;
                     }
                 }
                 
                 
                 for (int e=0; e<fDimension; e++) {
                     phiVi(e,0)=datavec[vindex].fDeformedDirections(e,ivec)*datavec[vindex].phi(iphi,0);
-                    phiVni(0,0)+=phiVi(e,0)*normal[e];
+                    phiVni(0,0)+=phiVi(e,0)*data.normal[e];
                     
                 }
                 
@@ -2431,7 +1683,7 @@ void TPZStokesMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZM
                         //Du2nj
                         for (int e=0; e<fDimension; e++) {
                             for (int f=0; f<fDimension; f++) {
-                                Dunj(e,0) += Duj(e,f)*normal[f] ;
+                                Dunj(e,0) += Duj(e,f)*data.normal[f] ;
                             }
                         }
                         
@@ -2455,7 +1707,7 @@ void TPZStokesMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZM
                             
                             
                             for (int e=0; e<fDimension; e++) {
-                                v_2n(0,0)+=v_2(e,0)*normal[e];
+                                v_2n(0,0)+=v_2[e]*data.normal[e];
                             }
                             
                             STATE factfp = (1.) * weight * fViscosity * v_2n(0,0)* phiPj(0,0);
@@ -2528,17 +1780,15 @@ void TPZStokesMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZM
             {
                 
                 
-                if(bc.HasForcingFunction())
+                if(bc.HasForcingFunctionBC())
                 {
                     TPZManVector<STATE> vbc(3);
-                    bc.ForcingFunction()->Execute(datavec[pindex].x,vbc);
-                    v_2(0,0) = vbc[0];
-                    v_2(1,0) = vbc[1];
+                    TPZFNMatrix<9,STATE> gradu(2,1);
+                    bc.ForcingFunctionBC()(datavec[pindex].x,vbc,gradu);
+                    v_2[0] = vbc[0];
+                    v_2[1] = vbc[1];
                     v_1(0,0) = vbc[2]*0.;
-                    
-                    
                 }
-                
                 
                 for(int i = 0; i < nshapeV; i++ )
                 {
@@ -2580,19 +1830,16 @@ void TPZStokesMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZM
         case 2: //Penetração com slip for continuous formulation
             {
                 
-                if(bc.HasForcingFunction())
+                if(bc.HasForcingFunctionBC())
                 {
                     TPZManVector<STATE> vbc(3);
                     TPZFMatrix<STATE> gradu;
-                    bc.ForcingFunction()->Execute(datavec[vindex].x,vbc,gradu);
-                    v_2(0,0) = vbc[0];
-                    v_2(1,0) = vbc[1];
+                    bc.ForcingFunctionBC()(datavec[vindex].x,vbc,gradu);
+                    v_2[0] = vbc[0];
+                    v_2[1] = vbc[1];
                     p_D=vbc[2];
-                    
                 }
 
-                
-        
                     TPZManVector<REAL> n = data.normal;
                     TPZManVector<REAL> t(2);
                     t[0]=-n[1];
@@ -2617,7 +1864,7 @@ void TPZStokesMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZM
                         REAL vh_n = v_h[0];
                         REAL v_n = n[0] * v_2[0] + n[1] * v_2[1];
                         
-                        ef(i,0) += -weight * gBigNumber * (vh_n-v_n) * (phiVni(0,0));
+                        ef(i,0) += -weight * fBigNumber * (vh_n-v_n) * (phiVni(0,0));
                         
                         
                         for(int j = 0; j < nshapeV; j++){
@@ -2634,7 +1881,7 @@ void TPZStokesMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZM
                                 
                             }
                             
-                            ek(i,j) += weight * gBigNumber * (phiVni(0,0)) * (phiVnj(0,0)) ;
+                            ek(i,j) += weight * fBigNumber * (phiVni(0,0)) * (phiVnj(0,0)) ;
                             
                         }
                         
@@ -2673,21 +1920,21 @@ void TPZStokesMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZM
                         //Duni
                         for (int e=0; e<fDimension; e++) {
                             for (int f=0; f<fDimension; f++) {
-                                Duni(e,0) += Dui(e,f)*normal[f] ;
+                                Duni(e,0) += Dui(e,f)*data.normal[f] ;
                             }
                         }
                         
                         //GradVni
                         for (int e=0; e<fDimension; e++) {
                             for (int f=0; f<fDimension; f++) {
-                                GradVni(e,0) += GradVi(e,f)*normal[f] ;
+                                GradVni(e,0) += GradVi(e,f)*data.normal[f] ;
                             }
                         }
                         
                         
                         for (int e=0; e<fDimension; e++) {
                             phiVi(e,0)=datavec[vindex].fDeformedDirections(e,ivec)*datavec[vindex].phi(iphi,0);
-                            phiVni(0,0)+=phiVi(e,0)*normal[e];
+                            phiVni(0,0)+=phiVi(e,0)*data.normal[e];
                         }
                         
                         TPZManVector<REAL> n = data.normal;
@@ -2742,10 +1989,7 @@ void TPZStokesMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZM
                                     phiVtj(0,0)+=phiVj(e,0)*t[e];
                                     
                                 }
-                                
 
-                                
-                                
                       //          ek(i,j) += weight * gBigNumber * (phiVni(0,0)) * (phiVnj(0,0)) ;
                                 
                             }
@@ -2788,21 +2032,21 @@ void TPZStokesMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZM
                     //Duni
                     for (int e=0; e<fDimension; e++) {
                         for (int f=0; f<fDimension; f++) {
-                            Duni(e,0) += Dui(e,f)*normal[f] ;
+                            Duni(e,0) += Dui(e,f)*data.normal[f] ;
                         }
                     }
                     
                     //GradVni
                     for (int e=0; e<fDimension; e++) {
                         for (int f=0; f<fDimension; f++) {
-                            GradVni(e,0) += GradVi(e,f)*normal[f] ;
+                            GradVni(e,0) += GradVi(e,f)*data.normal[f] ;
                         }
                     }
                     
                     
                     for (int e=0; e<fDimension; e++) {
                         phiVi(e,0)=datavec[vindex].fDeformedDirections(e,ivec)*datavec[vindex].phi(iphi,0);
-                        phiVni(0,0)+=phiVi(e,0)*normal[e];
+                        phiVni(0,0)+=phiVi(e,0)*data.normal[e];
                         
                     }
                     
@@ -2918,7 +2162,7 @@ void TPZStokesMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZM
                             //Du2nj
                             for (int e=0; e<fDimension; e++) {
                                 for (int f=0; f<fDimension; f++) {
-                                    Dunj(e,0) += Duj(e,f)*normal[f] ;
+                                    Dunj(e,0) += Duj(e,f)*data.normal[f] ;
                                 }
                             }
                             
@@ -2953,7 +2197,7 @@ void TPZStokesMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZM
                                 
                                 
                                 for (int e=0; e<fDimension; e++) {
-                                    v_2n(0,0)+=v_2(e,0)*normal[e];
+                                    v_2n(0,0)+=v_2[e]*data.normal[e];
                                 }
                                 
                                 STATE factfp = (1.) * weight * fViscosity * v_2n(0,0)* phiPj(0,0);
@@ -3045,8 +2289,8 @@ void TPZStokesMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZM
 
 
 ////////////////////////////////////////////////////////////////////
-template <typename TVar>
-TVar TPZStokesMaterial::Inner(TPZFMatrix<TVar> &S, TPZFMatrix<TVar> &T){
+template <typename TVar2>
+TVar2 TPZStokesMaterial::Inner(TPZFMatrix<TVar2> &S, TPZFMatrix<TVar2> &T){
     
     //inner product of two tensors
     
@@ -3061,7 +2305,7 @@ TVar TPZStokesMaterial::Inner(TPZFMatrix<TVar> &S, TPZFMatrix<TVar> &T){
     }
 #endif
     
-    TVar Val = 0;
+    TVar2 Val = 0;
     
     for(int i = 0; i < S.Cols(); i++){
         for(int j = 0; j < S.Cols(); j++){
@@ -3075,7 +2319,8 @@ TVar TPZStokesMaterial::Inner(TPZFMatrix<TVar> &S, TPZFMatrix<TVar> &T){
 
 
 ////////////////////////////////////////////////////////////////////
-STATE TPZStokesMaterial::InnerVec(TPZFMatrix<STATE> &S, TPZFMatrix<STATE> &T){
+template <typename TVar2>
+TVar2 TPZStokesMaterial::InnerVec(TPZFMatrix<TVar2> &S, TPZFMatrix<TVar2> &T){
     
     //inner product of two vectors
     
@@ -3121,7 +2366,7 @@ STATE TPZStokesMaterial::Tr( TPZFMatrix<REAL> &GradU ){
 
 
 /// transform a H1 data structure to a vector data structure
-void TPZStokesMaterial::FillVecShapeIndex(TPZMaterialData &data)
+void TPZStokesMaterial::FillVecShapeIndex(TPZMaterialDataT<STATE> &data)
 {
     data.fDeformedDirections.Resize(fDimension,fDimension);
     data.fDeformedDirections.Identity();
@@ -3136,21 +2381,25 @@ void TPZStokesMaterial::FillVecShapeIndex(TPZMaterialData &data)
 
 
 
-void TPZStokesMaterial::Errors(TPZVec<TPZMaterialData> &data, TPZVec<STATE> &u_exact, TPZFMatrix<STATE> &du_exact, TPZVec<REAL> &errors)
-{
-    
-    
+void TPZStokesMaterial::Errors(const TPZVec<TPZMaterialDataT<STATE>> &data, TPZVec<REAL> &errors)
+{    
     errors.Resize(NEvalErrors());
     errors.Fill(0.0);
     TPZManVector<STATE> Velocity, Pressure;
     Velocity.Fill(0.0);
     Pressure.Fill(0.0);
+
+    TPZVec<STATE> u_exact(3, 0);
+    TPZFMatrix<STATE> du_exact(3, 1, 0);
+    if (this->fExactSol) {
+        this->fExactSol(data[0].x, u_exact, du_exact);
+    }
     
     this->Solution(data,VariableIndex("V"), Velocity);
     this->Solution(data,VariableIndex("P"), Pressure);
     
-    int vindex = this->VIndex();
-    int pindex = this->PIndex();
+    int vindex = 0;
+    int pindex = 1;
     
     TPZFMatrix<REAL> dudx(Dimension(),Dimension());
     TPZFMatrix<STATE> &dsol = data[vindex].dsol[0];

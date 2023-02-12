@@ -19,8 +19,8 @@
 #include "pzgmesh.h"
 #include "pzstack.h"
 #include "TPZVTKGeoMesh.h"
-#include "pzanalysis.h"
-#include "pzbndcond.h"
+#include "TPZAnalysis.h"
+#include "TPZBndCond.h"
 #include "TPZStokesMaterial.h"
 
 #include <pzgeoel.h>
@@ -32,19 +32,20 @@
 #include "pzbuildmultiphysicsmesh.h"
 #include "TPZInterfaceEl.h"
 #include "TPZMultiphysicsInterfaceEl.h"
-#include "pzmat2dlin.h"
+#include "TPZLinearAnalysis.h"
+#include "TPZMaterial.h"
 #include "pzfstrmatrix.h"
 #include "pzskylstrmatrix.h"
 #include "TPZSkylineNSymStructMatrix.h"
-#include "TPZParSkylineStructMatrix.h"
 #include "pzstepsolver.h"
 #include "TPZGeoLinear.h"
 #include "tpzgeoelrefpattern.h"
 #include "TPZParFrontStructMatrix.h"
 #include "TPZSSpStructMatrix.h"
-#include "pzanalysis.h"
 #include "TPZParFrontStructMatrix.h"
 #include "TPZSpStructMatrix.h"
+#include "TPZGenGrid2D.h"
+#include "TPZNullMaterial.h"
 
 using namespace std;
 using namespace pzshape;
@@ -107,7 +108,7 @@ public:
     
     /* Malhas computacionais */
     
-    TPZCompEl *CreateInterfaceEl(TPZGeoEl *gel,TPZCompMesh &mesh, int64_t &index);
+    //TPZCompEl *CreateInterfaceEl(TPZGeoEl *gel,TPZCompMesh &mesh, int64_t &index);
     
     TPZCompMesh *CMesh_v(TPZGeoMesh *gmesh, int Space, int pOrder);
     TPZCompMesh *CMesh_p(TPZGeoMesh *gmesh, int Space, int pOrder);
@@ -118,7 +119,7 @@ public:
     static void Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFMatrix<STATE> &dsol);
     
     //lado direito da equacao
-    static void F_source(const TPZVec<REAL> &x, TPZVec<STATE> &f, TPZFMatrix<STATE>& gradu);
+    static void F_source(const TPZVec<REAL> &x, TPZVec<STATE> &f);
     
     // static void AddMultiphysicsInterfaces(TPZCompMesh &cmesh, int matfrom, int mattarget);
     static void AddMultiphysicsInterfaces(TPZCompMesh &cmesh, int matfrom, int mattarget);

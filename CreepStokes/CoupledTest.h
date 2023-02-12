@@ -19,8 +19,8 @@
 #include "pzgmesh.h"
 #include "pzstack.h"
 #include "TPZVTKGeoMesh.h"
-#include "pzanalysis.h"
-#include "pzbndcond.h"
+#include "TPZLinearAnalysis.h"
+#include "TPZBndCond.h"
 #include "TPZCouplingDSMaterial.h"
 #include "TPZStokesMaterial.h"
 #include "TPZDarcyPMaterial.h"
@@ -34,8 +34,7 @@
 #include "pzbuildmultiphysicsmesh.h"
 #include "TPZInterfaceEl.h"
 #include "TPZMultiphysicsInterfaceEl.h"
-#include "pzmat1dlin.h"
-#include "pzmat2dlin.h"
+#include "TPZMaterial.h"
 #include "pzfstrmatrix.h"
 #include "pzskylstrmatrix.h"
 #include "TPZSkylineNSymStructMatrix.h"
@@ -44,8 +43,7 @@
 #include "tpzgeoelrefpattern.h"
 #include "TPZParFrontStructMatrix.h"
 #include "TPZSSpStructMatrix.h"
-#include "pzanalysis.h"
-
+#include "TPZNullMaterial.h"
 
 using namespace std;
 using namespace pzshape;
@@ -139,7 +137,7 @@ public:
     static void Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFMatrix<STATE> &dsol);
     
     //lado direito da equacao
-    static void F_source(const TPZVec<REAL> &x, TPZVec<STATE> &f, TPZFMatrix<STATE>& gradu);
+    static void F_source(const TPZVec<REAL> &x, TPZVec<STATE> &f);
     
     // static void AddMultiphysicsInterfaces(TPZCompMesh &cmesh, int matfrom, int mattarget);
     static void AddMultiphysicsInterfaces(TPZCompMesh &cmesh, int matfrom, int mattarget);

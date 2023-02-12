@@ -7,22 +7,32 @@
  *
  */
 
-#include "TPZMatWithMem.h"
-#include "pzdiscgal.h"
+#include "TPZMaterial.h"
 #include "pzfmatrix.h"
-#include "pzbndcond.h"
+#include "TPZBndCond.h"
 #include "pzlog.h"
 #include "tpzautopointer.h"
-#include "TPZMaterial.h"
-#include "pztrnsform.h"
+#include "TPZMatBase.h"
+#include "TPZMatCombinedSpaces.h"
+#include "TPZMatInterfaceCombinedSpaces.h"
+#include "TPZMatErrorCombinedSpaces.h"
+#include "pzfunction.h"
 
 #ifndef TPZBrinkmanMATERIAL
 #define TPZBrinkmanMATERIAL
 
 
+class TPZBrinkmanMaterial :
+    public TPZMatBase<STATE,
+                      TPZMatCombinedSpacesT<STATE>,
+                      TPZMatErrorCombinedSpaces<STATE>,
+                      TPZMatInterfaceCombinedSpaces<STATE>>
+{
+    using TBase = TPZMatBase<STATE,
+                             TPZMatCombinedSpacesT<STATE>,
+                             TPZMatErrorCombinedSpaces<STATE>,
+                             TPZMatInterfaceCombinedSpaces<STATE>>;  
 
-class TPZBrinkmanMaterial : public TPZMatWithMem<TPZFMatrix<STATE>, TPZDiscontinuousGalerkin >  {
-    
 protected:
     
     /// dimension of the material
@@ -57,7 +67,7 @@ public:
     /** Creates a material object and inserts it in the vector of
      *  material pointers of the mesh.
      */
-    TPZBrinkmanMaterial(int matid, int dimension, int space, STATE viscosity, STATE theta, STATE Sigma);
+    [[maybe_unused]] TPZBrinkmanMaterial(int matid, int dimension, int space, STATE viscosity, STATE theta, STATE Sigma);
     
     
     /** Creates a material object based on the referred object and
@@ -70,30 +80,13 @@ public:
      */
     ~TPZBrinkmanMaterial();
     
-    
-    
-    void FillDataRequirements(TPZMaterialData &data) override;
-    /** Fill material data parameter with necessary requirements for the
-     * Contribute method. Here, in base class, all requirements are considered
-     * as necessary. Each derived class may optimize performance by selecting
-     * only the necessary data.
-     * @since April 10, 2007
-     */
-    void FillDataRequirements(TPZVec<TPZMaterialData> &datavec) override;
-    
-    virtual void FillBoundaryConditionDataRequirement(int type,TPZVec<TPZMaterialData> &datavec) override;
-    
-    virtual void FillBoundaryConditionDataRequirement(int type,TPZMaterialData &data) override;
-    
-    virtual void FillDataRequirementsInterface(TPZMaterialData &data) override;
-    
-    virtual void FillDataRequirementsInterface(TPZMaterialData &data, TPZVec<TPZMaterialData > &datavec_left, TPZVec<TPZMaterialData > &datavec_right) override;
-    
-//    void SetTranform(TPZTransform<STATE> Transf, TPZTransform<STATE> InvTransf)
-//    {
-//        f_T = Transf;
-//        f_InvT = InvTransf;
-//    }
+   void FillDataRequirements(TPZVec<TPZMaterialDataT<STATE>> &datavec) const override;
+
+    void FillDataRequirementsInterface(TPZMaterialDataT<STATE> &data,
+                                       std::map<int, TPZMaterialDataT<STATE>> &datavec_left,
+                                       std::map<int, TPZMaterialDataT<STATE>> &datavec_right) override;
+
+    void FillBoundaryConditionDataRequirements(int type,TPZVec<TPZMaterialDataT<STATE>> &datavec) const override;
     
     void SetPermeability(REAL perm) {
         fk = perm;
@@ -144,8 +137,20 @@ public:
     
     /** returns the solution associated with the var index based on
      * the finite element approximation */
-    void Solution(TPZVec<TPZMaterialData> &datavec, int var, TPZVec<STATE> &Solout);
-    
+    void Solution(const TPZVec<TPZMaterialDataT<STATE>> &datavec, int var, TPZVec<STATE> &Solout) override;
+
+    // Returns the solution associated with the var index based on the finite element approximation around one interface element
+    void SolutionInterface(const TPZMaterialDataT<STATE> &data,
+                           const std::map<int, TPZMaterialDataT<STATE>> &dataleftvec,
+                           const std::map<int, TPZMaterialDataT<STATE>> &datarightvec,
+                           int var, TPZVec<STATE> &Solout) override {};
+
+    void SolutionInterface(const TPZMaterialDataT<STATE> &data,
+                           const std::map<int, TPZMaterialDataT<STATE>> &dataleftvec,
+                           const std::map<int, TPZMaterialDataT<STATE>> &datarightvec,
+                           int var, TPZVec<STATE> &Solout,
+                           TPZCompEl *left, TPZCompEl *right) override {};
+
     /** index of velocity */
     int VIndex(){ return 0; }
     
@@ -153,8 +158,8 @@ public:
     int PIndex(){ return 1; }
     
     /** inner product of two tensors. See Gurtin (2003), p. 5. */
-    template <class TVar>
-    TVar Inner(TPZFMatrix<TVar> &S, TPZFMatrix<TVar> &T);
+    template <class TVar2>
+    TVar2 Inner(TPZFMatrix<TVar2> &S, TPZFMatrix<TVar2> &T);
     
     /** inner product of two vectors. See Gurtin (2003), p. 5. */
     STATE InnerVec(TPZFMatrix<STATE> &S, TPZFMatrix<STATE> &T);
@@ -170,129 +175,32 @@ public:
     
     /// transform a H1 data structure to a vector data structure
     void FillVecShapeIndex(TPZMaterialData &data);
-    
-    /** @brief Not used contribute methods */
-    virtual void Contribute(TPZMaterialData &datavec, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef){DebugStop();}
-    
+
     // Contribute Methods being used - Multiphysics
-    virtual void Contribute(TPZVec<TPZMaterialData> &datavec, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef);
+    void Contribute(const TPZVec<TPZMaterialDataT<STATE>> &datavec, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef) override;
     
+    // It computes a contribution to the stiffness matrix and load vector at one BC integration point.
+    void ContributeBC(const TPZVec<TPZMaterialDataT<STATE>> &datavec, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef, TPZBndCondT<STATE> &bc) override;
+    
+    // It computes a contribution to the stiffness matrix and load vector at one BC interface integration point
+    void ContributeBCInterface(const TPZMaterialDataT<STATE> &data, std::map<int, TPZMaterialDataT<STATE>> &datavecleft, REAL weight, 
+    TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef, TPZBndCondT<STATE> &bc) override;
+    
+    // It computes a contribution to the stiffness matrix and load vector at one internal interface integration point
+    void ContributeInterface(const TPZMaterialDataT<STATE> &data, std::map<int, TPZMaterialDataT<STATE>> &datavecleft, 
+    std::map<int, TPZMaterialDataT<STATE>> &datavecright, REAL weight, TPZFMatrix<STATE> &ek,TPZFMatrix<STATE> &ef) override;
 
+    // Save the element data to a stream
+    void Write(TPZStream &buf, int withclassid);
     
-    virtual void ContributeBC(TPZMaterialData &data, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef, TPZBndCond &bc)
-    {
-        DebugStop();
-    }
-    
-    virtual void ContributeInterface(TPZMaterialData &data, TPZMaterialData &dataleft, TPZMaterialData &dataright, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef){
-        DebugStop();
-    }
-    
-    virtual void ContributeBCInterface(TPZMaterialData &data, TPZMaterialData &dataleft, REAL weight, TPZFMatrix<STATE> &ef,TPZBndCond &bc){
-        DebugStop();
-    }
-    
-    virtual void ContributeBCInterface(TPZMaterialData &data, TPZMaterialData &dataleft, REAL weight, TPZFMatrix<STATE> &ek,TPZFMatrix<STATE> &ef,TPZBndCond &bc){
-        DebugStop();
-    }
-    
-    
-    // Contribute Methods being used
-    
-    /**
-     * It computes a contribution to the stiffness matrix and load vector at one integration point.
-     * @param data[in] stores all input data
-     * @param weight[in] is the weight of the integration rule
-     * @param ek[out] is the stiffness matrix
-     * @param ef[out] is the load vector
-     * @since April 16, 2007
-     */
-   
-    virtual void Contribute(TPZVec<TPZMaterialData> &datavec, REAL weight, TPZFMatrix<STATE> &ef){
-        DebugStop();
-    }
-    
-    /**
-     * It computes a contribution to the stiffness matrix and load vector at one BC integration point.
-     * @param data[in] stores all input data
-     * @param weight[in] is the weight of the integration rule
-     * @param ek[out] is the stiffness matrix
-     * @param ef[out] is the load vector
-     * @param bc[in] is the boundary condition material
-     * @since April 16, 2007
-     */
-    virtual void ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef, TPZBndCond &bc);
-    
-    /**
-     * It computes a contribution to the stiffness matrix and load vector at one BC interface integration point.
-     * @param data[in] stores all input data
-     * @param weight[in] is the weight of the integration rule
-     * @param ek[out] is the stiffness matrix
-     * @param ef[out] is the load vector
-     * @param bc[in] is the boundary condition material
-     * @since April 16, 2007
-     */
-    virtual void ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZMaterialData> &datavecleft, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef, TPZBndCond &bc);
-    
-    /**
-     * It computes a contribution to the stiffness matrix and load vector at one internal interface integration point.
-     * @param data[in] stores all input data
-     * @param weight[in] is the weight of the integration rule
-     * @param ek[out] is the stiffness matrix
-     * @param ef[out] is the load vector
-     * @param bc[in] is the boundary condition material
-     * @since April 16, 2007
-     */
-    virtual void ContributeInterface(TPZMaterialData &data, TPZVec<TPZMaterialData> &datavecleft, TPZVec<TPZMaterialData> &datavecright, REAL weight, TPZFMatrix<STATE> &ek,TPZFMatrix<STATE> &ef);
-    
-    
-    /**
-     * It computes a contribution to the stiffness matrix and load vector at one BC interface integration point.
-     * @param data[in] stores all input data
-     * @param weight[in] is the weight of the integration rule
-     * @param ek[out] is the stiffness matrix
-     * @param ef[out] is the load vector
-     * @param bc[in] is the boundary condition material
-     * @since April 16, 2007
-     */
-    virtual void ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZMaterialData> &datavecleft, REAL weight, TPZFMatrix<STATE> &ef, TPZBndCond &bc){
-        DebugStop();
-    }
-   
-    /**
-     * It computes a contribution to the stiffness matrix and load vector at one internal interface integration point.
-     * @param data[in] stores all input data
-     * @param weight[in] is the weight of the integration rule
-     * @param ef[out] is the load vector
-     * @param bc[in] is the boundary condition material
-     * @since April 16, 2007
-     */
-    virtual void ContributeInterface(TPZMaterialData &data, TPZVec<TPZMaterialData> &datavecleft, TPZVec<TPZMaterialData> &datavecright, REAL weight,TPZFMatrix<STATE> &ef){
-        DebugStop();
-    }
-
-    /**
-     * Save the element data to a stream
-     */
-    virtual void Write(TPZStream &buf, int withclassid) const;
-    
-    /**
-     * Read the element data from a stream
-     */
+    // Read the element data from a stream
     void Read(TPZStream &buf, void *context);
     
+    int NEvalErrors() {return 6;}
     
-    virtual int NEvalErrors() {return 6;}
-    
-    /**
-     * It computes errors contribution in differents spaces.
-     * @param data[in] stores all input data
-     * @param weight[in] is the weight of the integration rule
-     * @param ef[out] is the load vector
-     * @param bc[in] is the boundary condition material
-     */
-    virtual void Errors(TPZVec<TPZMaterialData> &data, TPZVec<STATE> &u_exact, TPZFMatrix<STATE> &du_exact, TPZVec<REAL> &errors);
-    
+    //It computes errors contribution in differents spaces.
+    void Errors(const TPZVec<TPZMaterialDataT<STATE>> &data, TPZVec<REAL> &errors) override;
+        
 };
 
 #endif
