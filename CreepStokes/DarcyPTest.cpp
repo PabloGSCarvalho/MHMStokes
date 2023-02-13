@@ -114,11 +114,11 @@ void DarcyPTest::Run(int Space, int pOrder, int nx, int ny, double hx, double hy
     TPZBuildMultiphysicsMesh::TransferFromMeshes(meshvector, cmesh_m);
     cmesh_m->LoadReferences();
     std::cout << "stop4" << std::endl;
-    AddMultiphysicsInterfaces(*cmesh_m,fmatInterface,fmatID);
-    AddMultiphysicsInterfaces(*cmesh_m,fmatIntBCbott,fmatBCbott);
-    AddMultiphysicsInterfaces(*cmesh_m,fmatIntBCtop,fmatBCtop);
-    AddMultiphysicsInterfaces(*cmesh_m,fmatIntBCleft,fmatBCleft);
-    AddMultiphysicsInterfaces(*cmesh_m,fmatIntBCright,fmatBCright);
+    // AddMultiphysicsInterfaces(*cmesh_m,fmatInterface,fmatID);
+    // AddMultiphysicsInterfaces(*cmesh_m,fmatIntBCbott,fmatBCbott);
+    // AddMultiphysicsInterfaces(*cmesh_m,fmatIntBCtop,fmatBCtop);
+    // AddMultiphysicsInterfaces(*cmesh_m,fmatIntBCleft,fmatBCleft);
+    // AddMultiphysicsInterfaces(*cmesh_m,fmatIntBCright,fmatBCright);
     
 #ifdef PZDEBUG
     std::ofstream fileg1("MalhaGeo2.txt"); //Impressão da malha geométrica (formato txt)
@@ -134,11 +134,11 @@ void DarcyPTest::Run(int Space, int pOrder, int nx, int ny, double hx, double hy
     bool optimizeBandwidth = true; //Impede a renumeração das equacoes do problema (para obter o mesmo resultado do Oden)
     TPZLinearAnalysis an(cmesh_m, optimizeBandwidth); //Cria objeto de análise que gerenciará a analise do problema
     
-    TPZSkylineNSymStructMatrix<STATE> matskl(cmesh_m); //caso nao simetrico ***
+    TPZFStructMatrix<STATE> matskl(cmesh_m); //caso nao simetrico ***
     matskl.SetNumThreads(numthreads);
     an.SetStructuralMatrix(matskl);
     TPZStepSolver<STATE> step;
-    step.SetDirect(ELU);
+    step.SetDirect(ELDLt);
     an.SetSolver(step);
     
     
@@ -475,10 +475,10 @@ TPZGeoMesh *DarcyPTest::CreateGMesh(int nx, int ny, double hx, double hy)
     }
     
     //Ponto 1
-    TPZVec<int64_t> pointtopology(1);
-    pointtopology[0] = 0;
+    // TPZVec<int64_t> pointtopology(1);
+    // pointtopology[0] = 0;
     
-    gmesh->CreateGeoElement(EPoint,pointtopology,fmatPoint,id);
+    // gmesh->CreateGeoElement(EPoint,pointtopology,fmatPoint,id);
     
     
     //Vetor auxiliar para armazenar as conecções entre elementos:

@@ -126,7 +126,7 @@ void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double 
     TPZBuildMultiphysicsMesh::AddConnects(meshvector, cmesh_m);
     TPZBuildMultiphysicsMesh::TransferFromMeshes(meshvector, cmesh_m);
     cmesh_m->LoadReferences();
-    
+
     if(fSpaceV!=2){
         AddMultiphysicsInterfaces(*cmesh_m,fmatInterface,fmatID);
         AddMultiphysicsInterfaces(*cmesh_m,fmatIntBCbott,fmatBCbott);
@@ -141,13 +141,13 @@ void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double 
     std::ofstream filecm("MalhaC_m.txt"); //Impressão da malha computacional multifísica (formato txt)
     cmesh_m->Print(filecm);
 #endif
-    
+    std::cout << "cout 3 " << std::endl;
     //Resolvendo o Sistema:
     int numthreads = 0;
-    TPZCompMesh *cmesh_t; 
     bool optimizeBandwidth = true; //Impede a renumeração das equacoes do problema (para obter o mesmo resultado do Oden)
-    TPZLinearAnalysis an(cmesh_t, optimizeBandwidth); //Cria objeto de análise que gerenciará a analise do problema
-    
+    std::cout << "cout 3 " << std::endl;
+    TPZLinearAnalysis an(cmesh_m, false); //Cria objeto de análise que gerenciará a analise do problema
+    std::cout << "cout 3 " << std::endl;
 //            TPZSpStructMatrix struct_mat(cmesh_m);
 //            struct_mat.SetNumThreads(numthreads);
 //            an.SetStructuralMatrix(struct_mat);
@@ -156,7 +156,10 @@ void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double 
     //TPZParSkylineStructMatrix matskl(cmesh_m, numthreads);
 
     TPZSkylineNSymStructMatrix<STATE> matskl(cmesh_m); //OK para Hdiv
+    std::cout << "cout 3 " << std::endl;
+
     matskl.SetNumThreads(numthreads);
+    std::cout << "cout 3 " << std::endl;
     an.SetStructuralMatrix(matskl);
     
 //    if (Space==3) {

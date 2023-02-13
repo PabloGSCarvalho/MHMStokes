@@ -71,7 +71,7 @@ public:
         return "TPZStokesMaterial";
     }
     
-    int Dimension() const {return 2;}
+    [[nodiscard]] int Dimension() const override { return 2; }
     
     /** returns the number of state variables associated with the material */
     virtual int NStateVariables() const override {return 4;} // for hdiv are 3, plus pressure, so 3 + 1 = 4 itapopo
@@ -131,7 +131,7 @@ public:
 
     void Write(TPZStream &buf, int withclassid);
     
-    void Read(TPZStream &buf, void *context);
+    // void Read(TPZStream &buf, void *context);
     
     int NEvalErrors() {return 6;}
     

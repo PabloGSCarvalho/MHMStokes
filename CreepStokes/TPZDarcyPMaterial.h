@@ -78,16 +78,16 @@ public:
         return "TPZDarcyPMaterial";
     }
     
-    int Dimension() const {return 2;}
+    [[nodiscard]] int Dimension() const override { return 2; }
     
     /** returns the number of state variables associated with the material */
     int NStateVariables() const override {return 4;} // for hdiv are 3, plus pressure, so 3 + 1 = 4 itapopo
     
     void Print(std::ostream &out = std::cout);
     
-    int VariableIndex(const std::string &name);
+    [[nodiscard]] int VariableIndex(const std::string &name) const override;
     
-    int NSolutionVariables(int var);
+    [[nodiscard]] int NSolutionVariables(int var) const override;
     
     void Solution(const TPZVec<TPZMaterialDataT<STATE>> &datavec, int var, TPZVec<STATE> &Solout) override;
 
@@ -132,9 +132,9 @@ public:
     void ContributeInterface(const TPZMaterialDataT<STATE> &data, std::map<int, TPZMaterialDataT<STATE>> &datavecleft, 
     std::map<int, TPZMaterialDataT<STATE>> &datavecright, REAL weight, TPZFMatrix<STATE> &ek,TPZFMatrix<STATE> &ef) override;
 
-    void Write(TPZStream &buf, int withclassid);
+   // void Write(TPZStream &buf, int withclassid);
     
-    void Read(TPZStream &buf, void *context);
+   // void Read(TPZStream &buf, void *context);
     
     int NEvalErrors() {return 6;}
     

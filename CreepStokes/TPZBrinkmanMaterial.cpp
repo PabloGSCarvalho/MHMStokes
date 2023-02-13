@@ -393,11 +393,11 @@ void TPZBrinkmanMaterial::Write(TPZStream &buf, int withclassid) {
 
 ////////////////////////////////////////////////////////////////////
 
-void TPZBrinkmanMaterial::Read(TPZStream &buf, void *context) {
+// void TPZBrinkmanMaterial::Read(TPZStream &buf, void *context) {
     
-    TPZMaterial::Read(buf, context);
+//     TPZMaterial::Read(buf, context);
     
-}
+// }
 
 ////////////////////////////////////////////////////////////////////
 

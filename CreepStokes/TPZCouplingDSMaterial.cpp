@@ -201,11 +201,11 @@ void TPZCouplingDSMaterial::Write(TPZStream &buf, int withclassid) {
 
 ////////////////////////////////////////////////////////////////////
 
-void TPZCouplingDSMaterial::Read(TPZStream &buf, void *context) {
+// void TPZCouplingDSMaterial::Read(TPZStream &buf, void *context) {
     
-    TPZMaterial::Read(buf, context);
+//     TPZMaterial::Read(buf, context);
 
-}
+// }
 
 ////////////////////////////////////////////////////////////////////
 

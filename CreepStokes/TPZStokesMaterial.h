@@ -93,7 +93,7 @@ public:
     }
 
     /** returns the integrable dimension of the material */
-    int Dimension() const {return 2;}
+    [[nodiscard]] int Dimension() const override { return 2; }
     
     /** returns the number of state variables associated with the material */
     int NStateVariables() const override {return 4;} // for hdiv are 3, plus pressure, so 3 + 1 = 4 itapopo
@@ -162,7 +162,7 @@ public:
     void Write(TPZStream &buf, int withclassid);
     
     // Read the element data from a stream
-    void Read(TPZStream &buf, void *context);
+    //void Read(TPZStream &buf, void *context);
     
     int NEvalErrors() {return 6;}
     

@@ -15,6 +15,8 @@
 #include "TPZStokesMaterial.h"
 #include "TPZDarcyPMaterial.h"
 
+#include <pzlog.h>
+
 #define TEST_DOMAINS
 //#define APP_CURVE
 
@@ -32,14 +34,14 @@ int main(int argc, char *argv[])
 {
 //    gRefDBase.InitializeAllUniformRefPatterns();
 
-#ifdef LOG4CXX
-    InitializePZLOG();
+#ifdef PZ_LOG
+    TPZLogger::InitializePZLOG();
 #endif
     //Dados do problema:
 
     REAL hx=2.,hy=2.; //Dimensões em x e y do domínio
     //double hx=Pi,hy=2.;
-    int h_level = 2;
+    int h_level = 1;
     int nx=h_level+1 ,ny=h_level+1; //Número de nos em x  y
     int pOrder = 1; //Ordem polinomial de aproximação
     
@@ -88,7 +90,7 @@ int main(int argc, char *argv[])
         
         for (int it=0; it<=0; it++) {
             //h_level = pow(2., 2+it);
-            h_level = 2;
+            h_level = 1;
             
             //Coeficiente estabilização (Stokes)
             STATE hE=hx/h_level;

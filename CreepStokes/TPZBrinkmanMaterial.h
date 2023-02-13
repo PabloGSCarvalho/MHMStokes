@@ -106,9 +106,7 @@ public:
     }
     
     /** returns the integrable dimension of the material */
-    int Dimension() const {
-        return fDimension;
-    }
+    [[nodiscard]] int Dimension() const override { return fDimension; }
     
     /** returns the number of state variables associated with the material */
     virtual int NStateVariables() const override {
@@ -194,7 +192,7 @@ public:
     void Write(TPZStream &buf, int withclassid);
     
     // Read the element data from a stream
-    void Read(TPZStream &buf, void *context);
+    //void Read(TPZStream &buf, void *context);
     
     int NEvalErrors() {return 6;}
     

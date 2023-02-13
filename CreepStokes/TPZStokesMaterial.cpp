@@ -240,11 +240,11 @@ void TPZStokesMaterial::Write(TPZStream &buf, int withclassid) {
 
 ////////////////////////////////////////////////////////////////////
 
-void TPZStokesMaterial::Read(TPZStream &buf, void *context) {
+// void TPZStokesMaterial::Read(TPZStream &buf, void *context) {
     
-    TPZMaterial::Read(buf, context);
+//     TPZMaterial::Read(buf, context);
     
-}
+// }
 
 ////////////////////////////////////////////////////////////////////
 
