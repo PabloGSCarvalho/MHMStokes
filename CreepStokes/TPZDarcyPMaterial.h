@@ -32,7 +32,7 @@ class TPZDarcyPMaterial :
                              TPZMatCombinedSpacesT<STATE>,
                              TPZMatErrorCombinedSpaces<STATE>,
                              TPZMatInterfaceCombinedSpaces<STATE>>;    
-private:
+protected:
     
     int fDimension;
     

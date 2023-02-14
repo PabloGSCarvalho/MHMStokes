@@ -45,6 +45,7 @@
 #include "TPZSSpStructMatrix.h"
 #include "TPZParFrontStructMatrix.h"
 #include "TPZSpStructMatrix.h"
+#include "TPZMultiphysicsCompMesh.h"
 
 using namespace std;
 using namespace pzshape;
@@ -119,7 +120,7 @@ public:
     
     TPZCompMesh *CMesh_v(TPZGeoMesh *gmesh, int Space, int pOrder);
     TPZCompMesh *CMesh_p(TPZGeoMesh *gmesh, int Space, int pOrder);
-    TPZCompMesh *CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STATE visco, STATE theta, STATE sigma);
+    TPZCompMesh *CMesh_m(TPZGeoMesh *gmesh, TPZManVector<TPZCompMesh *> meshvector, int Space, int pOrder, STATE visco, STATE theta, STATE sigma);
     
     void SetHdivPlus(){
         f_hdivPlus = true;

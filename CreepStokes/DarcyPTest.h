@@ -43,7 +43,8 @@
 #include "TPZParFrontStructMatrix.h"
 #include "TPZSSpStructMatrix.h"
 #include "TPZMultiphysicsCompMesh.h"
-#include "TPZGenGrid2D.h"
+#include <TPZGenGrid3D.h>
+#include <TPZGenGrid2D.h>
 #include "TPZNullMaterial.h"
 
 using namespace std;
@@ -104,6 +105,8 @@ public:
     void Run(int Space, int pOrder, int nx, int ny, double hx, double hy, STATE visco, STATE permeability, STATE theta);
     
     /*  Malhas geometricas */
+    TPZGeoMesh *Create2DGeoMesh(/*ProblemType& pType,*/ MMeshType &mType);
+
     TPZGeoMesh *CreateGMesh(int nx, int ny, double hx, double hy);
     
     //   TPZGeoMesh *GMeshDeformed(int dim, bool ftriang, int ndiv);

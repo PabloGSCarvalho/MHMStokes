@@ -104,9 +104,12 @@ void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double 
     
     //ChangeExternalOrderConnects(cmesh_v,n_mais);
     
-    TPZCompMesh *cmesh_m = this->CMesh_m(gmesh, Space, pOrder, visco, theta, sigma); //Função para criar a malha computacional multifísica
+    TPZManVector<TPZCompMesh *, 2> meshvector(2);
+    meshvector[0] = cmesh_v;
+    meshvector[1] = cmesh_p;
+    TPZCompMesh *cmesh_m = this->CMesh_m(gmesh, meshvector, Space, pOrder, visco, theta, sigma); 
     
-#ifdef PZDEBUG
+    #ifdef PZDEBUG
     {
         std::ofstream filecv("MalhaC_v.txt"); //Impressão da malha computacional da velocidade (formato txt)
         std::ofstream filecp("MalhaC_p.txt"); //Impressão da malha computacional da pressão (formato txt)
@@ -116,16 +119,12 @@ void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double 
         std::ofstream filecm("MalhaC_m.txt"); //Impressão da malha computacional multifísica (formato txt)
         cmesh_m->Print(filecm);
     }
-#endif
+    #endif
     
-    TPZManVector<TPZCompMesh *, 2> meshvector(2);
-    meshvector[0] = cmesh_v;
-    meshvector[1] = cmesh_p;
-    std::cout << "cout 0 " << std::endl;
-    TPZBuildMultiphysicsMesh::AddElements(meshvector, cmesh_m);
-    TPZBuildMultiphysicsMesh::AddConnects(meshvector, cmesh_m);
-    TPZBuildMultiphysicsMesh::TransferFromMeshes(meshvector, cmesh_m);
-    cmesh_m->LoadReferences();
+    // TPZBuildMultiphysicsMesh::AddElements(meshvector, cmesh_m);
+    // TPZBuildMultiphysicsMesh::AddConnects(meshvector, cmesh_m);
+    // TPZBuildMultiphysicsMesh::TransferFromMeshes(meshvector, cmesh_m);
+    // cmesh_m->LoadReferences();
 
     if(fSpaceV!=2){
         AddMultiphysicsInterfaces(*cmesh_m,fmatInterface,fmatID);
@@ -141,13 +140,13 @@ void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double 
     std::ofstream filecm("MalhaC_m.txt"); //Impressão da malha computacional multifísica (formato txt)
     cmesh_m->Print(filecm);
 #endif
-    std::cout << "cout 3 " << std::endl;
+
     //Resolvendo o Sistema:
     int numthreads = 0;
     bool optimizeBandwidth = true; //Impede a renumeração das equacoes do problema (para obter o mesmo resultado do Oden)
-    std::cout << "cout 3 " << std::endl;
+
     TPZLinearAnalysis an(cmesh_m, false); //Cria objeto de análise que gerenciará a analise do problema
-    std::cout << "cout 3 " << std::endl;
+
 //            TPZSpStructMatrix struct_mat(cmesh_m);
 //            struct_mat.SetNumThreads(numthreads);
 //            an.SetStructuralMatrix(struct_mat);
@@ -156,10 +155,9 @@ void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double 
     //TPZParSkylineStructMatrix matskl(cmesh_m, numthreads);
 
     TPZSkylineNSymStructMatrix<STATE> matskl(cmesh_m); //OK para Hdiv
-    std::cout << "cout 3 " << std::endl;
 
     matskl.SetNumThreads(numthreads);
-    std::cout << "cout 3 " << std::endl;
+
     an.SetStructuralMatrix(matskl);
     
 //    if (Space==3) {
@@ -168,7 +166,6 @@ void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double 
 //        an.SetStructuralMatrix(matsklD);
 //    }
 
-        std::cout << "cout 3 " << std::endl;
     TPZStepSolver<STATE> step;
     step.SetDirect(ELU);
     an.SetSolver(step);
@@ -239,7 +236,7 @@ void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double 
     vecnames.Push("V_exact");
     scalnames.Push("P_exact");
     scalnames.Push("Div");
-
+    scalnames.Push("g");
 
     int postProcessResolution = 3; //  keep low as possible
 
@@ -265,8 +262,6 @@ void BrinkmanTest::Rotate(TPZVec<REAL> &co, TPZVec<REAL> &co_r, bool rotate){
         co_r[1] = - co[0]*sin(phi_r) + co[1]*cos(phi_r);
         
     }
-    
-    
 }
 
 TPZGeoMesh *BrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
@@ -876,85 +871,81 @@ void BrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFMatr
     
     // Stokes : : Artigo Botti, Di Pietro, Droniou
     
-    dsol.Resize(3,3);
-    sol.Resize(4);
+    // dsol.Resize(3,3);
+    // sol.Resize(4);
     
-    REAL x1 = x[0];
-    REAL x2 = x[1];
+    // REAL x1 = x[0];
+    // REAL x2 = x[1];
     
-    REAL e = exp(1.);
+    // REAL e = exp(1.);
     
-    TPZVec<REAL> v_Dirichlet(3,0.), vbc_rot(3,0.);
+    // TPZVec<REAL> v_Dirichlet(3,0.), vbc_rot(3,0.);
     
-    v_Dirichlet[0] = -1.*sin(x1)*sin(x2);
-    v_Dirichlet[1] = -1.*cos(x1)*cos(x2);
-    STATE pressure= cos(x1)*sin(x2);
+    // v_Dirichlet[0] = -1.*sin(x1)*sin(x2);
+    // v_Dirichlet[1] = -1.*cos(x1)*cos(x2);
+    // STATE pressure= cos(x1)*sin(x2);
     
-    sol[0]=v_Dirichlet[0];
-    sol[1]=v_Dirichlet[1];
-    sol[2]=v_Dirichlet[2];
-    sol[3]=pressure;
+    // sol[0]=v_Dirichlet[0];
+    // sol[1]=v_Dirichlet[1];
+    // sol[2]=v_Dirichlet[2];
+    // sol[3]=pressure;
     
     
-    // GradU * Rt
-    TPZFMatrix<STATE> GradU(3,3,0.), GradURt(3,3,0.), RGradURt(3,3,0.);
+    // // GradU * Rt
+    // TPZFMatrix<STATE> GradU(3,3,0.), GradURt(3,3,0.), RGradURt(3,3,0.);
     
-    // vx direction
-    GradU(0,0)= -1.*cos(x1)*sin(x2);
-    GradU(0,1)= cos(x2)*sin(x1);
+    // // vx direction
+    // GradU(0,0)= -1.*cos(x1)*sin(x2);
+    // GradU(0,1)= cos(x2)*sin(x1);
     
-    // vy direction
-    GradU(1,0)= -1.*cos(x2)*sin(x1);
-    GradU(1,1)= cos(x1)*sin(x2);
+    // // vy direction
+    // GradU(1,0)= -1.*cos(x2)*sin(x1);
+    // GradU(1,1)= cos(x1)*sin(x2);
     
-    // vx direction
-    dsol(0,0)= GradU(0,0);
-    dsol(0,1)= GradU(0,1);
-    dsol(0,2)= GradU(0,2);
+    // // vx direction
+    // dsol(0,0)= GradU(0,0);
+    // dsol(0,1)= GradU(0,1);
+    // dsol(0,2)= GradU(0,2);
     
-    // vy direction
-    dsol(1,0)= GradU(1,0);
-    dsol(1,1)= GradU(1,1);
-    dsol(1,2)= GradU(1,2);
+    // // vy direction
+    // dsol(1,0)= GradU(1,0);
+    // dsol(1,1)= GradU(1,1);
+    // dsol(1,2)= GradU(1,2);
     
-    // vz direction
-    dsol(2,0)= GradU(2,0);
-    dsol(2,1)= GradU(2,1);
-    dsol(2,2)= GradU(2,2);
+    // // vz direction
+    // dsol(2,0)= GradU(2,0);
+    // dsol(2,1)= GradU(2,1);
+    // dsol(2,2)= GradU(2,2);
     
     // Darcy : : Artigo Botti, Di Pietro, Droniou
     
-    //        dsol.Resize(3,3);
-    //        sol.Resize(3);
-    //
-    //        REAL x1 = x[0];
-    //        REAL x2 = x[1];
-    //
-    //        STATE v_1 = sin(x1)*sin(x2);
-    //        STATE v_2 = -1.*cos(x1)*cos(x2);
-    //        STATE pressure= cos(x1)*sin(x2);
-    //
-    //        sol[0]=v_1;
-    //        sol[1]=v_2;
-    //        sol[2]=pressure;
-    //
-    //        // vx direction
-    //        dsol(0,0)= cos(x1)*sin(x2);
-    //        dsol(0,1)= cos(x2)*sin(x1);
-    //
-    //        // vy direction
-    //        dsol(1,0)= cos(x2)*sin(x1);
-    //        dsol(1,1)= cos(x1)*sin(x2);
+           dsol.Resize(3,3);
+           sol.Resize(4);
     
+           REAL x1 = x[0];
+           REAL x2 = x[1];
     
+           STATE v_1 = sin(x1)*sin(x2);
+           STATE v_2 = -1.*cos(x1)*cos(x2);
+           STATE pressure= cos(x1)*sin(x2);
     
-
+           sol[0]=v_1;
+           sol[1]=v_2;
+           sol[3]=pressure;
+    
+           // vx direction
+           dsol(0,0)= cos(x1)*sin(x2);
+           dsol(0,1)= cos(x2)*sin(x1);
+    
+           // vy direction
+           dsol(1,0)= cos(x2)*sin(x1);
+           dsol(1,1)= cos(x1)*sin(x2);
     
 }
 
 void BrinkmanTest::F_source(const TPZVec<REAL> &x, TPZVec<STATE> &f){
     
-    f.resize(3);
+    f.resize(4);
     REAL x1 = x[0];
     REAL x2 = x[1];
     REAL x3 = x[2];
@@ -998,22 +989,19 @@ void BrinkmanTest::F_source(const TPZVec<REAL> &x, TPZVec<STATE> &f){
     // Stokes : : Artigo Botti, Di Pietro, Droniou
     
     
-    f_s[0] = -3.*sin(x1)*sin(x2);
-    f_s[1] = -1.*cos(x1)*cos(x2);
+    // f_s[0] = -3.*sin(x1)*sin(x2);
+    // f_s[1] = -1.*cos(x1)*cos(x2);
     
-    f[0] = f_s[0]; // x direction
-    f[1] = f_s[1]; // y direction
-    f[2] = f_s[2];
+    // f[0] = f_s[0]; // x direction
+    // f[1] = f_s[1]; // y direction
+    // f[2] = f_s[2];
     
     
     // Darcy : : Artigo Botti, Di Pietro, Droniou
     
-    //        f_1 = 0.;
-    //        f_2 = 0.;
-    //
-    //        f[0] = f_1; // x direction
-    //        f[1] = f_2; // y direction
-    //        f[2] = 2.*cos(x1)*sin(x2);
+           f[0] = 0.; // x direction
+           f[1] = 0.; // y direction
+           f[3] = 2.*cos(x1)*sin(x2);
 
 }
 
@@ -1104,7 +1092,16 @@ TPZCompMesh *BrinkmanTest::CMesh_v(TPZGeoMesh *gmesh, int Space, int pOrder)
     //Condições de contorno:
     
     TPZFMatrix<STATE> val1(1,1,0.), val2(2,1,0.);
-    
+        
+    TPZNullMaterial<> *matbc0 = new TPZNullMaterial<>(fmatBCbott,fdim-1,1);
+    cmesh->InsertMaterialObject(matbc0);
+    TPZNullMaterial<> *matbc1 = new TPZNullMaterial<>(fmatBCtop,fdim-1,1);
+    cmesh->InsertMaterialObject(matbc1);
+    TPZNullMaterial<> *matbc2 = new TPZNullMaterial<>(fmatBCleft,fdim-1,1);
+    cmesh->InsertMaterialObject(matbc2);
+    TPZNullMaterial<> *matbc3 = new TPZNullMaterial<>(fmatBCright,fdim-1,1);
+    cmesh->InsertMaterialObject(matbc3);
+
     // TPZBndCond * BCond0 = material->CreateBC(material, fmatBCbott, fdirichlet, val1, val2); //Cria material que implementa a condição de contorno inferior
     // cmesh->InsertMaterialObject(BCond0); //Insere material na malha
     
@@ -1235,26 +1232,19 @@ TPZCompMesh *BrinkmanTest::CMesh_p(TPZGeoMesh *gmesh, int Space, int pOrder)
     
 }
 
-TPZCompMesh *BrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STATE visco, STATE theta, STATE sigma)
+TPZCompMesh *BrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, TPZManVector<TPZCompMesh *> meshvector, int Space, int pOrder, STATE visco, STATE theta, STATE sigma)
 {
     
     //Criando malha computacional:
     int bc_inte_order = 10;
-    TPZCompMesh * cmesh = new TPZCompMesh(gmesh);
+    auto cmesh = new TPZMultiphysicsCompMesh(gmesh);
     cmesh->SetDefaultOrder(pOrder); //Insere ordem polimonial de aproximação
     cmesh->SetDimModel(fdim); //Insere dimensão do modelo
-    cmesh->SetAllCreateFunctionsMultiphysicElem();
     
     
     // Criando material:
     
     auto material = new TPZBrinkmanMaterial(fmatID,fdim,Space,visco,theta,sigma);//criando material que implementa a formulacao fraca do problema modelo
-    // Inserindo material na malha
-    TPZAutoPointer<TPZFunction<STATE> > fp = new TPZDummyFunction<STATE> (F_source, 5);
-    TPZAutoPointer<TPZFunction<STATE> > solp = new TPZDummyFunction<STATE> (Sol_exact, 5);
-    ((TPZDummyFunction<STATE>*)fp.operator->())->SetPolynomialOrder(5);
-    ((TPZDummyFunction<STATE>*)solp.operator->())->SetPolynomialOrder(5);
-    
     material->SetForcingFunction(F_source, 5);
     material->SetExactSol(Sol_exact,5);
 
@@ -1269,7 +1259,7 @@ TPZCompMesh *BrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STA
     val2[0] = 0.0; // vx -> 0
     val2[1] = 0.0; // vy -> 0
   
-        auto BCond0 = material->CreateBC(material, fmatBCbott, fdirichlet, val1, val2); //Cria material que implementa a condição de contorno inferior
+        TPZBndCondT<STATE> * BCond0 = material->CreateBC(material, fmatBCbott, fdirichlet, val1, val2); //Cria material que implementa a condição de contorno inferior
         BCond0->SetForcingFunctionBC(Sol_exact, bc_inte_order);
         cmesh->InsertMaterialObject(BCond0); 
         
@@ -1306,9 +1296,16 @@ TPZCompMesh *BrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STA
 
     //Criando elementos computacionais que gerenciarão o espaco de aproximação da malha:
     
-    cmesh->AutoBuild();
+    cmesh->SetAllCreateFunctionsMultiphysicElem();
+    //cmesh->AutoBuild();
+    // TPZManVector<int> active(2,1);
+    // active[0]=1;
+    // active[1]=1;
     cmesh->AdjustBoundaryElements();
     cmesh->CleanUpUnconnectedNodes();
+    cmesh->BuildMultiphysicsSpace(meshvector);
+    cmesh->LoadReferences();
+    cmesh->CleanUpUnconnectedNodes(); 
     
     return cmesh;
     

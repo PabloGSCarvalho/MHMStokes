@@ -7,6 +7,10 @@
  *
  */
 
+#ifndef TPZBrinkmanMATERIAL
+#define TPZBrinkmanMATERIAL
+
+#include "TPZMatWithMem.h"
 #include "TPZMaterial.h"
 #include "pzfmatrix.h"
 #include "TPZBndCond.h"
@@ -17,10 +21,6 @@
 #include "TPZMatInterfaceCombinedSpaces.h"
 #include "TPZMatErrorCombinedSpaces.h"
 #include "pzfunction.h"
-
-#ifndef TPZBrinkmanMATERIAL
-#define TPZBrinkmanMATERIAL
-
 
 class TPZBrinkmanMaterial :
     public TPZMatBase<STATE,
@@ -80,11 +80,12 @@ public:
      */
     ~TPZBrinkmanMaterial();
     
-   void FillDataRequirements(TPZVec<TPZMaterialDataT<STATE>> &datavec) const override;
+    void FillDataRequirements(TPZVec<TPZMaterialDataT<STATE>> &datavec) const override;
 
     void FillDataRequirementsInterface(TPZMaterialDataT<STATE> &data,
                                        std::map<int, TPZMaterialDataT<STATE>> &datavec_left,
                                        std::map<int, TPZMaterialDataT<STATE>> &datavec_right) override;
+
 
     void FillBoundaryConditionDataRequirements(int type,TPZVec<TPZMaterialDataT<STATE>> &datavec) const override;
     
@@ -122,12 +123,9 @@ public:
     /** print out the data associated with the material */
     void Print(std::ostream &out = std::cout);
     
-    /** returns the variable index associated with the name */
-    int VariableIndex(const std::string &name);
+    [[nodiscard]] int VariableIndex(const std::string &name) const override;
     
-    /** returns the number of variables associated with the variable
-     indexed by var.  var is obtained by calling VariableIndex */
-    int NSolutionVariables(int var);
+    [[nodiscard]] int NSolutionVariables(int var) const override;
     
     /** Computes the divergence over the parametric space */
     void ComputeDivergenceOnMaster(TPZVec<TPZMaterialData> &datavec, TPZFMatrix<STATE> &DivergenceofPhi);

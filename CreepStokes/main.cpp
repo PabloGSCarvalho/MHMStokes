@@ -28,7 +28,7 @@ const REAL Pi=M_PI;
 
 const REAL visco=1., permeability=1., theta=-1.; //Coeficientes: viscosidade, permeabilidade, fator simetria
 
-bool DarcyDomain = true, StokesDomain = false , BrinkmanDomain = false, CoupledDomain = false;
+bool DarcyDomain = false, StokesDomain = false , BrinkmanDomain = true, CoupledDomain = false;
 
 int main(int argc, char *argv[])
 {
@@ -41,9 +41,9 @@ int main(int argc, char *argv[])
 
     REAL hx=2.,hy=2.; //Dimensões em x e y do domínio
     //double hx=Pi,hy=2.;
-    int h_level = 1;
+    int h_level = 2;
     int nx=h_level+1 ,ny=h_level+1; //Número de nos em x  y
-    int pOrder = 1; //Ordem polinomial de aproximação
+    int pOrder = 2; //Ordem polinomial de aproximação
     
     TPZVec<REAL> h_s(3,0);
     h_s[0]=2.,h_s[1]=2.,h_s[2]=2.; //Dimensões em x e y do domínio
@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
         
         for (int it=0; it<=0; it++) {
             //h_level = pow(2., 2+it);
-            h_level = 1;
+            h_level = 4;
             
             //Coeficiente estabilização (Stokes)
             STATE hE=hx/h_level;

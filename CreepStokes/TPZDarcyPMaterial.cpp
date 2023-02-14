@@ -16,7 +16,7 @@
 
 
 
-TPZDarcyPMaterial::TPZDarcyPMaterial() : TBase(){
+TPZDarcyPMaterial::TPZDarcyPMaterial() : TBase(), TPZRegisterClassId(&TPZDarcyPMaterial::ClassId){
     fk=1.;
 }
 
@@ -30,7 +30,7 @@ TBase(matid), fDimension(dimension), fSpace(space), fViscosity(viscosity), fk(pe
 ////////////////////////////////////////////////////////////////////
 
 TPZDarcyPMaterial::TPZDarcyPMaterial(const TPZDarcyPMaterial &mat) : 
-TBase(mat),fDimension(mat.fDimension),fSpace(mat.fSpace),fViscosity(mat.fViscosity),fk(mat.fk), fTheta(mat.fTheta)
+TBase(mat), TPZRegisterClassId(&TPZDarcyPMaterial::ClassId), fDimension(mat.fDimension),fSpace(mat.fSpace),fViscosity(mat.fViscosity),fk(mat.fk), fTheta(mat.fTheta)
 {
 }
 
@@ -384,8 +384,6 @@ void TPZDarcyPMaterial::Contribute(const TPZVec<TPZMaterialDataT<STATE>> &datave
 
 void TPZDarcyPMaterial::ContributeBC(const TPZVec<TPZMaterialDataT<STATE>> &datavec, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef, TPZBndCondT<STATE> &bc){
     
-    
-    
 #ifdef PZDEBUG
     //2 = 1 Vel space + 1 Press space
     int nref =  datavec.size();
@@ -593,7 +591,7 @@ void TPZDarcyPMaterial::ContributeBC(const TPZVec<TPZMaterialDataT<STATE>> &data
 
 void TPZDarcyPMaterial::ContributeInterface(const TPZMaterialDataT<STATE> &data, std::map<int, TPZMaterialDataT<STATE>> &datavecleft, 
 std::map<int, TPZMaterialDataT<STATE>> &datavecright, REAL weight, TPZFMatrix<STATE> &ek,TPZFMatrix<STATE> &ef){
-    
+    std::cout << "ContributeInterface" << std::endl;
     
 #ifdef PZDEBUG
     //2 = 1 Vel space + 1 Press space for datavecleft
@@ -679,9 +677,9 @@ std::map<int, TPZMaterialDataT<STATE>> &datavecright, REAL weight, TPZFMatrix<ST
             phiV1i(e,0)=datavecleft[vindex].fDeformedDirections(e,ivec1)*datavecleft[vindex].phi(iphi1,0);
             phiV1ni(0,0)+=phiV1i(e,0)*data.normal[e];
             
-            for (int f=0; f<fDimension; f++) {
-                GradV1ni(e,0)+=datavecleft[vindex].fDeformedDirections(e,ivec1)*dphiVx1(f,iphi1)*data.normal[f];
-            }
+            // for (int f=0; f<fDimension; f++) {
+            //     GradV1ni(e,0)+=datavecleft[vindex].fDeformedDirections(e,ivec1)*dphiVx1(f,iphi1)*data.normal[f];
+            // }
         }
         
         TPZFNMatrix<9> GradV1nj(fDimension,1,0.);
@@ -732,9 +730,9 @@ std::map<int, TPZMaterialDataT<STATE>> &datavecright, REAL weight, TPZFMatrix<ST
             phiV2i(e,0)=datavecright[vindex].fDeformedDirections(e,ivec2)*datavecright[vindex].phi(iphi2,0);
             phiV2ni(0,0)+=phiV2i(e,0)*data.normal[e];
             
-            for (int f=0; f<fDimension; f++) {
-                GradV2ni(e,0) += datavecright[vindex].fDeformedDirections(e,ivec2)*dphiVx2(f,iphi2)*data.normal[f];
-            }
+            // for (int f=0; f<fDimension; f++) {
+            //     GradV2ni(e,0) += datavecright[vindex].fDeformedDirections(e,ivec2)*dphiVx2(f,iphi2)*data.normal[f];
+            // }
         }
         
         

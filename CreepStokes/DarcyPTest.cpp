@@ -11,6 +11,7 @@
 #include "TPZMHMixedMeshControl.h"
 #include "pzcheckgeom.h"
 #include "pzstack.h"
+#include <DarcyFlow/TPZMixedDarcyFlow.h>
 
 //#define TRIANGLEMESH
 
@@ -70,8 +71,17 @@ void DarcyPTest::Run(int Space, int pOrder, int nx, int ny, double hx, double hy
     fSpaceV = Space;
     //Gerando malha geométrica:
     
-    TPZGeoMesh *gmesh = CreateGMesh(nx, ny, hx, hy); //Função para criar a malha geometrica
-    
+        TPZGeoMesh *gmesh;
+        if(0) {
+            MMeshType mType = MMeshType::EQuadrilateral;
+            gmesh = Create2DGeoMesh(mType);
+        }else {
+            gmesh = CreateGMesh(nx, ny, hx, hy); //Função para criar a malha geometrica
+        }
+        
+
+
+
 #ifdef PZDEBUG
     std::ofstream fileg("MalhaGeo.txt"); //Impressão da malha geométrica (formato txt)
     std::ofstream filegvtk("MalhaGeo.vtk"); //Impressão da malha geométrica (formato vtk)
@@ -108,12 +118,10 @@ void DarcyPTest::Run(int Space, int pOrder, int nx, int ny, double hx, double hy
     std::cout << "stop1" << std::endl;
     TPZManVector<int> active(meshvector.size(),1);
     TPZMultiphysicsCompMesh *mphysics = dynamic_cast<TPZMultiphysicsCompMesh *>(cmesh_m);
-    //mphysics->BuildMultiphysicsSpace(active,meshvector);
     TPZBuildMultiphysicsMesh::AddElements(meshvector, cmesh_m);
     TPZBuildMultiphysicsMesh::AddConnects(meshvector, cmesh_m);
     TPZBuildMultiphysicsMesh::TransferFromMeshes(meshvector, cmesh_m);
     cmesh_m->LoadReferences();
-    std::cout << "stop4" << std::endl;
     // AddMultiphysicsInterfaces(*cmesh_m,fmatInterface,fmatID);
     // AddMultiphysicsInterfaces(*cmesh_m,fmatIntBCbott,fmatBCbott);
     // AddMultiphysicsInterfaces(*cmesh_m,fmatIntBCtop,fmatBCtop);
@@ -209,6 +217,25 @@ void DarcyPTest::Run(int Space, int pOrder, int nx, int ny, double hx, double hy
     an.PostProcess(postProcessResolution,dim);
     
     std::cout << "FINISHED!" << std::endl;
+}
+
+TPZGeoMesh *DarcyPTest::Create2DGeoMesh(MMeshType &mType) {
+    
+    // ----- Create Geo Mesh -----
+    const TPZManVector<REAL,2> minX = {-1.,-1.};
+    const TPZManVector<REAL,2> maxX = {1.,1.};
+    const TPZManVector<int,2> nelDiv = {2,1};
+    TPZGenGrid2D gen2d(nelDiv,minX,maxX);
+    gen2d.SetElementType(mType);
+    TPZGeoMesh* gmesh = new TPZGeoMesh;
+    gen2d.Read(gmesh,1);
+
+    gen2d.SetBC(gmesh, 4, fneumann);
+    gen2d.SetBC(gmesh, 5, fneumann);
+    gen2d.SetBC(gmesh, 6, fneumann);
+    gen2d.SetBC(gmesh, 7, fneumann);
+
+    return gmesh;
 }
 
 TPZGeoMesh *DarcyPTest::CreateGMesh(int nx, int ny, double hx, double hy)
@@ -611,24 +638,24 @@ TPZGeoMesh *DarcyPTest::CreateGMesh(int nx, int ny, double hx, double hy)
     
     //Criando interface (Geralizado):
     
-    // TPZVec<int64_t> nodint(2);
-    // for(i = 0; i < (ny - 1); i++){
-    //     for(j = 0; j < (nx - 1); j++){
-    //         if(j>0&&j<(nx-1)){
-    //             nodint[0]=j+nx*i;
-    //             nodint[1]=j+nx*(i+1);
-    //             gmesh->CreateGeoElement(EOned, nodint, fmatInterface, index); //Criando elemento de interface (GeoElement)
+    TPZVec<int64_t> nodint(2);
+    for(i = 0; i < (ny - 1); i++){
+        for(j = 0; j < (nx - 1); j++){
+            if(j>0&&j<(nx-1)){
+                nodint[0]=j+nx*i;
+                nodint[1]=j+nx*(i+1);
+                gmesh->CreateGeoElement(EOned, nodint, fmatInterface, index); //Criando elemento de interface (GeoElement)
                 
-    //         }
-    //         if(i>0&&j<(ny-1)){
-    //             nodint[0]=j+ny*i;
-    //             nodint[1]=j+ny*i+1;
-    //             gmesh->CreateGeoElement(EOned, nodint, fmatInterface, index); //Criando elemento de interface (GeoElement)
+            }
+            if(i>0&&j<(ny-1)){
+                nodint[0]=j+ny*i;
+                nodint[1]=j+ny*i+1;
+                gmesh->CreateGeoElement(EOned, nodint, fmatInterface, index); //Criando elemento de interface (GeoElement)
                 
-    //         }
+            }
             
-    //     }
-    // }
+        }
+    }
     
     
     // id++;
@@ -732,7 +759,16 @@ TPZCompMesh *DarcyPTest::CMesh_v(TPZGeoMesh *gmesh, int Space, int pOrder)
     
     //Condições de contorno:
     TPZFMatrix<STATE> val1(2,2,0.), val2(2,1,0.);
-    
+    TPZNullMaterial<> *matbc0 = new TPZNullMaterial<>(fmatBCbott,fdim-1,1);
+    cmesh->InsertMaterialObject(matbc0);
+    TPZNullMaterial<> *matbc1 = new TPZNullMaterial<>(fmatBCtop,fdim-1,1);
+    cmesh->InsertMaterialObject(matbc1);
+    TPZNullMaterial<> *matbc2 = new TPZNullMaterial<>(fmatBCleft,fdim-1,1);
+    cmesh->InsertMaterialObject(matbc2);
+    TPZNullMaterial<> *matbc3 = new TPZNullMaterial<>(fmatBCright,fdim-1,1);
+    cmesh->InsertMaterialObject(matbc3);
+
+
     // TPZMaterial * BCond0 = material->CreateBC(material, fmatBCbott, fdirichlet, val1, val2); //Cria material que implementa a condição de contorno inferior
     // cmesh->InsertMaterialObject(BCond0); //Insere material na malha
     
@@ -866,6 +902,7 @@ TPZCompMesh *DarcyPTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STATE
     
     // Criando material:
     auto material = new TPZDarcyPMaterial(fmatID,fdim,Space,fviscosity,fpermeability,ftheta);
+    //auto material = new TPZMixedDarcyFlow(fmatID,fdim);
     // Inserindo material na malha
     // TPZAutoPointer<TPZFunction<STATE> > fp = new TPZDummyFunction<STATE> (F_source,5);
     // TPZAutoPointer<TPZFunction<STATE> > solp = new TPZDummyFunction<STATE> (Sol_exact,5);
