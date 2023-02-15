@@ -14,8 +14,6 @@
 #include "DarcyPTest.h"
 #include "StokesTest.h"
 #include "BrinkmanTest.h"
-#include "HybridBrinkmanTest.h"
-#include "MHMStokesTest.h"
 #include "CoupledTest.h"
 #include "tpzarc3d.h"
 #include "tpzgeoblend.h"
@@ -46,8 +44,8 @@
 #include "TPZGmshReader.h"
 #include "pztrnsform.h"
 
-#include "fad.h"
-#include "fadType.h"
+// #include "fad.h"
+// #include "fadType.h"
 
 #define TEST_DOMAINS
 //#define APP_CURVE
@@ -63,7 +61,7 @@ const REAL Pi=M_PI;
 
 const REAL visco=1., permeability=1., theta=-1.; //Coeficientes: viscosidade, permeabilidade, fator simetria
 
-bool DarcyDomain = false, StokesDomain = false , BrinkmanDomain = false, CoupledDomain = false;
+bool DarcyDomain = false, StokesDomain = false , BrinkmanDomain = true, CoupledDomain = false;
 
 bool HybridBrinkmanDomain = true, MHMStokesDomain = false;
 
@@ -87,89 +85,7 @@ int main(int argc, char *argv[])
     TPZVec<REAL> h_s(3,0);
     h_s[0]=2.,h_s[1]=2.,h_s[2]=2.; //Dimensões em x e y do domínio
 
-    if (MHMStokesDomain)
-    {
-        
-        for (int it=0; it<=0; it++) {
-            //h_level = pow(2., 1+it);
-            h_level = 4;
-            
-            TPZVec<int> n_s(3,0.);
-            n_s[0]=h_level,n_s[1]=h_level;
-            n_s[2]=h_level; //Obs!!
-            
-            MHMStokesTest  * Test2 = new MHMStokesTest();
-            //Test2->Set3Dmesh();
-            //Test2->SetElType(ECube);
-            //Test2->SetHdivPlus();
-            
-            TPZTransform<STATE> Transf(3,3), InvTransf(3,3);
-            Test2->SetTransform(Transf, InvTransf);
-            
-            REAL rot_x = 5.;
-            REAL rot_z = 44.;
-            REAL rot_y = -85.;
-            rot_z = rot_z*Pi/180.;
-            rot_y = rot_y*Pi/180.;
-            rot_z = rot_z*Pi/180.;
-            
-            //Test2->SetRotation3DMatrix(rot_x,rot_y,rot_z);
-            TPZSimulationData simdata;
-            simdata.SetInternalOrder(2);
-            simdata.SetSkeletonOrder(1);
-            simdata.SetCoarseDivisions(n_s);
-            simdata.SetDomainSize(h_s);
-            simdata.SetNInterRefs(0);
-            simdata.SetViscosity(1.);
-            simdata.SetNthreads(0);
-            //simdata.SetShapeTest(); // Test for shape functions
-            
-            Test2->SetSimulationData(simdata);
-            Test2->Run();
-            
-        }
-        
-    } else if (HybridBrinkmanDomain){
-        
-        int pOrder = 2;
-        
-        for (int it=0; it<=0; it++) {
-            //h_level = pow(2., 2+it);
-            h_level = 2;
-            
-            TPZVec<int> n_s(3,0.);
-            n_s[0]=h_level ,n_s[1]=h_level;
-            
-            n_s[2]=h_level; //Obs!!
-            
-            REAL visc = 1.0; //->Darcy
-            
-            HybridBrinkmanTest  * Test2 = new HybridBrinkmanTest();
-            //Test2->Set3Dmesh();
-            Test2->SetProblemType(ObstacleP);
-            
-            
-            //Test2->SetElType(ETriangle);
-            Test2->SetInternRef(1);
-            //Test2->SetHdivPlus();
-
-            TPZTransform<STATE> Transf(3,3), InvTransf(3,3);
-            Test2->SetTransform(Transf, InvTransf);
-
-            REAL rot_x = 5.;
-            REAL rot_z = 44.;
-            REAL rot_y = -85.;
-            rot_z = rot_z*Pi/180.;
-            rot_y = rot_y*Pi/180.;
-            rot_z = rot_z*Pi/180.;
-            
-            //Test2->SetRotation3DMatrix(rot_x,rot_y,rot_z);
-            //Test2->SetAllRefine();
-            Test2->Run(SpaceHDiv, pOrder, n_s, h_s,visc);
-            
-        }
-        
-    }else if (DarcyDomain) {
+    if (DarcyDomain) {
         DarcyPTest * Test1 = new DarcyPTest();
         Test1->Run(SpaceHDiv, pOrder, nx, ny, hx, hy,visco,permeability,theta);
     }
@@ -228,7 +144,7 @@ int main(int argc, char *argv[])
             //sigma = sigma*visc;
             
             BrinkmanTest  * Test2 = new BrinkmanTest();
-            Test2->SetTriangularMesh();
+            //Test2->SetTriangularMesh();
             //Test2->SetHdivPlus();
             Test2->Run(SpaceHDiv, pOrder, nx, ny, hx, hy,visc,theta,sigma);
 
