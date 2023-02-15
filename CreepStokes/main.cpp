@@ -101,24 +101,22 @@ int main(int argc, char *argv[])
             nx=h_level+1 ,ny=h_level+1;
             hE=hx/h_level;
             sigma=s0*(pOrder*pOrder)/hE;
- 
-            
-            REAL visc = 1.0; //->Darcy
-            //sigma = sigma*visc;
             
             BrinkmanTest  * Test2 = new BrinkmanTest();
             //Test2->SetTriangularMesh();
             //Test2->SetHdivPlus();
-            Test2->Run(SpaceHDiv, pOrder, nx, ny, hx, hy,visc,theta,sigma);
+            Test2->SetBrinkmanCoef(1.);
+            Test2->SetViscosity(0.);
+            Test2->Run(SpaceHDiv, pOrder, nx, ny, hx, hy, theta, sigma);
 
-//            BrinkmanTest  * Test1 = new BrinkmanTest();
-//            Test1->SetTriangularMesh();
-//            Test1->SetFullHdiv();
-//            Test1->Run(SpaceHDiv, pOrder, nx, ny, hx, hy,visc,theta,sigma);
-//
-//            BrinkmanTest  * Test3 = new BrinkmanTest();
-//            Test3->SetTriangularMesh();
-//            Test3->Run(SpaceDiscontinuous, pOrder, nx, ny, hx, hy,visc,theta,sigma);
+            //            BrinkmanTest  * Test1 = new BrinkmanTest();
+            //            Test1->SetTriangularMesh();
+            //            Test1->SetFullHdiv();
+            //            Test1->Run(SpaceHDiv, pOrder, nx, ny, hx, hy,visc,theta,sigma);
+            //
+            //            BrinkmanTest  * Test3 = new BrinkmanTest();
+            //            Test3->SetTriangularMesh();
+            //            Test3->Run(SpaceDiscontinuous, pOrder, nx, ny, hx, hy,visc,theta,sigma);
 
    
             //h_level = h_level*2;

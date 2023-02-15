@@ -55,9 +55,7 @@ BrinkmanTest::BrinkmanTest()
     fquadmat1=1; //Parte inferior do quadrado
     fquadmat2=2; //Parte superior do quadrado
     fquadmat3=3; //Material de interface
-    
-    fviscosity=1.;
-    fpermeability=1.;
+
     ftheta=-1.;
     
     fSpaceV=0;
@@ -76,7 +74,7 @@ BrinkmanTest::~BrinkmanTest()
     
 }
 
-void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double hy, STATE visco, STATE theta, STATE sigma)
+void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double hy, STATE theta, STATE sigma)
 {
     
     
@@ -107,7 +105,7 @@ void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double 
     TPZManVector<TPZCompMesh *, 2> meshvector(2);
     meshvector[0] = cmesh_v;
     meshvector[1] = cmesh_p;
-    TPZCompMesh *cmesh_m = this->CMesh_m(gmesh, meshvector, Space, pOrder, visco, theta, sigma); 
+    TPZCompMesh *cmesh_m = this->CMesh_m(gmesh, meshvector, Space, pOrder, theta, sigma); 
     
     #ifdef PZDEBUG
     {
@@ -222,7 +220,7 @@ void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double 
     //ErroOut <<"Norma H1/HDiv - V = "<< Errors[0] << std::endl;
     ErroOut <<"Norma L2 - V = "<< Errors[1] << std::endl;
     ErroOut <<"Semi-norma H1/Hdiv - V = "<< Errors[2] << std::endl;
-    ErroOut <<"Norma L2 - P = "<< Errors[4] << std::endl;
+    ErroOut <<"Norma L2 - P = "<< Errors[0] << std::endl;
     ErroOut <<"-------------" << std::endl;
     ErroOut.flush();
     
@@ -1232,7 +1230,7 @@ TPZCompMesh *BrinkmanTest::CMesh_p(TPZGeoMesh *gmesh, int Space, int pOrder)
     
 }
 
-TPZCompMesh *BrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, TPZManVector<TPZCompMesh *> meshvector, int Space, int pOrder, STATE visco, STATE theta, STATE sigma)
+TPZCompMesh *BrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, TPZManVector<TPZCompMesh *> meshvector, int Space, int pOrder, STATE theta, STATE sigma)
 {
     
     //Criando malha computacional:
@@ -1244,7 +1242,9 @@ TPZCompMesh *BrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, TPZManVector<TPZCompMesh *
     
     // Criando material:
     
-    auto material = new TPZBrinkmanMaterial(fmatID,fdim,Space,visco,theta,sigma);//criando material que implementa a formulacao fraca do problema modelo
+    auto material = new TPZBrinkmanMaterial(fmatID,fdim,Space,theta,sigma);//criando material que implementa a formulacao fraca do problema modelo
+    material->SetBrinkmanCoef(fbrink);
+    material->SetViscosity(fviscosity);
     material->SetForcingFunction(F_source, 5);
     material->SetExactSol(Sol_exact,5);
 

@@ -44,8 +44,8 @@ protected:
     /// viscosidade
     STATE fViscosity;
     
-    /** @brief Medium permeability. Coeficient which multiplies the gradient operator*/
-    STATE fk;
+    /** @brief Brinkman coeficient which multiplies the gradient operator*/
+    STATE fBCoef;
     
     /// termo contrario a beta na sua formulacao (para ser conforme a literatura)
     STATE fTheta;
@@ -67,7 +67,7 @@ public:
     /** Creates a material object and inserts it in the vector of
      *  material pointers of the mesh.
      */
-    [[maybe_unused]] TPZBrinkmanMaterial(int matid, int dimension, int space, STATE viscosity, STATE theta, STATE Sigma);
+    [[maybe_unused]] TPZBrinkmanMaterial(int matid, int dimension, int space, STATE theta, STATE Sigma);
     
     
     /** Creates a material object based on the referred object and
@@ -89,8 +89,8 @@ public:
 
     void FillBoundaryConditionDataRequirements(int type,TPZVec<TPZMaterialDataT<STATE>> &datavec) const override;
     
-    void SetPermeability(REAL perm) {
-        fk = perm;
+    void SetBrinkmanCoef(STATE perm) {
+        fBCoef = perm;
     }
     
     /** returns the name of the material */
