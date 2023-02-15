@@ -614,7 +614,8 @@ void TPZBrinkmanMaterial::Contribute(const TPZVec<TPZMaterialDataT<STATE>> &data
             STATE val = Inner(Dui, Duj);
             STATE val1 = InnerVec(phiVi, phiVj);
 
-            ek(i,j) += 2. * weight * fViscosity * val + fBCoef*weight * val1; ///Visc*(GradU+GradU^T):GradPhi
+            // Visc*(GradU+GradU^T):GradPhi + BCoef*U*Phi
+            ek(i, j) += 2. * weight * fViscosity * val + fBCoef * weight * val1;
         }
         
         // matrix B - pressure and velocity
@@ -627,10 +628,10 @@ void TPZBrinkmanMaterial::Contribute(const TPZVec<TPZMaterialDataT<STATE>> &data
 
             ///p*div(U)
             STATE fact = 0.;
-            if (fSpace==1) {
-                fact = (-1.) * weight * phiP(j,0) * datavec[0].divphi(i);
+            if (fSpace == 1){
+                fact = (-1.) * weight * phiP(j, 0) * datavec[0].divphi(i);
             }else{
-                fact = (-1.) * weight * phiP(j,0) * divui;
+                fact = (-1.) * weight * phiP(j, 0) * divui;
             }
 
             // Matrix B
@@ -2454,16 +2455,6 @@ void TPZBrinkmanMaterial::Errors(const TPZVec<TPZMaterialDataT<STATE>> &data, TP
 
     this->Solution(data,VariableIndex("V"), Velocity);
     this->Solution(data,VariableIndex("P"), Pressure);
-    
-    for (int i = 0 ; i < u_exact.size(); i++) {
-        std::cout << "u_exact [" << i << "] = " << u_exact[i] << std::endl;    
-    }
-    for (int i = 0 ; i < Velocity.size(); i++) {
-        std::cout << "Velocity [" << i << "] = " << u_exact[i] << std::endl;    
-    }
-    for (int i = 0 ; i < Pressure.size(); i++) {
-        std::cout << "Pressure [" << i << "] = " << u_exact[i] << std::endl;    
-    }
 
     int vindex = this->VIndex();
     int pindex = this->PIndex();

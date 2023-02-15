@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
     }
     else if (BrinkmanDomain)
     {
-        pOrder = 2;
+        pOrder = 1;
         hx=2.,hy=2.;
         
         TPZVec<STATE> S0(13,0.);
@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
         
         for (int it=0; it<=0; it++) {
             //h_level = pow(2., 2+it);
-            h_level = 4;
+            h_level = 2;
             
             //Coeficiente estabilização (Stokes)
             STATE hE=hx/h_level;
@@ -105,8 +105,8 @@ int main(int argc, char *argv[])
             BrinkmanTest  * Test2 = new BrinkmanTest();
             //Test2->SetTriangularMesh();
             //Test2->SetHdivPlus();
-            Test2->SetBrinkmanCoef(1.);
-            Test2->SetViscosity(0.);
+            Test2->SetBrinkmanCoef(0.);
+            Test2->SetViscosity(1.);
             Test2->Run(SpaceHDiv, pOrder, nx, ny, hx, hy, theta, sigma);
 
             //            BrinkmanTest  * Test1 = new BrinkmanTest();

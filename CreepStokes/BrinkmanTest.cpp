@@ -869,75 +869,75 @@ void BrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFMatr
     
     // Stokes : : Artigo Botti, Di Pietro, Droniou
     
-    // dsol.Resize(3,3);
-    // sol.Resize(4);
+    dsol.Resize(3,3);
+    sol.Resize(4);
     
-    // REAL x1 = x[0];
-    // REAL x2 = x[1];
+    REAL x1 = x[0];
+    REAL x2 = x[1];
     
-    // REAL e = exp(1.);
+    REAL e = exp(1.);
     
-    // TPZVec<REAL> v_Dirichlet(3,0.), vbc_rot(3,0.);
+    TPZVec<REAL> v_Dirichlet(3,0.), vbc_rot(3,0.);
     
-    // v_Dirichlet[0] = -1.*sin(x1)*sin(x2);
-    // v_Dirichlet[1] = -1.*cos(x1)*cos(x2);
-    // STATE pressure= cos(x1)*sin(x2);
+    v_Dirichlet[0] = -1.*sin(x1)*sin(x2);
+    v_Dirichlet[1] = -1.*cos(x1)*cos(x2);
+    STATE pressure= cos(x1)*sin(x2);
     
-    // sol[0]=v_Dirichlet[0];
-    // sol[1]=v_Dirichlet[1];
-    // sol[2]=v_Dirichlet[2];
-    // sol[3]=pressure;
+    sol[0]=v_Dirichlet[0];
+    sol[1]=v_Dirichlet[1];
+    sol[2]=v_Dirichlet[2];
+    sol[3]=pressure;
     
     
-    // // GradU * Rt
-    // TPZFMatrix<STATE> GradU(3,3,0.), GradURt(3,3,0.), RGradURt(3,3,0.);
+    // GradU * Rt
+    TPZFMatrix<STATE> GradU(3,3,0.), GradURt(3,3,0.), RGradURt(3,3,0.);
     
-    // // vx direction
-    // GradU(0,0)= -1.*cos(x1)*sin(x2);
-    // GradU(0,1)= cos(x2)*sin(x1);
+    // vx direction
+    GradU(0,0)= -1.*cos(x1)*sin(x2);
+    GradU(0,1)= cos(x2)*sin(x1);
     
-    // // vy direction
-    // GradU(1,0)= -1.*cos(x2)*sin(x1);
-    // GradU(1,1)= cos(x1)*sin(x2);
+    // vy direction
+    GradU(1,0)= -1.*cos(x2)*sin(x1);
+    GradU(1,1)= cos(x1)*sin(x2);
     
-    // // vx direction
-    // dsol(0,0)= GradU(0,0);
-    // dsol(0,1)= GradU(0,1);
-    // dsol(0,2)= GradU(0,2);
+    // vx direction
+    dsol(0,0)= GradU(0,0);
+    dsol(0,1)= GradU(0,1);
+    dsol(0,2)= GradU(0,2);
     
-    // // vy direction
-    // dsol(1,0)= GradU(1,0);
-    // dsol(1,1)= GradU(1,1);
-    // dsol(1,2)= GradU(1,2);
+    // vy direction
+    dsol(1,0)= GradU(1,0);
+    dsol(1,1)= GradU(1,1);
+    dsol(1,2)= GradU(1,2);
     
-    // // vz direction
-    // dsol(2,0)= GradU(2,0);
-    // dsol(2,1)= GradU(2,1);
-    // dsol(2,2)= GradU(2,2);
+    // vz direction
+    dsol(2,0)= GradU(2,0);
+    dsol(2,1)= GradU(2,1);
+    dsol(2,2)= GradU(2,2);
     
     // Darcy : : Artigo Botti, Di Pietro, Droniou
     
-           dsol.Resize(3,3);
-           sol.Resize(4);
+        //    dsol.Resize(3,3);
+        //    sol.Resize(4);
     
-           REAL x1 = x[0];
-           REAL x2 = x[1];
+        //    REAL x1 = x[0];
+        //    REAL x2 = x[1];
     
-           STATE v_1 = sin(x1)*sin(x2);
-           STATE v_2 = -1.*cos(x1)*cos(x2);
-           STATE pressure= cos(x1)*sin(x2);
+        //    STATE v_1 = sin(x1)*sin(x2);
+        //    STATE v_2 = -1.*cos(x1)*cos(x2);
+        //    STATE pressure= cos(x1)*sin(x2);
     
-           sol[0]=v_1;
-           sol[1]=v_2;
-           sol[3]=pressure;
+        //    sol[0]=v_1;
+        //    sol[1]=v_2;
+        //    sol[3]=pressure;
     
-           // vx direction
-           dsol(0,0)= cos(x1)*sin(x2);
-           dsol(0,1)= cos(x2)*sin(x1);
+        //    // vx direction
+        //    dsol(0,0)= cos(x1)*sin(x2);
+        //    dsol(0,1)= cos(x2)*sin(x1);
     
-           // vy direction
-           dsol(1,0)= cos(x2)*sin(x1);
-           dsol(1,1)= cos(x1)*sin(x2);
+        //    // vy direction
+        //    dsol(1,0)= cos(x2)*sin(x1);
+        //    dsol(1,1)= cos(x1)*sin(x2);
     
 }
 
@@ -987,19 +987,19 @@ void BrinkmanTest::F_source(const TPZVec<REAL> &x, TPZVec<STATE> &f){
     // Stokes : : Artigo Botti, Di Pietro, Droniou
     
     
-    // f_s[0] = -3.*sin(x1)*sin(x2);
-    // f_s[1] = -1.*cos(x1)*cos(x2);
+    f_s[0] = -3.*sin(x1)*sin(x2);
+    f_s[1] = -1.*cos(x1)*cos(x2);
     
-    // f[0] = f_s[0]; // x direction
-    // f[1] = f_s[1]; // y direction
-    // f[2] = f_s[2];
+    f[0] = f_s[0]; // x direction
+    f[1] = f_s[1]; // y direction
+    f[2] = f_s[2];
     
     
     // Darcy : : Artigo Botti, Di Pietro, Droniou
     
-           f[0] = 0.; // x direction
-           f[1] = 0.; // y direction
-           f[3] = 2.*cos(x1)*sin(x2);
+        //    f[0] = 0.; // x direction
+        //    f[1] = 0.; // y direction
+        //    f[3] = 2.*cos(x1)*sin(x2);
 
 }
 
