@@ -15,6 +15,7 @@
 #include "tpzautopointer.h"
 #include "TPZMaterial.h"
 #include "pztrnsform.h"
+#include "ProblemTypes.h"
 
 #ifndef TPZBrinkmanMATERIAL
 #define TPZBrinkmanMATERIAL
@@ -34,14 +35,18 @@ protected:
     /// viscosidade
     STATE fViscosity;
     
-    /** @brief Medium permeability. Coeficient which multiplies the gradient operator*/
-    STATE fk;
+    /** @brief Brinkman coeficient which multiplies the gradient operator*/
+    STATE fBCoef;
     
     /// termo contrario a beta na sua formulacao (para ser conforme a literatura)
     STATE fTheta;
     
     STATE fSigma;
-    
+
+    DomainType fDomainType;
+   
+    ProblemType fProblemType;
+ 
 //    TPZTransform<STATE> f_T;
 //    
 //    TPZTransform<STATE> f_InvT;
@@ -57,7 +62,7 @@ public:
     /** Creates a material object and inserts it in the vector of
      *  material pointers of the mesh.
      */
-    TPZBrinkmanMaterial(int matid, int dimension, int space, STATE viscosity, STATE theta, STATE Sigma);
+    TPZBrinkmanMaterial(int matid, int dimension, int space, STATE theta, STATE Sigma);
     
     
     /** Creates a material object based on the referred object and
@@ -94,9 +99,16 @@ public:
 //        f_T = Transf;
 //        f_InvT = InvTransf;
 //    }
-    
-    void SetPermeability(REAL perm) {
-        fk = perm;
+    void SetDomainType(DomainType domain) {
+        fDomainType = domain;
+    }
+
+    void SetProblemType(ProblemType problem) {
+        fProblemType = problem;
+    }
+
+    void SetBrinkmanCoef(STATE coef) {
+        fBCoef = coef;
     }
     
     /** returns the name of the material */

@@ -61,7 +61,7 @@ const REAL Pi=M_PI;
 
 const REAL visco=1., permeability=1., theta=-1.; //Coeficientes: viscosidade, permeabilidade, fator simetria
 
-bool DarcyDomain = false, StokesDomain = false , BrinkmanDomain = true, CoupledDomain = false;
+bool DarcyDomain = false, StokesDomain = false , BrinkmanDomain = false, CoupledDomain = true;
 
 bool HybridBrinkmanDomain = true, MHMStokesDomain = false;
 
@@ -140,22 +140,23 @@ int main(int argc, char *argv[])
             sigma=s0*(pOrder*pOrder)/hE;
  
             
-            REAL visc = 1.0; //->Darcy
             //sigma = sigma*visc;
             
             BrinkmanTest  * Test2 = new BrinkmanTest();
+            Test2->SetViscosity(1.);
+            Test2->SetBrinkmanCoef(0.);
             //Test2->SetTriangularMesh();
             //Test2->SetHdivPlus();
-            Test2->Run(SpaceHDiv, pOrder, nx, ny, hx, hy,visc,theta,sigma);
+            Test2->Run(SpaceHDiv, pOrder, nx, ny, hx, hy, theta, sigma);
 
-//            BrinkmanTest  * Test1 = new BrinkmanTest();
-//            Test1->SetTriangularMesh();
-//            Test1->SetFullHdiv();
-//            Test1->Run(SpaceHDiv, pOrder, nx, ny, hx, hy,visc,theta,sigma);
-//
-//            BrinkmanTest  * Test3 = new BrinkmanTest();
-//            Test3->SetTriangularMesh();
-//            Test3->Run(SpaceDiscontinuous, pOrder, nx, ny, hx, hy,visc,theta,sigma);
+            //            BrinkmanTest  * Test1 = new BrinkmanTest();
+            //            Test1->SetTriangularMesh();
+            //            Test1->SetFullHdiv();
+            //            Test1->Run(SpaceHDiv, pOrder, nx, ny, hx, hy,visc,theta,sigma);
+            //
+            //            BrinkmanTest  * Test3 = new BrinkmanTest();
+            //            Test3->SetTriangularMesh();
+            //            Test3->Run(SpaceDiscontinuous, pOrder, nx, ny, hx, hy,visc,theta,sigma);
 
    
             //h_level = h_level*2;
@@ -164,19 +165,24 @@ int main(int argc, char *argv[])
     }
     else  if(CoupledDomain)
     {
-        int h_level = 64;
+        int h_level = 2;
         
         //double hx=1.,hy=1.; //Dimensões em x e y do domínio
-        double hx=Pi,hy=2.; //Dimensões em x e y do domínio (acoplamento)
         int nelx=h_level, nely=h_level; //Número de elementos em x e y
-        int nx=nelx+1 ,ny=nely+1; //Número de nos em x  y
+        TPZVec<int> n_nodes(2);
+        n_nodes[0] = nelx + 1, n_nodes[1] = nely + 1;
+        TPZVec<REAL> h_s(2);
+        h_s[0] = Pi, h_s[1] = 2.;
+
         int pOrder = 2; //Ordem polinomial de aproximação
-        STATE hE=hx/h_level;
+        STATE hE=h_s[0]/h_level;
         STATE s0=12.;
         STATE sigma=s0*(pOrder*pOrder)/hE;
         
         CoupledTest  * Test3 = new CoupledTest();
-        Test3->Run(SpaceHDiv, pOrder, nx, ny, hx, hy,visco,permeability,theta,sigma);
+        Test3->SetPermeability(1.);
+        Test3->SetViscosity(1.);        
+        Test3->Run(SpaceHDiv, pOrder, n_nodes, h_s, theta,sigma);
     }
     
     return 0;

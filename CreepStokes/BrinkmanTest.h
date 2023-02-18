@@ -85,8 +85,9 @@ private:
     int fquadmat2; //Parte superior do quadrado
     int fquadmat3; //Material de interface
     
-    STATE fviscosity;
-    STATE fpermeability;
+    STATE fviscosity = 0.;
+    STATE fBrinkman = 0.;
+
     STATE ftheta;
     
     int fSpaceV;
@@ -105,7 +106,7 @@ public:
     
     ~BrinkmanTest();
     
-    void Run(int Space, int pOrder, int nx, int ny, double hx, double hy, STATE visco, STATE theta, STATE sigma);
+    void Run(int Space, int pOrder, int nx, int ny, double hx, double hy, STATE theta, STATE sigma);
     
     /*  Malhas geometricas */
     TPZGeoMesh *CreateGMesh(int nx, int ny, double hx, double hy);
@@ -119,12 +120,11 @@ public:
     
     TPZCompMesh *CMesh_v(TPZGeoMesh *gmesh, int Space, int pOrder);
     TPZCompMesh *CMesh_p(TPZGeoMesh *gmesh, int Space, int pOrder);
-    TPZCompMesh *CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STATE visco, STATE theta, STATE sigma);
+    TPZCompMesh *CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STATE theta, STATE sigma);
     
     void SetHdivPlus(){
         f_hdivPlus = true;
     };
-    
     
     void SetFullHdiv(){
         f_is_hdivFull = true;
@@ -134,6 +134,14 @@ public:
         fTriang = true;
     };
     
+    void SetBrinkmanCoef(STATE coef) {
+        fBrinkman = coef;
+    }
+
+    void SetViscosity(STATE visco){
+        fviscosity = visco;
+    }
+
     //solucao exata
     static void Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFMatrix<STATE> &dsol);
     

@@ -24,6 +24,7 @@
 #include "TPZCouplingDSMaterial.h"
 #include "TPZStokesMaterial.h"
 #include "TPZDarcyPMaterial.h"
+#include "TPZBrinkmanMaterial.h"
 
 #include <pzgeoel.h>
 #include "pzgeoelbc.h"
@@ -45,7 +46,7 @@
 #include "TPZParFrontStructMatrix.h"
 #include "TPZSSpStructMatrix.h"
 #include "pzanalysis.h"
-
+#include "ProblemTypes.h"
 
 using namespace std;
 using namespace pzshape;
@@ -104,8 +105,8 @@ private:
     int fquadmat2; //Parte superior do quadrado
     int fquadmat3; //Material de interface
     
-    STATE fviscosity;
-    STATE fpermeability;
+    STATE fviscosity = 0.;
+    STATE fpermeability = 0.;
     STATE ftheta;
     
     
@@ -118,21 +119,31 @@ public:
     
     ~CoupledTest();
     
-    void Run(int Space, int pOrder, int nx, int ny, double hx, double hy, STATE visco, STATE permeability, STATE theta, STATE sigma);
+    void Run(int Space, int pOrder, TPZVec<int> &n_div, TPZVec<REAL> &h_s, STATE theta, STATE sigma);
     
     /*  Malhas geometricas */
-    TPZGeoMesh *CreateGMesh(int nx, int ny, double hx, double hy);
+    TPZGeoMesh *CreateGMesh(TPZVec<int> &n_div, TPZVec<REAL> &h_s);
+
+    TPZGeoMesh *CreateGMeshCoupling(TPZVec<int> &n_div, TPZVec<REAL> &h_s);
     
     //   TPZGeoMesh *GMeshDeformed(int dim, bool ftriang, int ndiv);
-    
-    
+
+    void SetPermeability(STATE coef)
+    {
+        fpermeability = coef;
+    }
+
+    void SetViscosity(STATE visco)
+    {
+        fviscosity = visco;
+    }
     /* Malhas computacionais */
     
    // TPZCompEl *CreateInterfaceEl(TPZGeoEl *gel,TPZCompMesh &mesh,long &index);
     
     TPZCompMesh *CMesh_v(TPZGeoMesh *gmesh, int Space, int pOrder);
     TPZCompMesh *CMesh_p(TPZGeoMesh *gmesh, int Space, int pOrder);
-    TPZCompMesh *CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STATE visco, STATE permeability, STATE theta, STATE sigma);
+    TPZCompMesh *CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STATE theta, STATE sigma);
     
     
     //solucao exata
@@ -146,6 +157,7 @@ public:
     
     static void AddInterfaceCoupllingDS(TPZGeoMesh *gmesh,TPZCompMesh *cmesh, int matInterfaceDS ,int matleft, int matright);
     
+    void InsertInterfaces(TPZGeoMesh * gmesh);
 };
 
 

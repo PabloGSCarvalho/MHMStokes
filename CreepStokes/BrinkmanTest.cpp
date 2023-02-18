@@ -58,8 +58,6 @@ BrinkmanTest::BrinkmanTest()
     fquadmat2=2; //Parte superior do quadrado
     fquadmat3=3; //Material de interface
     
-    fviscosity=1.;
-    fpermeability=1.;
     ftheta=-1.;
     
     fSpaceV=0;
@@ -78,7 +76,7 @@ BrinkmanTest::~BrinkmanTest()
     
 }
 
-void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double hy, STATE visco, STATE theta, STATE sigma)
+void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double hy, STATE theta, STATE sigma)
 {
     
     
@@ -106,7 +104,7 @@ void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double 
     
     ChangeExternalOrderConnects(cmesh_v,n_mais);
     
-    TPZCompMesh *cmesh_m = this->CMesh_m(gmesh, Space, pOrder, visco, theta, sigma); //Função para criar a malha computacional multifísica
+    TPZCompMesh *cmesh_m = this->CMesh_m(gmesh, Space, pOrder, theta, sigma); //Função para criar a malha computacional multifísica
     
 #ifdef PZDEBUG
     {
@@ -960,7 +958,7 @@ void BrinkmanTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFMatr
 
 void BrinkmanTest::F_source(const TPZVec<REAL> &x, TPZVec<STATE> &f, TPZFMatrix<STATE>& gradu){
     
-    f.resize(3);
+    f.resize(4);
     REAL x1 = x[0];
     REAL x2 = x[1];
     REAL x3 = x[2];
@@ -1261,7 +1259,7 @@ TPZCompMesh *BrinkmanTest::CMesh_p(TPZGeoMesh *gmesh, int Space, int pOrder)
     
 }
 
-TPZCompMesh *BrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STATE visco, STATE theta, STATE sigma)
+TPZCompMesh *BrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STATE theta, STATE sigma)
 {
     
     //Criando malha computacional:
@@ -1274,7 +1272,9 @@ TPZCompMesh *BrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STA
     
     // Criando material:
     
-    TPZBrinkmanMaterial *material = new TPZBrinkmanMaterial(fmatID,fdim,Space,visco,theta,sigma);//criando material que implementa a formulacao fraca do problema modelo
+    TPZBrinkmanMaterial *material = new TPZBrinkmanMaterial(fmatID,fdim,Space,theta,sigma);//criando material que implementa a formulacao fraca do problema modelo
+    material->SetViscosity(fviscosity);
+    material->SetBrinkmanCoef(fBrinkman);
     // Inserindo material na malha
     TPZAutoPointer<TPZFunction<STATE> > fp = new TPZDummyFunction<STATE> (F_source, 5);
     TPZAutoPointer<TPZFunction<STATE> > solp = new TPZDummyFunction<STATE> (Sol_exact, 5);
