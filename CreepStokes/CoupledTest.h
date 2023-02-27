@@ -109,6 +109,7 @@ private:
     STATE fpermeability = 0.;
     STATE ftheta;
     
+    bool fTriang;
     
 public:
     
@@ -137,6 +138,15 @@ public:
     {
         fviscosity = visco;
     }
+
+    void SetTriangularMesh(){
+        fTriang = true;
+    };
+
+    bool IsTringularMesh() {
+        fTriang == true;
+    }
+
     /* Malhas computacionais */
     
    // TPZCompEl *CreateInterfaceEl(TPZGeoEl *gel,TPZCompMesh &mesh,long &index);
@@ -155,7 +165,7 @@ public:
     // static void AddMultiphysicsInterfaces(TPZCompMesh &cmesh, int matfrom, int mattarget);
     static void AddMultiphysicsInterfaces(TPZCompMesh &cmesh, int matfrom, int mattarget);
     
-    static void AddInterfaceCoupllingDS(TPZGeoMesh *gmesh,TPZCompMesh *cmesh, int matInterfaceDS ,int matleft, int matright);
+    void AddInterfaceCoupllingDS(TPZGeoMesh *gmesh,TPZCompMesh *cmesh, int matInterfaceDS ,int matleft, int matright);
     
     void InsertInterfaces(TPZGeoMesh * gmesh);
 };

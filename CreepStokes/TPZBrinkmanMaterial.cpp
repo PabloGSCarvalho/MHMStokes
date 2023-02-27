@@ -124,7 +124,8 @@ void TPZBrinkmanMaterial::FillDataRequirementsInterface(TPZMaterialData &data, T
         datavec_left[iref].SetAllRequirements(false);
         datavec_left[iref].fNeedsNormal = true;
     }
-    datavec_left[0].fNeedsNormalVecFad = NeedsNormalVecFad;
+    datavec_left[0].fNeedsNormalVecFad = true;
+    datavec_right[0].fNeedsNormalVecFad = true;
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -1248,7 +1249,6 @@ void TPZBrinkmanMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL we
 
 void TPZBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMaterialData> &datavecleft, TPZVec<TPZMaterialData> &datavecright, REAL weight, TPZFMatrix<STATE> &ek,TPZFMatrix<STATE> &ef){
     
-    
     // Verificar que
     // os termos mistos devem estar sem viscosidade!
     
@@ -1318,9 +1318,9 @@ void TPZBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZM
     REAL sigmaConst = fSigma;
     
     //Triangle Verification:
-    if (fabs(normal[0])<1.&&fabs(normal[1])<1.) {
-        sigmaConst = fSigma/(sqrt(2.));
-    }
+    // if (fabs(normal[0])<1.&&fabs(normal[1])<1.) {
+    //     sigmaConst = fSigma/(sqrt(2.));
+    // }
     
 
     
@@ -1384,6 +1384,7 @@ void TPZBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZM
         DebugStop();
 #endif
     }else{
+        DebugStop();
         NormalvecLeft=datavecleft[vindex].fNormalVec;
     }
     
@@ -1414,6 +1415,7 @@ void TPZBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZM
         DebugStop();
 #endif
     }else{
+        DebugStop();
         NormalvecRight=datavecright[vindex].fNormalVec;
     }
     
@@ -1432,12 +1434,13 @@ void TPZBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZM
             phiV1ni(0,0)+=phiV1i(e,0)*normal[e];
             
             for (int f=0; f<fDimension; f++) {
-                GradV1i(e,f) = NormalvecLeft(e,ivec1)*dphiVx1(f,iphi1);
-                //termo transposto:
-                GradV1it(f,e) = NormalvecLeft(e,ivec1)*dphiVx1(f,iphi1);
+                GradV1i(e, f) = NormalvecLeft(e, ivec1) * dphiVx1(f, iphi1) + 
+                GradNormalvecLeft[ivec1](e, f) * phiV1(iphi1, 0);
+                // termo transposto:
+                GradV1it(f, e) = NormalvecLeft(e, ivec1) * dphiVx1(f, iphi1) + 
+                GradNormalvecLeft[ivec1](e, f) * phiV1(iphi1, 0);
             }
         }
-        
 //                dphiV1.Print("dphiV = ",cout);
 //                dphiVx1.Print("dphiVx = ",cout);
 //                datavecleft[vindex].fNormalVec.Print("normalvec = ",cout);
@@ -1482,10 +1485,11 @@ void TPZBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZM
                 phiV1nj(0,0)+=phiV1j(e,0)*normal[e];
                 
                 for (int f=0; f<fDimension; f++) {
-                    GradV1j(e,f) = NormalvecLeft(e,jvec1)*dphiVx1(f,jphi1);
+                    GradV1j(e,f) = NormalvecLeft(e,jvec1)*dphiVx1(f,jphi1) + 
+                GradNormalvecLeft[jvec1](e, f) * phiV1(jphi1, 0);
                     //termo transposto:
-                    GradV1jt(f,e) = NormalvecLeft(e,jvec1)*dphiVx1(f,jphi1);
-                    
+                    GradV1jt(f,e) = NormalvecLeft(e,jvec1)*dphiVx1(f,jphi1) + 
+                GradNormalvecLeft[jvec1](e, f) * phiV1(jphi1, 0);
                 }
             }
             
@@ -1557,10 +1561,11 @@ void TPZBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZM
                 phiV2nj(0,0)+=phiV2j(e,0)*normal[e];
                 
                 for (int f=0; f<fDimension; f++) {
-                    GradV2j(e,f) = NormalvecRight(e,jvec2)*dphiVx2(f,jphi2);
+                    GradV2j(e, f) = NormalvecRight(e, jvec2) * dphiVx2(f, jphi2) +
+                                    GradNormalvecRight[jvec2](e, f) * phiV2(jphi2, 0);
                     //termo transposto:
-                    GradV2jt(f,e) = NormalvecRight(e,jvec2)*dphiVx2(f,jphi2);
-                    
+                    GradV2jt(f, e) = NormalvecRight(e, jvec2) * dphiVx2(f, jphi2) +
+                                     GradNormalvecRight[jvec2](e, f) * phiV2(jphi2, 0);
                 }
             }
             
@@ -1624,9 +1629,11 @@ void TPZBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZM
             phiV2ni(0,0)+=phiV2i(e,0)*normal[e];
             
             for (int f=0; f<fDimension; f++) {
-                GradV2i(e,f) = NormalvecRight(e,ivec2)*dphiVx2(f,iphi2);
-                //termo transposto:
-                GradV2it(f,e) = NormalvecRight(e,ivec2)*dphiVx2(f,iphi2);
+                GradV2i(e, f) = NormalvecRight(e, ivec2) * dphiVx2(f, iphi2) +
+                                GradNormalvecRight[ivec2](e, f) * phiV2(iphi2, 0);
+                // termo transposto:
+                GradV2it(f, e) = NormalvecRight(e, ivec2) * dphiVx2(f, iphi2) +
+                                 GradNormalvecRight[ivec2](e, f) * phiV2(iphi2, 0);
             }
         }
         
@@ -1661,10 +1668,11 @@ void TPZBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZM
                 phiV1nj(0,0)+=phiV1j(e,0)*normal[e];
                 
                 for (int f=0; f<fDimension; f++) {
-                    GradV1j(e,f) = NormalvecLeft(e,jvec1)*dphiVx1(f,jphi1);
+                    GradV1j(e,f) = NormalvecLeft(e,jvec1)*dphiVx1(f,jphi1) +
+                                GradNormalvecLeft[jvec1](e, f) * phiV2(jphi1, 0);
                     //termo transposto:
-                    GradV1jt(f,e) = NormalvecLeft(e,jvec1)*dphiVx1(f,jphi1);
-                    
+                    GradV1jt(f,e) = NormalvecLeft(e,jvec1)*dphiVx1(f,jphi1) +
+                                GradNormalvecLeft[jvec1](e, f) * phiV2(jphi1, 0);
                 }
             }
             
@@ -1731,10 +1739,11 @@ void TPZBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZM
                 phiV2nj(0,0)+=phiV2j(e,0)*normal[e];
                 
                 for (int f=0; f<fDimension; f++) {
-                    GradV2j(e,f) = NormalvecRight(e,jvec2)*dphiVx2(f,jphi2);
+                    GradV2j(e,f) = NormalvecRight(e,jvec2)*dphiVx2(f,jphi2) +
+                                GradNormalvecRight[jvec2](e, f) * phiV2(jphi2, 0);
                     //termo transposto:
-                    GradV2jt(f,e) = NormalvecRight(e,jvec2)*dphiVx2(f,jphi2);
-                    
+                    GradV2jt(f, e) = NormalvecRight(e, jvec2) * dphiVx2(f, jphi2) +
+                                     GradNormalvecRight[jvec2](e, f) * phiV2(jphi2, 0);
                 }
             }
             

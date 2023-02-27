@@ -15,62 +15,60 @@
 
 CoupledTest::CoupledTest()
 {
-    
-    fdim=2; //Dimensão do problema
-    fmatID=1; //Materia do elemento volumétrico
+
+    fdim = 2;   // Dimensão do problema
+    fmatID = 1; // Materia do elemento volumétrico
     fmatIdS = 1;
     fmatIdD = 2;
-    
-    //Materiais das condições de contorno (Stokes)
+
+    // Materiais das condições de contorno (Stokes)
     fmatSBCbott = -1;
     fmatSBCtop = -2;
     fmatSBCleft = -3;
     fmatSBCright = -4;
-    
-    //Materiais das condições de contorno (Darcy)
+
+    // Materiais das condições de contorno (Darcy)
     fmatDBCbott = -21;
     fmatDBCtop = -22;
     fmatDBCleft = -23;
     fmatDBCright = -24;
-    
-    //Material do elemento de interface
+
+    // Material do elemento de interface
     fmatSInterface = 4;
     fmatDInterface = 14;
-    fmatInterfaceDS= 5;
-    
-    //Materiais das condições de contorno (elementos de interface - Stokes)
-    fmatIntSBCbott=-11;
-    fmatIntSBCtop=-12;
-    fmatIntSBCleft=-13;
-    fmatIntSBCright=-14;
-    
-    //Materiais das condições de contorno (elementos de interface - Darcy)
-    fmatIntDBCbott=-31;
-    fmatIntDBCtop=-32;
-    fmatIntDBCleft=-33;
-    fmatIntDBCright=-34;
-    
-    //Materia de um ponto
-    fmatPoint=-5;
-    fmatPoint2 =-6;
-    
-    //Condições de contorno do problema
-    fdirichlet=0;
-    fneumann=1;
-    fpenetration=2;
-    fpointtype=5;
-    fdirichletvar=4;
-    
-    
-    fquadmat1=1; //Parte inferior do quadrado
-    fquadmat2=2; //Parte superior do quadrado
-    fquadmat3=3; //Material de interface
-    
-    fviscosity=1.;
-    fpermeability=1.;
-    ftheta=-1.;
-    
-    
+    fmatInterfaceDS = 5;
+
+    // Materiais das condições de contorno (elementos de interface - Stokes)
+    fmatIntSBCbott = -11;
+    fmatIntSBCtop = -12;
+    fmatIntSBCleft = -13;
+    fmatIntSBCright = -14;
+
+    // Materiais das condições de contorno (elementos de interface - Darcy)
+    fmatIntDBCbott = -31;
+    fmatIntDBCtop = -32;
+    fmatIntDBCleft = -33;
+    fmatIntDBCright = -34;
+
+    // Materia de um ponto
+    fmatPoint = -5;
+    fmatPoint2 = -6;
+
+    // Condições de contorno do problema
+    fdirichlet = 0;
+    fneumann = 1;
+    fpenetration = 2;
+    fpointtype = 5;
+    fdirichletvar = 4;
+
+    fquadmat1 = 1; // Parte inferior do quadrado
+    fquadmat2 = 2; // Parte superior do quadrado
+    fquadmat3 = 3; // Material de interface
+
+    fviscosity = 1.;
+    fpermeability = 1.;
+    ftheta = -1.;
+    fTriang = false;
 }
 
 CoupledTest::~CoupledTest()
@@ -263,12 +261,10 @@ TPZGeoMesh *CoupledTest::CreateGMeshCoupling(TPZVec<int> &n_nodes, TPZVec<REAL> 
     // }
 
     TPZGenGrid grid(n_div,x0,x1);
-
-    //grid.SetDistortion(0.5);
-    //grid.SetRefpatternElements(true);
-    //if (feltype==ETriangle) {
-    grid.SetElementType(MElementType::ETriangle);
-    //}
+    if (fTriang) {
+        grid.SetElementType(MElementType::ETriangle);
+    }
+    
     TPZGeoMesh *gmesh = new TPZGeoMesh;
     grid.Read(gmesh, fmatIdS);
     TPZGeoMesh *gmesh2 = new TPZGeoMesh;
@@ -282,23 +278,7 @@ TPZGeoMesh *CoupledTest::CreateGMeshCoupling(TPZVec<int> &n_nodes, TPZVec<REAL> 
     grid.SetBC(gmesh, 6, fmatIntSBCtop);
     grid.SetBC(gmesh, 7, fmatSBCleft);
     grid.SetBC(gmesh, 7, fmatIntSBCleft);
-    //Save the original mesh
 
-    //SetAllRefine();
-
-    TPZVec<REAL> centerCo(2,0.);
-    centerCo[0]=1.;
-    centerCo[1]=0.;
-    // UniformRefine(1, gmesh, centerCo, true);
-
-    //UniformRefine2(1, gmesh, n_div);
-//    InsertLowerDimMaterial(gmesh);
-//    SetOriginalMesh(gmesh);
-//    UniformRefine2(1, gmesh, n_div);
-//    InsertLowerDimMaterial(gmesh);
-
-    TPZCheckGeom check(gmesh);
-    check.CheckUniqueId();
     int nel = gmesh->NElements();
     TPZVec<REAL> center_coord(3,0.);
     for (int iel = 0; iel < nel; iel++) {
@@ -328,20 +308,14 @@ TPZGeoMesh *CoupledTest::CreateGMeshCoupling(TPZVec<int> &n_nodes, TPZVec<REAL> 
 
     //    Ponto 1
     TPZVec<int64_t> pointtopology(1);
-    //pointtopology[0] = nx*(ny-1)/2;
     pointtopology[0] = 0;
     int64_t id;
     gmesh->CreateGeoElement(EPoint,pointtopology,fmatPoint,id);
-    
-    //    Ponto 2
-    TPZVec<int64_t> pointtopology2(1);
-    pointtopology2[0] = n_div[0]*n_div[1]-1;
-    //pointtopology2[0] = nx*((ny+1)/2);
-    
-    gmesh->CreateGeoElement(EPoint,pointtopology2,fmatPoint2,id);
 
     InsertInterfaces(gmesh);
       std::cout << "teste 12" << std::endl;
+    TPZCheckGeom check(gmesh);
+    check.CheckUniqueId();      
     gmesh->BuildConnectivity();
 
     if(1){
@@ -358,7 +332,6 @@ void CoupledTest::InsertInterfaces(TPZGeoMesh * gmesh) {
     int nel = gmesh->NElements();
     int64_t id;
     TPZVec<int64_t> nodint(2);
-    //TPZVec<REAL> center_coord(3,0.);
     int cont = 0;
     for (int iel = 0; iel < nel; iel++) {
         TPZGeoEl *gel = gmesh->ElementVec()[iel];
@@ -457,12 +430,12 @@ TPZGeoMesh *CoupledTest::CreateGMesh(TPZVec<int> &n_nodes, TPZVec<REAL> &h_s)
     
     gmesh->CreateGeoElement(EPoint,pointtopology,fmatPoint,id);
     
-    //    Ponto 2
-    TPZVec<int64_t> pointtopology2(1);
-    pointtopology2[0] = nx*ny-1;
-    //pointtopology2[0] = nx*((ny+1)/2);
+    // //    Ponto 2
+    // TPZVec<int64_t> pointtopology2(1);
+    // pointtopology2[0] = nx*ny-1;
+    // //pointtopology2[0] = nx*((ny+1)/2);
     
-    gmesh->CreateGeoElement(EPoint,pointtopology2,fmatPoint2,id);
+    // gmesh->CreateGeoElement(EPoint,pointtopology2,fmatPoint2,id);
     
     
     //Vetor auxiliar para armazenar as conecções entre elementos:
@@ -707,7 +680,7 @@ void CoupledTest::Sol_exact(const TPZVec<REAL> &x, TPZVec<STATE> &sol, TPZFMatri
     REAL yv = x[1];
     
     //Stokes
-    if(yv>0.){
+    if(yv>=0.){
 
         STATE v_x = (2. * cos(xv) * cos(Pi * yv) * sin(Pi * yv)) / Pi;
         STATE v_y = sin(xv) * (-2. + pow(sin(Pi * yv), 2) / (Pi * Pi));
@@ -1013,17 +986,7 @@ TPZCompMesh *CoupledTest::CMesh_p(TPZGeoMesh *gmesh, int Space, int pOrder)
     //    TPZMaterial * BCond3 = material->CreateBC(material, matSBCright, dirichlet, val1, val2); //Cria material que implementa a condicao de contorno direita
     //    cmesh->InsertMaterialObject(BCond3); //Insere material na malha
     
-    
-    //Ponto de pressao:
-    
-    TPZFMatrix<STATE> val5(1,1,0.), val6(1,1,0.);
-    
-    TPZMaterial * BCPointS = materialStokes->CreateBC(materialStokes, fmatPoint2, fpointtype, val5, val6); //Cria material que implementa um ponto para a pressao
-    cmesh->InsertMaterialObject(BCPointS); //Insere material na malha
-    
-    
-    
-    
+
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Criando material Coupling:
     
@@ -1183,15 +1146,6 @@ TPZCompMesh *CoupledTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STAT
     BCSond3->SetForcingFunction(Sol_exact,bc_inte_order);
     cmesh->InsertMaterialObject(BCSond3); //Insere material na malha
     
-    //Ponto
-    
-    TPZFMatrix<STATE> val5(1,1,0.), val6(1,1,0.);
-    val6(0,0)=0.0;
-    
-    TPZMaterial * BCPointS = materialStokes->CreateBC(materialStokes, fmatPoint2, fpointtype, val3, val4); //Cria material que implementa um ponto para a pressão
-    cmesh->InsertMaterialObject(BCPointS); //Insere material na malha
-
-    
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Criando material Acoplamento:
 
@@ -1199,7 +1153,7 @@ TPZCompMesh *CoupledTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STAT
 
     TPZAutoPointer<TPZFunction<STATE> > solp3 = new TPZDummyFunction<STATE> (Sol_exact,5);
     
-    //materialCoupling->SetForcingFunction(fp3);
+    materialCoupling->SetForcingFunction(fp);
     materialCoupling->SetForcingFunctionExact(solp3);
     cmesh->InsertMaterialObject(materialCoupling);
     
@@ -1258,7 +1212,12 @@ void CoupledTest::AddMultiphysicsInterfaces(TPZCompMesh &cmesh, int matfrom, int
 }
 
 void CoupledTest::AddInterfaceCoupllingDS(TPZGeoMesh *gmesh,TPZCompMesh *cmesh, int matInterfaceDS ,int matleft, int matright){
-    
+
+    TPZVec<int> sideIndex(2,0);
+    sideIndex[0] = 6, sideIndex[1] = 4;
+    if (fTriang == true) {
+        sideIndex[0] = 4, sideIndex[1] = 3;
+    }
     const int nel = gmesh->NElements();
     int64_t index;
     for (int iel = 0; iel < nel; iel++) {
@@ -1274,12 +1233,13 @@ void CoupledTest::AddInterfaceCoupllingDS(TPZGeoMesh *gmesh,TPZCompMesh *cmesh, 
         
         int debug = 0;
         while (gelside != neigh) {
+            std::cout << "neigh = " << neigh.Side() << " -- " << "matId = " << neigh.Element()->MaterialId() << std::endl;
             if (neigh.Element()->MaterialId() == matleft) {
                 TPZCompEl *cel = neigh.Element()->Reference();
                 if (!cel) {
                     DebugStop();
                 }
-                left = TPZCompElSide(cel, 6);
+                left = TPZCompElSide(cel, sideIndex[0]);
                 debug++;
             }
             else if (neigh.Element()->MaterialId() == matright) {
@@ -1287,13 +1247,14 @@ void CoupledTest::AddInterfaceCoupllingDS(TPZGeoMesh *gmesh,TPZCompMesh *cmesh, 
                 if (!cel) {
                     DebugStop();
                 }
-                right = TPZCompElSide(cel, 4);
+                right = TPZCompElSide(cel, sideIndex[1]);
                 debug++;
             }
             neigh = neigh.Neighbour();
         }
         if (debug != 2)
             DebugStop();
+        std::cout << "asda" << std::endl;    
         new TPZMultiphysicsInterfaceElement(*cmesh, gel, index, left, right);
     }
     

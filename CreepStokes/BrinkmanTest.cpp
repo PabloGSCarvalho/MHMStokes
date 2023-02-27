@@ -24,50 +24,49 @@ const REAL phi_r = 0.;
 
 BrinkmanTest::BrinkmanTest()
 {
-    
-    fdim=2; //Dimensão do problema
-    fmatID=1; //Materia do elemento volumétrico
-    
-    //Materiais das condições de contorno
-    fmatBCbott=-1;
-    fmatBCtop=-2;
-    fmatBCleft=-3;
-    fmatBCright=-4;
-    
-    //Material do elemento de interface
-    fmatInterface=4;
-    
-    //Materiais das condições de contorno (elementos de interface)
-    fmatIntBCbott=-11;
-    fmatIntBCtop=-12;
-    fmatIntBCleft=-13;
-    fmatIntBCright=-14;
-    
-    //Materia de um ponto
-    fmatPoint=-5;
-    
-    //Condições de contorno do problema
-    fdirichlet=0;
-    fneumann=1;
-    fpenetration=2;
-    fpointtype=5;
-    fdirichletvar=4;
-    
-    
-    fquadmat1=1; //Parte inferior do quadrado
-    fquadmat2=2; //Parte superior do quadrado
-    fquadmat3=3; //Material de interface
-    
-    ftheta=-1.;
-    
-    fSpaceV=0;
-    
-    fphi_r=0;
-    
+
+    fdim = 2;   // Dimensão do problema
+    fmatID = 1; // Materia do elemento volumétrico
+
+    // Materiais das condições de contorno
+    fmatBCbott = -1;
+    fmatBCtop = -2;
+    fmatBCleft = -3;
+    fmatBCright = -4;
+
+    // Material do elemento de interface
+    fmatInterface = 4;
+
+    // Materiais das condições de contorno (elementos de interface)
+    fmatIntBCbott = -11;
+    fmatIntBCtop = -12;
+    fmatIntBCleft = -13;
+    fmatIntBCright = -14;
+
+    // Materia de um ponto
+    fmatPoint = -5;
+
+    // Condições de contorno do problema
+    fdirichlet = 0;
+    fneumann = 1;
+    fpenetration = 2;
+    fpointtype = 5;
+    fdirichletvar = 4;
+
+    fquadmat1 = 1; // Parte inferior do quadrado
+    fquadmat2 = 2; // Parte superior do quadrado
+    fquadmat3 = 3; // Material de interface
+
+    ftheta = -1.;
+
+    fSpaceV = 0;
+
+    fphi_r = 0;
+
     f_is_hdivFull = false;
-    
+
     f_hdivPlus = false;
-    
+
     fTriang = false;
 }
 
@@ -82,8 +81,19 @@ void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double 
     
     //Gerando malha geométrica:
     fSpaceV = Space;
-    TPZGeoMesh *gmesh = CreateGMesh(nx, ny, hx, hy); //Função para criar a malha geometrica
-    
+    TPZGeoMesh *gmesh;
+    if (0)
+    {
+        gmesh = CreateGMesh(nx, ny, hx, hy); // Função para criar a malha geometrica
+    }
+    else {
+        TPZVec<int> n_nodes(2, 0);
+        n_nodes[0] = nx, n_nodes[1] = ny;
+        TPZVec<REAL> h_s(2, 0);
+        h_s[0] = hx, h_s[1] = hy;
+        gmesh = CreateGMeshCoupling(n_nodes, h_s);
+    }
+
 #ifdef PZDEBUG
     std::ofstream fileg("MalhaGeo.txt"); //Impressão da malha geométrica (formato txt)
     std::ofstream filegvtk("MalhaGeo.vtk"); //Impressão da malha geométrica (formato vtk)
@@ -766,8 +776,92 @@ TPZGeoMesh *BrinkmanTest::CreateGMesh(int nx, int ny, double hx, double hy)
 
         
     }
+}
 
+TPZGeoMesh *BrinkmanTest::CreateGMeshCoupling(TPZVec<int> &n_nodes, TPZVec<REAL> &h_s) 
+{
+    TPZVec<int> n_div(2);
+    n_div[0] = n_nodes[0] - 1, n_div[1] = n_nodes[1] - 1; 
+    int dimmodel = 2;
+    TPZManVector<REAL,3> x0(3,0.),x1(3,0.);
+    x0[0] = 0., x0[1] = -1.;
+    x1[0] = 2., x1[1] = 1.;
 
+    TPZGenGrid grid(n_div,x0,x1);
+
+    //grid.SetDistortion(0.5);
+    //grid.SetRefpatternElements(true);
+    //if (feltype==ETriangle) {
+    grid.SetElementType(MElementType::ETriangle);
+    //}
+    TPZGeoMesh *gmesh = new TPZGeoMesh;
+    grid.Read(gmesh, fmatID);
+
+    grid.SetBC(gmesh, 4, fmatBCbott);
+    grid.SetBC(gmesh, 4, fmatIntBCbott);
+    grid.SetBC(gmesh, 5, fmatBCright);
+    grid.SetBC(gmesh, 5, fmatIntBCright);
+    grid.SetBC(gmesh, 6, fmatBCtop);
+    grid.SetBC(gmesh, 6, fmatIntBCtop);
+    grid.SetBC(gmesh, 7, fmatBCleft);
+    grid.SetBC(gmesh, 7, fmatIntBCleft);
+
+    TPZVec<int64_t> pointtopology(1);
+    int64_t id;
+    pointtopology[0] = 0.;
+    gmesh->CreateGeoElement(EPoint,pointtopology,fmatPoint,id);
+
+    InsertInterfaces(gmesh);
+      std::cout << "teste 12" << std::endl;
+    TPZCheckGeom check(gmesh);
+    check.CheckUniqueId();
+    gmesh->BuildConnectivity();
+
+    if(1){
+        std::ofstream Dummyfile("GeometricMesh2d.vtk");
+        TPZVTKGeoMesh::PrintGMeshVTK(gmesh,Dummyfile, true);
+    }
+
+    return gmesh;
+
+}
+
+void BrinkmanTest::InsertInterfaces(TPZGeoMesh * gmesh) {
+
+    int nel = gmesh->NElements();
+    int64_t id;
+    TPZVec<int64_t> nodint(2);
+    //TPZVec<REAL> center_coord(3,0.);
+    int cont = 0;
+    for (int iel = 0; iel < nel; iel++) {
+        TPZGeoEl *gel = gmesh->ElementVec()[iel];
+        if (gel->Dimension() != fdim)
+            continue;
+        int nsides = gel->NSides();
+        for (int iside = 0; iside < nsides; iside ++) {
+            TPZGeoElSide gelside(gel, iside);
+            if (gelside.Dimension() != fdim - 1)
+                continue;
+            TPZGeoElSide neigh = gelside.Neighbour();
+            int count_neigh = 0;
+            while (gelside != neigh)
+            {
+                count_neigh++;
+                neigh = neigh.Neighbour();
+            }
+            if (gel->MaterialId() == fmatID && gelside.Neighbour().Element()->MaterialId() == fmatID && count_neigh == 1)
+            {
+                TPZGeoEl *elside = gelside.Element();
+                nodint[0] = elside->SideNodeIndex(iside, 0);
+                nodint[1] = elside->SideNodeIndex(iside, 1);
+                gmesh->CreateGeoElement(EOned, nodint, fmatInterface, id);
+            }
+            gmesh->BuildConnectivity();
+        }
+    }
+
+    // gmesh->AddInterfaceMaterial(fmatIdS, fmatIdD, fmatInterfaceDS);
+    // gmesh->AddInterfaceMaterial(fmatIdD, fmatIdS, fmatInterfaceDS);
 
 }
 

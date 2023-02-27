@@ -138,7 +138,7 @@ void TPZCouplingDSMaterial::Solution(TPZVec<TPZMaterialData> &datavec, int var, 
     
     TPZManVector<STATE,3> v_h = datavec[vindex].sol[0];
     REAL p_h = datavec[pindex].sol[0][0];
-    
+    TPZFNMatrix<9,STATE> gradu(3,1);
     
     Solout.Resize(this->NSolutionVariables(var));
     
@@ -171,6 +171,9 @@ void TPZCouplingDSMaterial::Solution(TPZVec<TPZMaterialData> &datavec, int var, 
         {
             TPZVec<STATE> v;
             if(this->HasForcingFunctionExact()){
+                TPZVec<STATE> x(3,0.);
+                x=datavec[vindex].x;
+                this->fForcingFunctionExact->Execute(x, v, gradu); 
             }
             Solout[0] = v[0]; // vx
             Solout[1] = v[1]; // vy
@@ -181,13 +184,13 @@ void TPZCouplingDSMaterial::Solution(TPZVec<TPZMaterialData> &datavec, int var, 
         {
             TPZVec<STATE> p;
             if(this->HasForcingFunctionExact()){
-                
+                TPZVec<STATE> x(3,0.);
+                x=datavec[vindex].x;
+                this->fForcingFunctionExact->Execute(x, p, gradu); 
             }
             Solout[0] = p[0]; // px
-            
         }
             break;
-            
     
         default:
         {

@@ -45,6 +45,7 @@
 #include "pzanalysis.h"
 #include "TPZParFrontStructMatrix.h"
 #include "TPZSpStructMatrix.h"
+#include "pzgengrid.h"
 
 using namespace std;
 using namespace pzshape;
@@ -113,6 +114,10 @@ public:
     
     //   TPZGeoMesh *GMeshDeformed(int dim, bool ftriang, int ndiv);
     
+    TPZGeoMesh * CreateGMeshCoupling(TPZVec<int> &n_nodes, TPZVec<REAL> &h_s); 
+
+    void InsertInterfaces(TPZGeoMesh * gmesh);
+
     void ChangeExternalOrderConnects(TPZCompMesh *mesh, int addToOrder);
     /* Malhas computacionais */
     
