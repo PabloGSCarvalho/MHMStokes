@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
     }
     else  if(CoupledDomain)
     {
-        int h_level = 32;
+        int h_level = 8;
         
         //double hx=1.,hy=1.; //Dimensões em x e y do domínio
         int nelx=h_level, nely=h_level; //Número de elementos em x e y
@@ -175,11 +175,11 @@ int main(int argc, char *argv[])
 
         int pOrder = 2; //Ordem polinomial de aproximação
         STATE hE=h_s[0]/h_level;
-        STATE s0=2.;
+        STATE s0=12.;
         STATE sigma=s0*(pOrder*pOrder)/hE;
         
         CoupledTest  * Test3 = new CoupledTest();
-        Test3->SetTriangularMesh();
+        //Test3->SetTriangularMesh();
         Test3->SetPermeability(1.);
         Test3->SetViscosity(1.);        
         Test3->Run(SpaceHDiv, pOrder, n_nodes, h_s, theta,sigma);

@@ -1077,9 +1077,9 @@ TPZMultiphysicsCompMesh *CoupledTest::CMesh_m(TPZGeoMesh *gmesh, TPZManVector<TP
     val2(0,0) = 0.0; // vx -> 0
     val2(1,0) = 0.0; // vy -> 0
     
-    TPZBndCond * BCDond0 = materialDarcy->CreateBC(materialDarcy, fmatDBCbott, fdirichlet, val1, val2); //Cria material que implementa a condição de contorno inferior
+    TPZMaterial * BCDond0 = materialDarcy->CreateBC(materialDarcy, fmatDBCbott, fdirichlet, val1, val2); //Cria material que implementa a condição de contorno inferior
     //BCond0->SetForcingFunction(p_exact1, bc_inte_order);
-    BCDond0->SetBCForcingFunction(0, solp);
+    BCDond0->SetBCForcingFunction(solp);
     cmesh->InsertMaterialObject(BCDond0); //Insere material na malha
     
     //    TPZMaterial * BCDond1 = materialDarcy->CreateBC(materialDarcy, matBCtop, dirichlet, val1, val2); //Cria material que implementa a condicao de contorno superior
@@ -1087,14 +1087,14 @@ TPZMultiphysicsCompMesh *CoupledTest::CMesh_m(TPZGeoMesh *gmesh, TPZManVector<TP
     //    BCDond1->SetForcingFunction(sol_exact,bc_inte_order);
     //    cmesh->InsertMaterialObject(BCDond1); //Insere material na malha
     
-    TPZBndCond * BCDond2 = materialDarcy->CreateBC(materialDarcy, fmatDBCleft, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno esquerda
+    TPZMaterial * BCDond2 = materialDarcy->CreateBC(materialDarcy, fmatDBCleft, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno esquerda
     //BCond2->SetForcingFunction(p_exact1,bc_inte_order);
-    BCDond2->SetBCForcingFunction(0, solp);
+    BCDond2->SetBCForcingFunction(solp);
     cmesh->InsertMaterialObject(BCDond2); //Insere material na malha
     
-    TPZBndCond * BCDond3 = materialDarcy->CreateBC(materialDarcy, fmatDBCright, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno direita
+    TPZMaterial * BCDond3 = materialDarcy->CreateBC(materialDarcy, fmatDBCright, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno direita
     //BCond3->SetForcingFunction(p_exact1,bc_inte_order);
-    BCDond3->SetBCForcingFunction(0, solp);
+    BCDond3->SetBCForcingFunction(solp);
     cmesh->InsertMaterialObject(BCDond3); //Insere material na malha
     
     //Ponto
@@ -1102,7 +1102,7 @@ TPZMultiphysicsCompMesh *CoupledTest::CMesh_m(TPZGeoMesh *gmesh, TPZManVector<TP
     TPZFMatrix<STATE> val3(1,1,0.), val4(1,1,0.);
     val4(0,0)=0.0;
     //
-    TPZBndCond * BCPointD = materialDarcy->CreateBC(materialDarcy, fmatPoint, fpointtype, val3, val4); //Cria material que implementa um ponto para a pressão
+    TPZMaterial * BCPointD = materialDarcy->CreateBC(materialDarcy, fmatPoint, fpointtype, val3, val4); //Cria material que implementa um ponto para a pressão
     cmesh->InsertMaterialObject(BCPointD); //Insere material na malha
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1133,19 +1133,19 @@ TPZMultiphysicsCompMesh *CoupledTest::CMesh_m(TPZGeoMesh *gmesh, TPZManVector<TP
     //    BCSond0->SetForcingFunction(solucaoS_exact,bc_inte_order);
     //    cmesh->InsertMaterialObject(BCSond0); //Insere material na malha
 
-    TPZBndCond * BCSond1 = materialStokes->CreateBC(materialStokes, fmatSBCtop, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno superior
+    TPZMaterial * BCSond1 = materialStokes->CreateBC(materialStokes, fmatSBCtop, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno superior
     //BCond1->SetForcingFunction(p_exact1,bc_inte_order);
-    BCSond1->SetBCForcingFunction(0, solp);
+    BCSond1->SetBCForcingFunction(solp);
     cmesh->InsertMaterialObject(BCSond1); //Insere material na malha
 
-    TPZBndCond * BCSond2 = materialStokes->CreateBC(materialStokes, fmatSBCleft, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno esquerda
+    TPZMaterial * BCSond2 = materialStokes->CreateBC(materialStokes, fmatSBCleft, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno esquerda
     //BCond2->SetForcingFunction(p_exact1,bc_inte_order);
-    BCSond2->SetBCForcingFunction(0, solp);
+    BCSond2->SetBCForcingFunction(solp);
     cmesh->InsertMaterialObject(BCSond2); //Insere material na malha
 
-    TPZBndCond * BCSond3 = materialStokes->CreateBC(materialStokes, fmatSBCright, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno direita
+    TPZMaterial * BCSond3 = materialStokes->CreateBC(materialStokes, fmatSBCright, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno direita
     //BCond3->SetForcingFunction(p_exact1,bc_inte_order);
-    BCSond3->SetBCForcingFunction(0, solp);
+    BCSond3->SetBCForcingFunction(solp);
     cmesh->InsertMaterialObject(BCSond3); //Insere material na malha
     
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

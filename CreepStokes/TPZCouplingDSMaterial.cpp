@@ -647,6 +647,5 @@ void TPZCouplingDSMaterial::FillVecShapeIndex(TPZMaterialData &data)
 
 void TPZCouplingDSMaterial::Errors(TPZVec<TPZMaterialData> &data, TPZVec<STATE> &u_exact, TPZFMatrix<STATE> &du_exact, TPZVec<REAL> &errors)
 {
- 
-    DebugStop();
+    //DebugStop();
 }
