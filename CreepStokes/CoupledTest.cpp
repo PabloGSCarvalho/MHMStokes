@@ -11,7 +11,6 @@
 #include "pzcheckgeom.h"
 #include "pzstack.h"
 #include "TPZSpStructMatrix.h"
-#include "pzgengrid.h"
 
 CoupledTest::CoupledTest()
 {
@@ -94,7 +93,7 @@ void CoupledTest::Run(int Space, int pOrder, TPZVec<int> &n_nodes, TPZVec<REAL> 
     //Gerando malha computacional:
     TPZCompMesh *cmesh_v = CMesh_v(gmesh, Space, pOrder); //Função para criar a malha computacional da velocidade
     TPZCompMesh *cmesh_p = CMesh_p(gmesh, Space, pOrder); //Função para criar a malha computacional da pressão
-    TPZCompMesh *cmesh_m = CMesh_m(gmesh, Space, pOrder, theta, sigma); //Função para criar a malha computacional multifísica
+    
 
 #ifdef PZDEBUG
     {
@@ -105,12 +104,15 @@ void CoupledTest::Run(int Space, int pOrder, TPZVec<int> &n_nodes, TPZVec<REAL> 
     }
 #endif
     
-    TPZManVector<TPZCompMesh *, 2> meshvector(2);
+    TPZManVector<TPZCompMesh*> meshvector(2);
     meshvector[0] = cmesh_v;
     meshvector[1] = cmesh_p;
-    TPZBuildMultiphysicsMesh::AddElements(meshvector, cmesh_m);
-    TPZBuildMultiphysicsMesh::AddConnects(meshvector, cmesh_m);
-    TPZBuildMultiphysicsMesh::TransferFromMeshes(meshvector, cmesh_m);
+
+    TPZMultiphysicsCompMesh *cmesh_m = CMesh_m(gmesh, meshvector, Space, pOrder, theta, sigma); //Função para criar a malha computacional multifísica
+
+    // TPZBuildMultiphysicsMesh::AddElements(meshvector, cmesh_m);
+    // TPZBuildMultiphysicsMesh::AddConnects(meshvector, cmesh_m);
+    // TPZBuildMultiphysicsMesh::TransferFromMeshes(meshvector, cmesh_m);
     cmesh_m->LoadReferences();
     
     
@@ -260,9 +262,9 @@ TPZGeoMesh *CoupledTest::CreateGMeshCoupling(TPZVec<int> &n_nodes, TPZVec<REAL> 
     //     y_interface = 1.;
     // }
 
-    TPZGenGrid grid(n_div,x0,x1);
+    TPZGenGrid2D grid(n_div,x0,x1);
     if (fTriang) {
-        grid.SetElementType(MElementType::ETriangle);
+        grid.SetElementType(MMeshType::ETriangular);
     }
     
     TPZGeoMesh *gmesh = new TPZGeoMesh;
@@ -1042,12 +1044,12 @@ TPZCompMesh *CoupledTest::CMesh_p(TPZGeoMesh *gmesh, int Space, int pOrder)
     
 }
 
-TPZCompMesh *CoupledTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STATE theta, STATE sigma)
+TPZMultiphysicsCompMesh *CoupledTest::CMesh_m(TPZGeoMesh *gmesh, TPZManVector<TPZCompMesh*> meshvector, int Space, int pOrder, STATE theta, STATE sigma)
 {
 
     //Criando malha computacional:
     int bc_inte_order = 10;
-    TPZCompMesh * cmesh = new TPZCompMesh(gmesh);
+    TPZMultiphysicsCompMesh * cmesh = new TPZMultiphysicsCompMesh(gmesh);
     cmesh->SetDefaultOrder(pOrder); //Insere ordem polimonial de aproximação
     cmesh->SetDimModel(fdim); //Insere dimensão do modelo
     cmesh->SetAllCreateFunctionsMultiphysicElem();
@@ -1070,14 +1072,14 @@ TPZCompMesh *CoupledTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STAT
     
     //Condições de contorno:
     
-    TPZFMatrix<STATE> val1(2,2,0.), val2(2,1,0.);
+    TPZFMatrix<STATE> val1(3,3,0.), val2(3,1,0.);
     
     val2(0,0) = 0.0; // vx -> 0
     val2(1,0) = 0.0; // vy -> 0
     
-    TPZMaterial * BCDond0 = materialDarcy->CreateBC(materialDarcy, fmatDBCbott, fdirichlet, val1, val2); //Cria material que implementa a condição de contorno inferior
+    TPZBndCond * BCDond0 = materialDarcy->CreateBC(materialDarcy, fmatDBCbott, fdirichlet, val1, val2); //Cria material que implementa a condição de contorno inferior
     //BCond0->SetForcingFunction(p_exact1, bc_inte_order);
-    BCDond0->SetForcingFunction(Sol_exact,bc_inte_order);
+    BCDond0->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(BCDond0); //Insere material na malha
     
     //    TPZMaterial * BCDond1 = materialDarcy->CreateBC(materialDarcy, matBCtop, dirichlet, val1, val2); //Cria material que implementa a condicao de contorno superior
@@ -1085,14 +1087,14 @@ TPZCompMesh *CoupledTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STAT
     //    BCDond1->SetForcingFunction(sol_exact,bc_inte_order);
     //    cmesh->InsertMaterialObject(BCDond1); //Insere material na malha
     
-    TPZMaterial * BCDond2 = materialDarcy->CreateBC(materialDarcy, fmatDBCleft, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno esquerda
+    TPZBndCond * BCDond2 = materialDarcy->CreateBC(materialDarcy, fmatDBCleft, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno esquerda
     //BCond2->SetForcingFunction(p_exact1,bc_inte_order);
-    BCDond2->SetForcingFunction(Sol_exact,bc_inte_order);
+    BCDond2->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(BCDond2); //Insere material na malha
     
-    TPZMaterial * BCDond3 = materialDarcy->CreateBC(materialDarcy, fmatDBCright, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno direita
+    TPZBndCond * BCDond3 = materialDarcy->CreateBC(materialDarcy, fmatDBCright, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno direita
     //BCond3->SetForcingFunction(p_exact1,bc_inte_order);
-    BCDond3->SetForcingFunction(Sol_exact,bc_inte_order);
+    BCDond3->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(BCDond3); //Insere material na malha
     
     //Ponto
@@ -1100,7 +1102,7 @@ TPZCompMesh *CoupledTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STAT
     TPZFMatrix<STATE> val3(1,1,0.), val4(1,1,0.);
     val4(0,0)=0.0;
     //
-    TPZMaterial * BCPointD = materialDarcy->CreateBC(materialDarcy, fmatPoint, fpointtype, val3, val4); //Cria material que implementa um ponto para a pressão
+    TPZBndCond * BCPointD = materialDarcy->CreateBC(materialDarcy, fmatPoint, fpointtype, val3, val4); //Cria material que implementa um ponto para a pressão
     cmesh->InsertMaterialObject(BCPointD); //Insere material na malha
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1121,7 +1123,7 @@ TPZCompMesh *CoupledTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STAT
     
     //Condições de contorno:
     
-    //TPZFMatrix<REAL> val1(2,2,0.), val2(2,1,0.);
+    //TPZFMatrix<REAL> val1(3,3,0.), val2(3,1,0.);
     
     val2(0,0) = 0.0; // vx -> 0
     val2(1,0) = 0.0; // vy -> 0
@@ -1131,19 +1133,19 @@ TPZCompMesh *CoupledTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STAT
     //    BCSond0->SetForcingFunction(solucaoS_exact,bc_inte_order);
     //    cmesh->InsertMaterialObject(BCSond0); //Insere material na malha
 
-    TPZMaterial * BCSond1 = materialStokes->CreateBC(materialStokes, fmatSBCtop, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno superior
+    TPZBndCond * BCSond1 = materialStokes->CreateBC(materialStokes, fmatSBCtop, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno superior
     //BCond1->SetForcingFunction(p_exact1,bc_inte_order);
-    BCSond1->SetForcingFunction(Sol_exact,bc_inte_order);
+    BCSond1->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(BCSond1); //Insere material na malha
 
-    TPZMaterial * BCSond2 = materialStokes->CreateBC(materialStokes, fmatSBCleft, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno esquerda
+    TPZBndCond * BCSond2 = materialStokes->CreateBC(materialStokes, fmatSBCleft, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno esquerda
     //BCond2->SetForcingFunction(p_exact1,bc_inte_order);
-    BCSond2->SetForcingFunction(Sol_exact,bc_inte_order);
+    BCSond2->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(BCSond2); //Insere material na malha
 
-    TPZMaterial * BCSond3 = materialStokes->CreateBC(materialStokes, fmatSBCright, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno direita
+    TPZBndCond * BCSond3 = materialStokes->CreateBC(materialStokes, fmatSBCright, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno direita
     //BCond3->SetForcingFunction(p_exact1,bc_inte_order);
-    BCSond3->SetForcingFunction(Sol_exact,bc_inte_order);
+    BCSond3->SetBCForcingFunction(0, solp);
     cmesh->InsertMaterialObject(BCSond3); //Insere material na malha
     
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1170,7 +1172,9 @@ TPZCompMesh *CoupledTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STAT
     
     //Criando elementos computacionais que gerenciarão o espaco de aproximação da malha:
     
-    cmesh->AutoBuild();
+    TPZManVector<int,5> active_approx_spaces(meshvector.size(),1);
+    
+    cmesh->BuildMultiphysicsSpace(active_approx_spaces,meshvector);
     cmesh->AdjustBoundaryElements();
     cmesh->CleanUpUnconnectedNodes();
     
@@ -1179,7 +1183,7 @@ TPZCompMesh *CoupledTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STAT
 }
 
 
-void CoupledTest::AddMultiphysicsInterfaces(TPZCompMesh &cmesh, int matfrom, int mattarget)
+void CoupledTest::AddMultiphysicsInterfaces(TPZMultiphysicsCompMesh &cmesh, int matfrom, int mattarget)
 {
 
     TPZGeoMesh *gmesh = cmesh.Reference();
@@ -1211,7 +1215,7 @@ void CoupledTest::AddMultiphysicsInterfaces(TPZCompMesh &cmesh, int matfrom, int
     
 }
 
-void CoupledTest::AddInterfaceCoupllingDS(TPZGeoMesh *gmesh,TPZCompMesh *cmesh, int matInterfaceDS ,int matleft, int matright){
+void CoupledTest::AddInterfaceCoupllingDS(TPZGeoMesh *gmesh, TPZMultiphysicsCompMesh *cmesh, int matInterfaceDS ,int matleft, int matright){
 
     TPZVec<int> sideIndex(2,0);
     sideIndex[0] = 6, sideIndex[1] = 4;

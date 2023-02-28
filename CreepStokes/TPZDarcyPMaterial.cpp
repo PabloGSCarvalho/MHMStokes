@@ -257,9 +257,9 @@ void TPZDarcyPMaterial::ComputeDivergenceOnDeformed(TPZVec<TPZMaterialData> &dat
             ivectorindex = datavec[ublock].fVecShapeIndex[iq].first;
             ishapeindex = datavec[ublock].fVecShapeIndex[iq].second;
             
-            VectorOnXYZ(0,0) = datavec[ublock].fNormalVec(0,ivectorindex);
-            VectorOnXYZ(1,0) = datavec[ublock].fNormalVec(1,ivectorindex);
-            VectorOnXYZ(2,0) = datavec[ublock].fNormalVec(2,ivectorindex);
+            VectorOnXYZ(0,0) = datavec[ublock].fDeformedDirections(0,ivectorindex);
+            VectorOnXYZ(1,0) = datavec[ublock].fDeformedDirections(1,ivectorindex);
+            VectorOnXYZ(2,0) = datavec[ublock].fDeformedDirections(2,ivectorindex);
             
             GradOfXInverse.Multiply(VectorOnXYZ, VectorOnMaster);
             VectorOnMaster *= JacobianDet;
@@ -336,9 +336,9 @@ void TPZDarcyPMaterial::ComputeDivergenceOnMaster(TPZVec<TPZMaterialData> &datav
             ivectorindex = datavec[ublock].fVecShapeIndex[iq].first;
             ishapeindex = datavec[ublock].fVecShapeIndex[iq].second;
             
-            VectorOnXYZ(0,0) = datavec[ublock].fNormalVec(0,ivectorindex);
-            VectorOnXYZ(1,0) = datavec[ublock].fNormalVec(1,ivectorindex);
-            VectorOnXYZ(2,0) = datavec[ublock].fNormalVec(2,ivectorindex);
+            VectorOnXYZ(0,0) = datavec[ublock].fDeformedDirections(0,ivectorindex);
+            VectorOnXYZ(1,0) = datavec[ublock].fDeformedDirections(1,ivectorindex);
+            VectorOnXYZ(2,0) = datavec[ublock].fDeformedDirections(2,ivectorindex);
             
             GradOfXInverse.Multiply(VectorOnXYZ, VectorOnMaster);
             VectorOnMaster *= JacobianDet;
@@ -448,9 +448,9 @@ void TPZDarcyPMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weight
         int ivec = datavec[vindex].fVecShapeIndex[i].first;
         TPZFNMatrix<4> GradVi(fDimension,fDimension);
         for (int e=0; e<fDimension; e++) {
-            phiVi(e,0) = phiV(iphi,0)*datavec[vindex].fNormalVec(e,ivec);
+            phiVi(e,0) = phiV(iphi,0)*datavec[vindex].fDeformedDirections(e,ivec);
             for (int f=0; f<fDimension; f++) {
-                GradVi(e,f) = datavec[vindex].fNormalVec(e,ivec)*dphiVx(f,iphi);
+                GradVi(e,f) = datavec[vindex].fDeformedDirections(e,ivec)*dphiVx(f,iphi);
                 
             }
             
@@ -463,7 +463,7 @@ void TPZDarcyPMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weight
             
             TPZFNMatrix<4> GradVj(fDimension,fDimension);
             for (int e=0; e<fDimension; e++) {
-                phiVj(e,0) = phiV(jphi,0)*datavec[vindex].fNormalVec(e,jvec);
+                phiVj(e,0) = phiV(jphi,0)*datavec[vindex].fDeformedDirections(e,jvec);
                 
             }
             
@@ -633,7 +633,7 @@ void TPZDarcyPMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL weig
                     int ivec = datavec[vindex].fVecShapeIndex[i].first;
                     
                     for (int e=0; e<fDimension; e++) {
-                        phiVi(e,0)=datavec[vindex].fNormalVec(e,ivec)*phiV(iphi,0);
+                        phiVi(e,0)=datavec[vindex].fDeformedDirections(e,ivec)*phiV(iphi,0);
                     }
                     
                     
@@ -654,7 +654,7 @@ void TPZDarcyPMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL weig
                         
                         
                         for (int e=0; e<fDimension; e++) {
-                            phiVj(e,0)=datavec[vindex].fNormalVec(e,jvec)*phiV(jphi,0);
+                            phiVj(e,0)=datavec[vindex].fDeformedDirections(e,jvec)*phiV(jphi,0);
                         }
                         
                         //Adaptação para Hdiv
@@ -833,11 +833,11 @@ void TPZDarcyPMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMat
         
         for (int e=0; e<fDimension; e++) {
             
-            phiV1i(e,0)=datavecleft[vindex].fNormalVec(e,ivec1)*datavecleft[vindex].phi(iphi1,0);
+            phiV1i(e,0)=datavecleft[vindex].fDeformedDirections(e,ivec1)*datavecleft[vindex].phi(iphi1,0);
             phiV1ni(0,0)+=phiV1i(e,0)*normal[e];
             
             for (int f=0; f<fDimension; f++) {
-                GradV1ni(e,0)+=datavecleft[vindex].fNormalVec(e,ivec1)*dphiVx1(f,iphi1)*normal[f];
+                GradV1ni(e,0)+=datavecleft[vindex].fDeformedDirections(e,ivec1)*dphiVx1(f,iphi1)*normal[f];
             }
         }
         
@@ -886,11 +886,11 @@ void TPZDarcyPMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMat
         
         for (int e=0; e<fDimension; e++) {
             
-            phiV2i(e,0)=datavecright[vindex].fNormalVec(e,ivec2)*datavecright[vindex].phi(iphi2,0);
+            phiV2i(e,0)=datavecright[vindex].fDeformedDirections(e,ivec2)*datavecright[vindex].phi(iphi2,0);
             phiV2ni(0,0)+=phiV2i(e,0)*normal[e];
             
             for (int f=0; f<fDimension; f++) {
-                GradV2ni(e,0) += datavecright[vindex].fNormalVec(e,ivec2)*dphiVx2(f,iphi2)*normal[f];
+                GradV2ni(e,0) += datavecright[vindex].fDeformedDirections(e,ivec2)*dphiVx2(f,iphi2)*normal[f];
             }
         }
         
@@ -1103,8 +1103,8 @@ STATE TPZDarcyPMaterial::Tr( TPZFMatrix<REAL> &GradU ){
 /// transform a H1 data structure to a vector data structure
 void TPZDarcyPMaterial::FillVecShapeIndex(TPZMaterialData &data)
 {
-    data.fNormalVec.Resize(fDimension,fDimension);
-    data.fNormalVec.Identity();
+    data.fDeformedDirections.Resize(fDimension,fDimension);
+    data.fDeformedDirections.Identity();
     data.fVecShapeIndex.Resize(fDimension*data.phi.Rows());
     for (int d=0; d<fDimension; d++) {
         for (int i=0; i<data.phi.Rows(); i++) {

@@ -64,7 +64,7 @@ void TPZBrinkmanMaterial::FillDataRequirements(TPZMaterialData &data)
     data.SetAllRequirements(false);
     data.fNeedsSol = true;
     data.fNeedsNormal = true;
-    data.fNeedsNormalVecFad = NeedsNormalVecFad;
+    data.fNeedsDeformedDirectionsFad = NeedsNormalVecFad;
 }
 
 
@@ -78,7 +78,7 @@ void TPZBrinkmanMaterial::FillDataRequirements(TPZVec<TPZMaterialData> &datavec)
         datavec[idata].fNeedsSol = true;
         datavec[idata].fNeedsNormal = true;
     }
-    datavec[0].fNeedsNormalVecFad = NeedsNormalVecFad;
+    datavec[0].fNeedsDeformedDirectionsFad = NeedsNormalVecFad;
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -92,7 +92,7 @@ void TPZBrinkmanMaterial::FillBoundaryConditionDataRequirement(int type,TPZVec<T
         datavec[idata].fNeedsNormal = true;
         datavec[idata].fNeedsNeighborSol = true;
     }
-    datavec[0].fNeedsNormalVecFad = NeedsNormalVecFad;
+    datavec[0].fNeedsDeformedDirectionsFad = NeedsNormalVecFad;
 }
 
 void TPZBrinkmanMaterial::FillBoundaryConditionDataRequirement(int type,TPZMaterialData &data){
@@ -101,7 +101,7 @@ void TPZBrinkmanMaterial::FillBoundaryConditionDataRequirement(int type,TPZMater
     data.fNeedsSol = true;
     data.fNeedsNormal = true;
     data.fNeedsNeighborSol = true;
-    data.fNeedsNormalVecFad = NeedsNormalVecFad;
+    data.fNeedsDeformedDirectionsFad = NeedsNormalVecFad;
     
 }
 
@@ -111,7 +111,7 @@ void TPZBrinkmanMaterial::FillDataRequirementsInterface(TPZMaterialData &data)
 {
     data.fNeedsNormal = true;
     data.fNeedsNeighborCenter = true;
-    data.fNeedsNormalVecFad = NeedsNormalVecFad;
+    data.fNeedsDeformedDirectionsFad = NeedsNormalVecFad;
     
 }
 
@@ -124,8 +124,8 @@ void TPZBrinkmanMaterial::FillDataRequirementsInterface(TPZMaterialData &data, T
         datavec_left[iref].SetAllRequirements(false);
         datavec_left[iref].fNeedsNormal = true;
     }
-    datavec_left[0].fNeedsNormalVecFad = true;
-    datavec_right[0].fNeedsNormalVecFad = true;
+    datavec_left[0].fNeedsDeformedDirectionsFad = true;
+    datavec_right[0].fNeedsDeformedDirectionsFad = true;
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -191,7 +191,6 @@ int TPZBrinkmanMaterial::NSolutionVariables(int var) {
 ////////////////////////////////////////////////////////////////////
 
 void TPZBrinkmanMaterial::Solution(TPZVec<TPZMaterialData> &datavec, int var, TPZVec<STATE> &Solout) {
-    
     
     int vindex = this->VIndex();
     int pindex = this->PIndex();
@@ -293,26 +292,26 @@ void TPZBrinkmanMaterial::Solution(TPZVec<TPZMaterialData> &datavec, int var, TP
             int nshapeV;
             nshapeV = datavec[vindex].fVecShapeIndex.NElements();
             
-            int normvecRows = datavec[vindex].fNormalVec.Rows();
-            int normvecCols = datavec[vindex].fNormalVec.Cols();
+            int normvecRows = datavec[vindex].fDeformedDirections.Rows();
+            int normvecCols = datavec[vindex].fDeformedDirections.Cols();
             TPZFNMatrix<3,REAL> Normalvec(normvecRows,normvecCols,0.);
             TPZManVector<TPZFNMatrix<4,REAL>,18> GradNormalvec(18);
             
             STATE asd1 = 0., asd2 = 0.,asd3 = 0., asd4 = 0.;
-            if (datavec[vindex].fNeedsNormalVecFad) {
+            if (datavec[vindex].fNeedsDeformedDirectionsFad) {
 #ifdef _AUTODIFF
                 for (int e = 0; e < normvecRows; e++) {
                     for (int s = 0; s < normvecCols; s++) {
-                        Normalvec(e,s)=datavec[vindex].fNormalVecFad(e,s).val();
+                        Normalvec(e,s)=datavec[vindex].fDeformedDirectionsFad(e,s).val();
                     }
                 }
                 
                 for (int s = 0; s < normvecCols; s++) {
                     TPZFNMatrix<4,REAL> Grad0(3,3,0.); // 2x2
-                    Grad0(0,0)=datavec[vindex].fNormalVecFad(0,s).fastAccessDx(0);
-                    Grad0(0,1)=datavec[vindex].fNormalVecFad(0,s).fastAccessDx(1);
-                    Grad0(1,0)=datavec[vindex].fNormalVecFad(1,s).fastAccessDx(0);
-                    Grad0(1,1)=datavec[vindex].fNormalVecFad(1,s).fastAccessDx(1);
+                    Grad0(0,0)=datavec[vindex].fDeformedDirectionsFad(0,s).fastAccessDx(0);
+                    Grad0(0,1)=datavec[vindex].fDeformedDirectionsFad(0,s).fastAccessDx(1);
+                    Grad0(1,0)=datavec[vindex].fDeformedDirectionsFad(1,s).fastAccessDx(0);
+                    Grad0(1,1)=datavec[vindex].fDeformedDirectionsFad(1,s).fastAccessDx(1);
                     GradNormalvec[s] = Grad0;
                     //Grad0.Print(std::cout);
                 }
@@ -321,7 +320,7 @@ void TPZBrinkmanMaterial::Solution(TPZVec<TPZMaterialData> &datavec, int var, TP
                 DebugStop();
 #endif
             }else{
-                Normalvec=datavec[vindex].fNormalVec;
+                Normalvec=datavec[vindex].fDeformedDirections;
             }
             
             TPZFMatrix<STATE> phiVi(3,1,0.0),phiVj(3,1,0.0);
@@ -382,7 +381,7 @@ void TPZBrinkmanMaterial::Solution(TPZVec<TPZMaterialData> &datavec, int var, TP
 //            std::cout<<datavec[0].xParametric<<std::endl;
 //            std::cout<<datavec[0].x<<std::endl;
 //            Normalvec.Print(std::cout);
-//            datavec[0].fNormalVecFad.Print(std::cout);
+//            datavec[0].fDeformedDirectionsFad.Print(std::cout);
             //std::cout<<GradNormalvec<<std::endl;
             
             
@@ -454,7 +453,7 @@ void TPZBrinkmanMaterial::ComputeDivergenceOnMaster(TPZVec<TPZMaterialData> &dat
             ishapeindex = datavec[ublock].fVecShapeIndex[iq].second;
             
             for (int k = 0; k < 3; k++) {
-                VectorOnXYZ(k,0) = datavec[ublock].fNormalVec(k,ivectorindex);
+                VectorOnXYZ(k,0) = datavec[ublock].fDeformedDirections(k,ivectorindex);
             }
             
             GradOfXInverse.Multiply(VectorOnXYZ, VectorOnMaster);
@@ -526,7 +525,7 @@ void TPZBrinkmanMaterial::FillGradPhi(TPZMaterialData &dataV, TPZVec< TPZFMatrix
 // Contricucao dos elementos internos
 
 void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef){
-    
+
     const int vindex = this->VIndex();
     const int pindex = this->PIndex();
     
@@ -553,34 +552,34 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
     nshapeP = phiP.Rows();
     nshapeV = datavec[vindex].fVecShapeIndex.NElements();
 
-    int normvecRows = datavec[vindex].fNormalVec.Rows();
-    int normvecCols = datavec[vindex].fNormalVec.Cols();
+    int normvecRows = datavec[vindex].fDeformedDirections.Rows();
+    int normvecCols = datavec[vindex].fDeformedDirections.Cols();
     TPZFNMatrix<3,REAL> Normalvec(normvecRows,normvecCols,0.);
     TPZManVector<TPZFNMatrix<9,REAL>,18> GradNormalvec(normvecCols);
     for (int i=0; i<normvecRows; i++) {
-        GradNormalvec[i].Redim(2,2);
+        GradNormalvec[i].Redim(3,3);
     }
 
-    if (datavec[vindex].fNeedsNormalVecFad) {
+    if (datavec[vindex].fNeedsDeformedDirectionsFad) {
 #ifdef _AUTODIFF
         for (int e = 0; e < normvecRows; e++) {
             for (int s = 0; s < normvecCols; s++) {
-                Normalvec(e,s)=datavec[vindex].fNormalVecFad(e,s).val();
+                Normalvec(e,s)=datavec[vindex].fDeformedDirectionsFad(e,s).val();
             }
         }
+        //if(fDimension != 2) DebugStop();
+        TPZFNMatrix<9,REAL> Grad0(3,3,0.); // 2x2
         for (int s = 0; s < normvecCols; s++) {
-            TPZFNMatrix<9,REAL> Grad0(3,3,0.); // 2x2
-            Grad0(0,0)=datavec[vindex].fNormalVecFad(0,s).fastAccessDx(0);
-            Grad0(0,1)=datavec[vindex].fNormalVecFad(0,s).fastAccessDx(1);
-            Grad0(1,0)=datavec[vindex].fNormalVecFad(1,s).fastAccessDx(0);
-            Grad0(1,1)=datavec[vindex].fNormalVecFad(1,s).fastAccessDx(1);
+            for (int i = 0; i < fDimension; i++) {
+                for (int j = 0; j < fDimension; j++) {
+                    Grad0(i,j)=datavec[vindex].fDeformedDirectionsFad(i,s).fastAccessDx(j);
+                }
+            }
             GradNormalvec[s] = Grad0;
         }
 #else
         DebugStop();
 #endif
-    }else{
-        Normalvec=datavec[vindex].fNormalVec;
     }
 //    Normalvec.Print(std::cout);
 //    std::cout<<GradNormalvec<<std::endl;
@@ -609,7 +608,7 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
             phiVi(e,0) = phiV(iphi,0)*Normalvec(e,ivec);
             for (int f=0; f<3; f++) {
                 GradVi(e,f) = Normalvec(e,ivec)*dphiVx(f,iphi)+GradNormalvec[ivec](e,f)*phiV(iphi,0);
-                GradVit(f,e) = Normalvec(e,ivec)*dphiVx(f,iphi)+GradNormalvec[ivec](e,f)*phiV(iphi,0);
+                GradVit(f,e) = GradVi(e,f);
             }
         }
 
@@ -656,7 +655,7 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
             for (int e=0; e<3; e++) {
                 for (int f=0; f<3; f++) {
                     GradVj(e,f) = Normalvec(e,jvec)*dphiVx(f,jphi)+GradNormalvec[jvec](e,f)*phiV(jphi,0);
-                    GradVjt(f,e) = Normalvec(e,jvec)*dphiVx(f,jphi)+GradNormalvec[jvec](e,f)*phiV(jphi,0);
+                    GradVjt(f,e) = GradVj(e,f);
                 }
             }
             
@@ -672,7 +671,8 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
             STATE val = Inner(Dui, Duj);
             STATE val1 = InnerVec(phiVi, phiVj);
 
-            ek(i, j) += 2. * weight * fViscosity * val + fBCoef * weight * val1; /// Visc*(GradU+GradU^T):GradPhi
+            ek(i, j) += fBCoef * weight * val1; /// Visc*(GradU+GradU^T):GradPhi
+            ek(i, j) += 2. * weight * fViscosity * val;
         }
         
         // matrix B - pressure and velocity
@@ -685,11 +685,11 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
 
             ///p*div(U)
             STATE fact = 0.;
-            if (fSpace==1) {
-                fact = (-1.) * weight * phiP(j,0) * datavec[0].divphi(i);
-            }else{
+            // if () {
+            //      fact = (-1.) * weight * phiP(j,0) * datavec[0].divphi(i);
+            // }else{
                 fact = (-1.) * weight * phiP(j,0) * divui;
-            }
+            //}
 
             // Matrix B
             ek(i, nshapeV+j) += fact;
@@ -717,7 +717,6 @@ void TPZBrinkmanMaterial::Contribute(TPZVec<TPZMaterialData> &datavec, REAL weig
 
 
 void TPZBrinkmanMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef, TPZBndCond &bc){
-    
     STATE rhsnorm = Norm(ef);
     if(isnan(rhsnorm))
     {
@@ -762,16 +761,16 @@ void TPZBrinkmanMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL we
  //   nshapeV = phiV.Rows()*NStateVariables();
     nshapeV = datavec[vindex].fVecShapeIndex.NElements();
     
-    int normvecRows = datavec[vindex].fNormalVec.Rows();
-    int normvecCols = datavec[vindex].fNormalVec.Cols();
+    int normvecRows = datavec[vindex].fDeformedDirections.Rows();
+    int normvecCols = datavec[vindex].fDeformedDirections.Cols();
     TPZFNMatrix<3,REAL> Normalvec(normvecRows,normvecCols,0.);
     
 //    if (datavec[vindex].fNeedsNormalVecFad==false) {
-        Normalvec=datavec[vindex].fNormalVec;
+        Normalvec=datavec[vindex].fDeformedDirections;
 //    }else{
 //        for (int e = 0; e < normvecRows; e++) {
 //            for (int s = 0; s < normvecCols; s++) {
-//                Normalvec(e,s)=datavec[vindex].fNormalVecFad(e,s).val();
+//                Normalvec(e,s)=datavec[vindex].fDeformedDirectionsFad(e,s).val();
 //            }
 //        }
 //    }
@@ -790,11 +789,9 @@ void TPZBrinkmanMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL we
     TPZFNMatrix<3,STATE> v_2=bc.Val2();
     TPZFNMatrix<3,STATE> v_1=bc.Val1();
     STATE p_D = bc.Val1()(0,0);
-    
     switch (bc.Type()) {
         case 0: //Dirichlet for continuous formulation
         {
-            
             TPZFMatrix<STATE> gradu(3,3,0.);
             TPZManVector<STATE> vbc(4,0.);
             TPZFMatrix<STATE> Du(3,3,0.),Dun(3,1,0.);
@@ -896,6 +893,7 @@ void TPZBrinkmanMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL we
                 v_2(1,0) = vbc[1];
                 v_2(2,0) = vbc[2];
                 p_D = vbc[3];
+                std::cout << "Contribute BC -- pD  = " << p_D << std::endl;
             }
             
             
@@ -1248,7 +1246,7 @@ void TPZBrinkmanMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL we
 ////////////////////////////////////////////////////////////////////
 
 void TPZBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZMaterialData> &datavecleft, TPZVec<TPZMaterialData> &datavecright, REAL weight, TPZFMatrix<STATE> &ek,TPZFMatrix<STATE> &ef){
-    
+    if(data.x[1]<0.) return;
     // Verificar que
     // os termos mistos devem estar sem viscosidade!
     
@@ -1322,8 +1320,6 @@ void TPZBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZM
     //     sigmaConst = fSigma/(sqrt(2.));
     // }
     
-
-    
     TPZFNMatrix<220,REAL> dphiVx1(fDimension,dphiV1.Cols());
     TPZAxesTools<REAL>::Axes2XYZ(dphiV1, dphiVx1, datavecleft[vindex].axes);
 
@@ -1358,65 +1354,59 @@ void TPZBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZM
     nshapeP2 = phiP2.Rows();
     
     //NormalVec Left
-    int normvecRowsL = datavecleft[vindex].fNormalVec.Rows();
-    int normvecColsL = datavecleft[vindex].fNormalVec.Cols();
+    int normvecRowsL = datavecleft[vindex].fDeformedDirections.Rows();
+    int normvecColsL = datavecleft[vindex].fDeformedDirections.Cols();
     TPZFNMatrix<3,REAL> NormalvecLeft(normvecRowsL,normvecColsL,0.);
     TPZManVector<TPZFNMatrix<4,REAL>,18> GradNormalvecLeft(18);
     
-    if (datavecleft[vindex].fNeedsNormalVecFad){
+    if (datavecleft[vindex].fNeedsDeformedDirectionsFad){
 #ifdef _AUTODIFF
         for (int e = 0; e < normvecRowsL; e++) {
             for (int s = 0; s < normvecColsL; s++) {
-                NormalvecLeft(e,s)=datavecleft[vindex].fNormalVecFad(e,s).val();
+                NormalvecLeft(e,s)=datavecleft[vindex].fDeformedDirectionsFad(e,s).val();
             }
         }
         
         for (int s = 0; s < normvecColsL; s++) {
             TPZFNMatrix<4,REAL> Grad0(3,3,0.); // 2x2
-            Grad0(0,0)=datavecleft[vindex].fNormalVecFad(0,s).fastAccessDx(0);
-            Grad0(0,1)=datavecleft[vindex].fNormalVecFad(0,s).fastAccessDx(1);
-            Grad0(1,0)=datavecleft[vindex].fNormalVecFad(1,s).fastAccessDx(0);
-            Grad0(1,1)=datavecleft[vindex].fNormalVecFad(1,s).fastAccessDx(1);
+            Grad0(0,0)=datavecleft[vindex].fDeformedDirectionsFad(0,s).fastAccessDx(0);
+            Grad0(0,1)=datavecleft[vindex].fDeformedDirectionsFad(0,s).fastAccessDx(1);
+            Grad0(1,0)=datavecleft[vindex].fDeformedDirectionsFad(1,s).fastAccessDx(0);
+            Grad0(1,1)=datavecleft[vindex].fDeformedDirectionsFad(1,s).fastAccessDx(1);
             GradNormalvecLeft[s] = Grad0;
         }
         
 #else
         DebugStop();
 #endif
-    }else{
-        DebugStop();
-        NormalvecLeft=datavecleft[vindex].fNormalVec;
     }
     
     //NormalVec Right
-    int normvecRowsR = datavecright[vindex].fNormalVec.Rows();
-    int normvecColsR = datavecright[vindex].fNormalVec.Cols();
+    int normvecRowsR = datavecright[vindex].fDeformedDirections.Rows();
+    int normvecColsR = datavecright[vindex].fDeformedDirections.Cols();
     TPZFNMatrix<3,REAL> NormalvecRight(normvecRowsR,normvecColsR,0.);
     TPZManVector<TPZFNMatrix<4,REAL>,18> GradNormalvecRight(18);
     
-    if (datavecright[vindex].fNeedsNormalVecFad) {
+    if (datavecright[vindex].fNeedsDeformedDirectionsFad) {
 #ifdef _AUTODIFF
         for (int e = 0; e < normvecRowsR; e++) {
             for (int s = 0; s < normvecColsR; s++) {
-                NormalvecRight(e,s)=datavecright[vindex].fNormalVecFad(e,s).val();
+                NormalvecRight(e,s)=datavecright[vindex].fDeformedDirectionsFad(e,s).val();
 
             }
         }
         for (int s = 0; s < normvecColsR; s++) {
             TPZFNMatrix<4,REAL> Grad0(3,3,0.); // 2x2
-            Grad0(0,0)=datavecright[vindex].fNormalVecFad(0,s).fastAccessDx(0);
-            Grad0(0,1)=datavecright[vindex].fNormalVecFad(0,s).fastAccessDx(1);
-            Grad0(1,0)=datavecright[vindex].fNormalVecFad(1,s).fastAccessDx(0);
-            Grad0(1,1)=datavecright[vindex].fNormalVecFad(1,s).fastAccessDx(1);
+            Grad0(0,0)=datavecright[vindex].fDeformedDirectionsFad(0,s).fastAccessDx(0);
+            Grad0(0,1)=datavecright[vindex].fDeformedDirectionsFad(0,s).fastAccessDx(1);
+            Grad0(1,0)=datavecright[vindex].fDeformedDirectionsFad(1,s).fastAccessDx(0);
+            Grad0(1,1)=datavecright[vindex].fDeformedDirectionsFad(1,s).fastAccessDx(1);
             GradNormalvecRight[s] = Grad0;
         }
         
 #else
         DebugStop();
 #endif
-    }else{
-        DebugStop();
-        NormalvecRight=datavecright[vindex].fNormalVec;
     }
     
     for(int i1 = 0; i1 < nshapeV1; i1++ )
@@ -1443,7 +1433,7 @@ void TPZBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZM
         }
 //                dphiV1.Print("dphiV = ",cout);
 //                dphiVx1.Print("dphiVx = ",cout);
-//                datavecleft[vindex].fNormalVec.Print("normalvec = ",cout);
+//                datavecleft[vindex].fDeformedDirections.Print("normalvec = ",cout);
 //                GradV1i.Print("GradV1i = ",cout);
 //                phiV1i.Print("phiV1i = ",cout);
         
@@ -1802,7 +1792,7 @@ void TPZBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZM
 
 void TPZBrinkmanMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZMaterialData> &datavec, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef, TPZBndCond &bc){
    
-
+   
     STATE rhsnorm = Norm(ef);
     if(isnan(rhsnorm))
     {
@@ -1848,25 +1838,25 @@ void TPZBrinkmanMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TP
    // nshapeV = phiV.Rows()*NStateVariables();
     nshapeV = datavec[vindex].fVecShapeIndex.NElements();
     
-    int normvecRows = datavec[vindex].fNormalVec.Rows();
-    int normvecCols = datavec[vindex].fNormalVec.Cols();
+    int normvecRows = datavec[vindex].fDeformedDirections.Rows();
+    int normvecCols = datavec[vindex].fDeformedDirections.Cols();
     TPZFNMatrix<3,REAL> Normalvec(normvecRows,normvecCols,0.);
     TPZManVector<TPZFNMatrix<4,REAL>,18> GradNormalvec(18);
     
-    if (datavec[vindex].fNeedsNormalVecFad) {
+    if (datavec[vindex].fNeedsDeformedDirectionsFad) {
 #ifdef _AUTODIFF
         for (int e = 0; e < normvecRows; e++) {
             for (int s = 0; s < normvecCols; s++) {
-                //datavec[vindex].fNormalVecFad.Print(std::cout);
-                Normalvec(e,s)=datavec[vindex].fNormalVecFad(e,s).val();
+                //datavec[vindex].fDeformedDirectionsFad.Print(std::cout);
+                Normalvec(e,s)=datavec[vindex].fDeformedDirectionsFad(e,s).val();
             }
         }
         for (int s = 0; s < normvecCols; s++) {
             TPZFNMatrix<4,REAL> Grad0(3,3,0.); // 2x2
-            Grad0(0,0)=datavec[vindex].fNormalVecFad(0,s).fastAccessDx(0);
-            Grad0(0,1)=datavec[vindex].fNormalVecFad(0,s).fastAccessDx(1);
-            Grad0(1,0)=datavec[vindex].fNormalVecFad(1,s).fastAccessDx(0);
-            Grad0(1,1)=datavec[vindex].fNormalVecFad(1,s).fastAccessDx(1);
+            Grad0(0,0)=datavec[vindex].fDeformedDirectionsFad(0,s).fastAccessDx(0);
+            Grad0(0,1)=datavec[vindex].fDeformedDirectionsFad(0,s).fastAccessDx(1);
+            Grad0(1,0)=datavec[vindex].fDeformedDirectionsFad(1,s).fastAccessDx(0);
+            Grad0(1,1)=datavec[vindex].fDeformedDirectionsFad(1,s).fastAccessDx(1);
             GradNormalvec[s] = Grad0;
         }
         
@@ -1874,7 +1864,7 @@ void TPZBrinkmanMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TP
         DebugStop();
 #endif
     }else{
-        Normalvec=datavec[vindex].fNormalVec;
+        Normalvec=datavec[vindex].fDeformedDirections;
     }
     
     TPZManVector<STATE> v_h = datavec[vindex].sol[0];
@@ -2607,8 +2597,8 @@ STATE TPZBrinkmanMaterial::Tr( TPZFMatrix<REAL> &GradU ){
 /// transform a H1 data structure to a vector data structure
 void TPZBrinkmanMaterial::FillVecShapeIndex(TPZMaterialData &data)
 {
-    data.fNormalVec.Resize(fDimension,fDimension);
-    data.fNormalVec.Identity();
+    data.fDeformedDirections.Resize(fDimension,fDimension);
+    data.fDeformedDirections.Identity();
     data.fVecShapeIndex.Resize(fDimension*data.phi.Rows());
     for (int d=0; d<fDimension; d++) {
         for (int i=0; i<data.phi.Rows(); i++) {
@@ -2622,6 +2612,8 @@ void TPZBrinkmanMaterial::FillVecShapeIndex(TPZMaterialData &data)
 
 void TPZBrinkmanMaterial::Errors(TPZVec<TPZMaterialData> &data, TPZVec<STATE> &sol_exact, TPZFMatrix<STATE> &dsol_exact, TPZVec<REAL> &errors)
 {
+    std::cout << "Errors --  " << std::endl;
+
     errors.Resize(NEvalErrors());
     errors.Fill(0.0);
     TPZManVector<STATE> Velocity(3,0.), Pressure(3,0.);
@@ -2781,4 +2773,5 @@ void TPZBrinkmanMaterial::Errors(TPZVec<TPZMaterialData> &data, TPZVec<STATE> &s
             errors[5] = errorsCopy[2];
         }
     }
+    std::cout << " --  " << std::endl;
 }

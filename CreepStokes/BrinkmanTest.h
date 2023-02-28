@@ -45,7 +45,7 @@
 #include "pzanalysis.h"
 #include "TPZParFrontStructMatrix.h"
 #include "TPZSpStructMatrix.h"
-#include "pzgengrid.h"
+#include "TPZGenGrid2D.h"
 
 using namespace std;
 using namespace pzshape;

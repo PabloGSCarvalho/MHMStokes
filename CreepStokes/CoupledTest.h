@@ -47,6 +47,8 @@
 #include "TPZSSpStructMatrix.h"
 #include "pzanalysis.h"
 #include "ProblemTypes.h"
+#include "TPZGenGrid2D.h"
+#include "TPZMultiphysicsCompMesh.h"
 
 using namespace std;
 using namespace pzshape;
@@ -153,7 +155,7 @@ public:
     
     TPZCompMesh *CMesh_v(TPZGeoMesh *gmesh, int Space, int pOrder);
     TPZCompMesh *CMesh_p(TPZGeoMesh *gmesh, int Space, int pOrder);
-    TPZCompMesh *CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STATE theta, STATE sigma);
+    TPZMultiphysicsCompMesh *CMesh_m(TPZGeoMesh *gmesh, TPZManVector<TPZCompMesh*> meshvector, int Space, int pOrder, STATE theta, STATE sigma);
     
     
     //solucao exata
@@ -162,10 +164,10 @@ public:
     //lado direito da equacao
     static void F_source(const TPZVec<REAL> &x, TPZVec<STATE> &f, TPZFMatrix<STATE>& gradu);
     
-    // static void AddMultiphysicsInterfaces(TPZCompMesh &cmesh, int matfrom, int mattarget);
-    static void AddMultiphysicsInterfaces(TPZCompMesh &cmesh, int matfrom, int mattarget);
+    // static void AddMultiphysicsInterfaces(TPZMultiphysicsCompMesh &cmesh, int matfrom, int mattarget);
+    static void AddMultiphysicsInterfaces(TPZMultiphysicsCompMesh &cmesh, int matfrom, int mattarget);
     
-    void AddInterfaceCoupllingDS(TPZGeoMesh *gmesh,TPZCompMesh *cmesh, int matInterfaceDS ,int matleft, int matright);
+    void AddInterfaceCoupllingDS(TPZGeoMesh *gmesh,TPZMultiphysicsCompMesh *cmesh, int matInterfaceDS ,int matleft, int matright);
     
     void InsertInterfaces(TPZGeoMesh * gmesh);
 };

@@ -17,7 +17,6 @@
 #include "CoupledTest.h"
 #include "tpzarc3d.h"
 #include "tpzgeoblend.h"
-#include "pzgengrid.h"
 
 #include "TPZCouplingDSMaterial.h"
 #include "TPZStokesMaterial.h"
@@ -165,7 +164,7 @@ int main(int argc, char *argv[])
     }
     else  if(CoupledDomain)
     {
-        int h_level = 8;
+        int h_level = 32;
         
         //double hx=1.,hy=1.; //Dimensões em x e y do domínio
         int nelx=h_level, nely=h_level; //Número de elementos em x e y
@@ -176,7 +175,7 @@ int main(int argc, char *argv[])
 
         int pOrder = 2; //Ordem polinomial de aproximação
         STATE hE=h_s[0]/h_level;
-        STATE s0=12.;
+        STATE s0=2.;
         STATE sigma=s0*(pOrder*pOrder)/hE;
         
         CoupledTest  * Test3 = new CoupledTest();

@@ -787,12 +787,12 @@ TPZGeoMesh *BrinkmanTest::CreateGMeshCoupling(TPZVec<int> &n_nodes, TPZVec<REAL>
     x0[0] = 0., x0[1] = -1.;
     x1[0] = 2., x1[1] = 1.;
 
-    TPZGenGrid grid(n_div,x0,x1);
+    TPZGenGrid2D grid(n_div,x0,x1);
 
     //grid.SetDistortion(0.5);
     //grid.SetRefpatternElements(true);
     //if (feltype==ETriangle) {
-    grid.SetElementType(MElementType::ETriangle);
+    grid.SetElementType(MMeshType::ETriangular);
     //}
     TPZGeoMesh *gmesh = new TPZGeoMesh;
     grid.Read(gmesh, fmatID);
