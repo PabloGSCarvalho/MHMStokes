@@ -2612,8 +2612,6 @@ void TPZBrinkmanMaterial::FillVecShapeIndex(TPZMaterialData &data)
 
 void TPZBrinkmanMaterial::Errors(TPZVec<TPZMaterialData> &data, TPZVec<STATE> &sol_exact, TPZFMatrix<STATE> &dsol_exact, TPZVec<REAL> &errors)
 {
-    std::cout << "Errors --  " << std::endl;
-
     errors.Resize(NEvalErrors());
     errors.Fill(0.0);
     TPZManVector<STATE> Velocity(3,0.), Pressure(3,0.);
@@ -2773,5 +2771,4 @@ void TPZBrinkmanMaterial::Errors(TPZVec<TPZMaterialData> &data, TPZVec<STATE> &s
             errors[5] = errorsCopy[2];
         }
     }
-    std::cout << " --  " << std::endl;
 }

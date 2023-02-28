@@ -294,7 +294,6 @@ TPZGeoMesh *CoupledTest::CreateGMeshCoupling(TPZVec<int> &n_nodes, TPZVec<REAL> 
             gelside_bc.CenterX(center_coord);
             if (center_coord[1] < y_interface)
             {
-                std::cout << "exit = " << gel->MaterialId() - 20 << std::endl; 
                 gel->SetMaterialId(gel->MaterialId() - 20);
             }
         }
@@ -315,7 +314,6 @@ TPZGeoMesh *CoupledTest::CreateGMeshCoupling(TPZVec<int> &n_nodes, TPZVec<REAL> 
     gmesh->CreateGeoElement(EPoint,pointtopology,fmatPoint,id);
 
     InsertInterfaces(gmesh);
-      std::cout << "teste 12" << std::endl;
     TPZCheckGeom check(gmesh);
     check.CheckUniqueId();      
     gmesh->BuildConnectivity();
@@ -1237,7 +1235,6 @@ void CoupledTest::AddInterfaceCoupllingDS(TPZGeoMesh *gmesh, TPZMultiphysicsComp
         
         int debug = 0;
         while (gelside != neigh) {
-            std::cout << "neigh = " << neigh.Side() << " -- " << "matId = " << neigh.Element()->MaterialId() << std::endl;
             if (neigh.Element()->MaterialId() == matleft) {
                 TPZCompEl *cel = neigh.Element()->Reference();
                 if (!cel) {
@@ -1258,7 +1255,6 @@ void CoupledTest::AddInterfaceCoupllingDS(TPZGeoMesh *gmesh, TPZMultiphysicsComp
         }
         if (debug != 2)
             DebugStop();
-        std::cout << "asda" << std::endl;    
         new TPZMultiphysicsInterfaceElement(*cmesh, gel, index, left, right);
     }
     
