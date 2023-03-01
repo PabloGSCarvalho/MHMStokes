@@ -81,18 +81,7 @@ void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double 
     
     //Gerando malha geométrica:
     fSpaceV = Space;
-    TPZGeoMesh *gmesh;
-    if (0)
-    {
-        gmesh = CreateGMesh(nx, ny, hx, hy); // Função para criar a malha geometrica
-    }
-    else {
-        TPZVec<int> n_nodes(2, 0);
-        n_nodes[0] = nx, n_nodes[1] = ny;
-        TPZVec<REAL> h_s(2, 0);
-        h_s[0] = hx, h_s[1] = hy;
-        gmesh = CreateGMeshCoupling(n_nodes, h_s);
-    }
+    TPZGeoMesh *gmesh = CreateGMesh(nx, ny, hx, hy); // Função para criar a malha geometrica
 
 #ifdef PZDEBUG
     std::ofstream fileg("MalhaGeo.txt"); //Impressão da malha geométrica (formato txt)
@@ -113,8 +102,12 @@ void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double 
     TPZCompMesh *cmesh_p = this->CMesh_p(gmesh, Space, pOrder+n_mais); //Função para criar a malha computacional da pressão
     
     ChangeExternalOrderConnects(cmesh_v,n_mais);
+
+    TPZManVector<TPZCompMesh*> meshvector(2);
+    meshvector[0] = cmesh_v;
+    meshvector[1] = cmesh_p;    
     
-    TPZCompMesh *cmesh_m = this->CMesh_m(gmesh, Space, pOrder, theta, sigma); //Função para criar a malha computacional multifísica
+    TPZMultiphysicsCompMesh *cmesh_m = this->CMesh_m(gmesh, meshvector, Space, pOrder, theta, sigma); //Função para criar a malha computacional multifísica
     
 #ifdef PZDEBUG
     {
@@ -127,13 +120,7 @@ void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double 
         cmesh_m->Print(filecm);
     }
 #endif
-    
-    TPZManVector<TPZCompMesh *, 2> meshvector(2);
-    meshvector[0] = cmesh_v;
-    meshvector[1] = cmesh_p;
-    TPZBuildMultiphysicsMesh::AddElements(meshvector, cmesh_m);
-    TPZBuildMultiphysicsMesh::AddConnects(meshvector, cmesh_m);
-    TPZBuildMultiphysicsMesh::TransferFromMeshes(meshvector, cmesh_m);
+
     cmesh_m->LoadReferences();
 
     if(fSpaceV!=2){
@@ -183,7 +170,7 @@ void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double 
     
     
     std::cout << "Assemble matrix with NDoF = " << cmesh_m->NEquations() << std::endl;
-    
+    return;
     an.Assemble();//Assembla a matriz de rigidez (e o vetor de carga) global
     
     
@@ -232,7 +219,7 @@ void BrinkmanTest::Run(int Space, int pOrder, int nx, int ny, double hx, double 
     //ErroOut <<"Norma H1/HDiv - V = "<< Errors[0] << std::endl;
     ErroOut <<"Norma L2 - V = "<< Errors[1] << std::endl;
     ErroOut <<"Semi-norma H1/Hdiv - V = "<< Errors[2] << std::endl;
-    ErroOut <<"Norma L2 - P = "<< Errors[4] << std::endl;
+    ErroOut <<"Norma L2 - P = "<< Errors[0] << std::endl;
     ErroOut <<"-------------" << std::endl;
     ErroOut.flush();
     
@@ -812,7 +799,6 @@ TPZGeoMesh *BrinkmanTest::CreateGMeshCoupling(TPZVec<int> &n_nodes, TPZVec<REAL>
     gmesh->CreateGeoElement(EPoint,pointtopology,fmatPoint,id);
 
     InsertInterfaces(gmesh);
-      std::cout << "teste 12" << std::endl;
     TPZCheckGeom check(gmesh);
     check.CheckUniqueId();
     gmesh->BuildConnectivity();
@@ -1353,12 +1339,12 @@ TPZCompMesh *BrinkmanTest::CMesh_p(TPZGeoMesh *gmesh, int Space, int pOrder)
     
 }
 
-TPZCompMesh *BrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STATE theta, STATE sigma)
+TPZMultiphysicsCompMesh *BrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, TPZManVector<TPZCompMesh*> meshvector, int Space, int pOrder, STATE theta, STATE sigma)
 {
     
     //Criando malha computacional:
     int bc_inte_order = 10;
-    TPZCompMesh * cmesh = new TPZCompMesh(gmesh);
+    TPZMultiphysicsCompMesh * cmesh = new TPZMultiphysicsCompMesh(gmesh);
     cmesh->SetDefaultOrder(pOrder); //Insere ordem polimonial de aproximação
     cmesh->SetDimModel(fdim); //Insere dimensão do modelo
     cmesh->SetAllCreateFunctionsMultiphysicElem();
@@ -1389,20 +1375,20 @@ TPZCompMesh *BrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STA
     val2(1,0) = 0.0; // vy -> 0
     
   
-        TPZBndCond * BCond0 = material->CreateBC(material, fmatBCbott, fdirichlet, val1, val2); //Cria material que implementa a condição de contorno inferior
-        BCond0->SetBCForcingFunction(0, solp);
+        TPZMaterial * BCond0 = material->CreateBC(material, fmatBCbott, fdirichlet, val1, val2); //Cria material que implementa a condição de contorno inferior
+        BCond0->SetBCForcingFunction(solp);
         cmesh->InsertMaterialObject(BCond0); //Insere material na malha
         
-        TPZBndCond * BCond1 = material->CreateBC(material, fmatBCtop, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno superior
-        BCond1->SetBCForcingFunction(0, solp);
+        TPZMaterial * BCond1 = material->CreateBC(material, fmatBCtop, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno superior
+        BCond1->SetBCForcingFunction(solp);
         cmesh->InsertMaterialObject(BCond1); //Insere material na malha
         
-        TPZBndCond * BCond2 = material->CreateBC(material, fmatBCleft, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno esquerda
-        BCond2->SetBCForcingFunction(0, solp);
+        TPZMaterial * BCond2 = material->CreateBC(material, fmatBCleft, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno esquerda
+        BCond2->SetBCForcingFunction(solp);
         cmesh->InsertMaterialObject(BCond2); //Insere material na malha
         
-        TPZBndCond * BCond3 = material->CreateBC(material, fmatBCright, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno direita
-        BCond3->SetBCForcingFunction(0, solp);
+        TPZMaterial * BCond3 = material->CreateBC(material, fmatBCright, fdirichlet, val1, val2); //Cria material que implementa a condicao de contorno direita
+        BCond3->SetBCForcingFunction(solp);
         cmesh->InsertMaterialObject(BCond3); //Insere material na malha
         //Ponto
         
@@ -1412,15 +1398,9 @@ TPZCompMesh *BrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STA
     
         val4(0,0)=1;
         
-        TPZBndCond * BCPoint = material->CreateBC(material, fmatPoint, fpointtype, val3, val4); //Cria material que implementa um ponto para a pressão
+        TPZMaterial * BCPoint = material->CreateBC(material, fmatPoint, fpointtype, val3, val4); //Cria material que implementa um ponto para a pressão
         cmesh->InsertMaterialObject(BCPoint); //Insere material na malha
    
-
-  
-
-
-    
-
     int ncel = cmesh->NElements();
     for(int i = 0; i<ncel; i++){
         TPZCompEl * compEl = cmesh->ElementVec()[i];
@@ -1431,7 +1411,9 @@ TPZCompMesh *BrinkmanTest::CMesh_m(TPZGeoMesh *gmesh, int Space, int pOrder, STA
 
     //Criando elementos computacionais que gerenciarão o espaco de aproximação da malha:
     
-    cmesh->AutoBuild();
+    TPZManVector<int,5> active_approx_spaces(meshvector.size(),1);
+    
+    cmesh->BuildMultiphysicsSpace(active_approx_spaces,meshvector);
     cmesh->AdjustBoundaryElements();
     cmesh->CleanUpUnconnectedNodes();
     

@@ -49,6 +49,9 @@
 #include "ProblemTypes.h"
 #include "TPZGenGrid2D.h"
 #include "TPZMultiphysicsCompMesh.h"
+#include "TPZGmshReader.h"
+#include "tpzgeoelrefpattern.h"
+#include "tpzgeoblend.h"
 
 using namespace std;
 using namespace pzshape;
@@ -128,7 +131,7 @@ public:
     TPZGeoMesh *CreateGMesh(TPZVec<int> &n_div, TPZVec<REAL> &h_s);
 
     TPZGeoMesh *CreateGMeshCoupling(TPZVec<int> &n_div, TPZVec<REAL> &h_s);
-    
+
     //   TPZGeoMesh *GMeshDeformed(int dim, bool ftriang, int ndiv);
 
     void SetPermeability(STATE coef)

@@ -15,6 +15,7 @@
 #include "StokesTest.h"
 #include "BrinkmanTest.h"
 #include "CoupledTest.h"
+#include "VugsTest.h"
 #include "tpzarc3d.h"
 #include "tpzgeoblend.h"
 
@@ -60,14 +61,14 @@ const REAL Pi=M_PI;
 
 const REAL visco=1., permeability=1., theta=-1.; //Coeficientes: viscosidade, permeabilidade, fator simetria
 
-bool DarcyDomain = false, StokesDomain = false , BrinkmanDomain = false, CoupledDomain = true;
+bool DarcyDomain = false, StokesDomain = false , BrinkmanDomain = true, CoupledDomain = false;
 
 bool HybridBrinkmanDomain = true, MHMStokesDomain = false;
 
 int main(int argc, char *argv[])
 {
     
-    TPZMaterial::gBigNumber = 1.e16;
+    TPZMaterial::gBigNumber = 1.e12;
 //    gRefDBase.InitializeAllUniformRefPatterns();
     
 #ifdef LOG4CXX
@@ -117,7 +118,7 @@ int main(int argc, char *argv[])
     }
     else if (BrinkmanDomain)
     {
-        pOrder = 2;
+        pOrder = 1;
         hx=2.,hy=2.;
         
         TPZVec<STATE> S0(13,0.);
@@ -126,7 +127,7 @@ int main(int argc, char *argv[])
         
         for (int it=0; it<=0; it++) {
             //h_level = pow(2., 2+it);
-            h_level = 4;
+            h_level = 64;
             
             //Coeficiente estabilização (Stokes)
             STATE hE=hx/h_level;
@@ -144,10 +145,11 @@ int main(int argc, char *argv[])
             BrinkmanTest  * Test2 = new BrinkmanTest();
             Test2->SetViscosity(1.);
             Test2->SetBrinkmanCoef(0.);
-            //Test2->SetTriangularMesh();
+            Test2->SetTriangularMesh();
             //Test2->SetHdivPlus();
             Test2->Run(SpaceHDiv, pOrder, nx, ny, hx, hy, theta, sigma);
-
+            Test2->Run(SpaceHDiv, pOrder+1, nx, ny, hx, hy, theta, sigma);
+            Test2->Run(SpaceHDiv, pOrder+2, nx, ny, hx, hy, theta, sigma);
             //            BrinkmanTest  * Test1 = new BrinkmanTest();
             //            Test1->SetTriangularMesh();
             //            Test1->SetFullHdiv();
@@ -164,7 +166,7 @@ int main(int argc, char *argv[])
     }
     else  if(CoupledDomain)
     {
-        int h_level = 8;
+        int h_level = 64;
         
         //double hx=1.,hy=1.; //Dimensões em x e y do domínio
         int nelx=h_level, nely=h_level; //Número de elementos em x e y
@@ -173,16 +175,40 @@ int main(int argc, char *argv[])
         TPZVec<REAL> h_s(2);
         h_s[0] = Pi, h_s[1] = 2.;
 
-        int pOrder = 2; //Ordem polinomial de aproximação
+        int pOrder = 1; //Ordem polinomial de aproximação
         STATE hE=h_s[0]/h_level;
         STATE s0=2.;
         STATE sigma=s0*(pOrder*pOrder)/hE;
         
         CoupledTest  * Test3 = new CoupledTest();
-        Test3->SetTriangularMesh();
+        //Test3->SetTriangularMesh();
         Test3->SetPermeability(1.);
         Test3->SetViscosity(1.);        
         Test3->Run(SpaceHDiv, pOrder, n_nodes, h_s, theta,sigma);
+        Test3->Run(SpaceHDiv, pOrder+1, n_nodes, h_s, theta,sigma);
+        Test3->Run(SpaceHDiv, pOrder+2, n_nodes, h_s, theta,sigma);
+    } else {
+
+        int h_level = 1;
+        
+        //double hx=1.,hy=1.; //Dimensões em x e y do domínio
+        int nelx=h_level, nely=h_level; //Número de elementos em x e y
+        TPZVec<int> n_nodes(2);
+        n_nodes[0] = nelx + 1, n_nodes[1] = nely + 1;
+        TPZVec<REAL> h_s(2);
+        h_s[0] = 2., h_s[1] = 2.;
+
+        int pOrder = 2; //Ordem polinomial de aproximação
+        STATE hE=h_s[0]/h_level;
+        STATE s0=12.;
+        STATE sigma=s0*(pOrder*pOrder)/hE;
+        
+        VugsTest  * Test3 = new VugsTest();
+        //Test3->SetTriangularMesh();
+        Test3->SetPermeability(1.);
+        Test3->SetViscosity(1.);        
+        Test3->Run(SpaceHDiv, pOrder, n_nodes, h_s, theta,sigma);
+
     }
     
     return 0;

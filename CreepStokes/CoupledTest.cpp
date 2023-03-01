@@ -141,7 +141,7 @@ void CoupledTest::Run(int Space, int pOrder, TPZVec<int> &n_nodes, TPZVec<REAL> 
 #endif
     
     //Resolvendo o Sistema:
-    int numthreads = 0;
+    int numthreads = 8;
     
     bool optimizeBandwidth = true; //Impede a renumeração das equacoes do problema (para obter o mesmo resultado do Oden)
     TPZAnalysis an(cmesh_m, optimizeBandwidth); //Cria objeto de análise que gerenciará a analise do problema
@@ -161,7 +161,7 @@ void CoupledTest::Run(int Space, int pOrder, TPZVec<int> &n_nodes, TPZVec<REAL> 
     
     
     std::cout << "Assemble matrix with NDoF = " << cmesh_m->NEquations() << std::endl;
-    
+    return;
     an.Assemble();//Assembla a matriz de rigidez (e o vetor de carga) global
     
     
@@ -241,8 +241,7 @@ void CoupledTest::Run(int Space, int pOrder, TPZVec<int> &n_nodes, TPZVec<REAL> 
     an.PostProcess(postProcessResolution,dim);
 
     
-    std::cout << "FINISHED!" << std::endl;
-    
+    std::cout << "FINISHED!" << std::endl;    
 }
 
 TPZGeoMesh *CoupledTest::CreateGMeshCoupling(TPZVec<int> &n_nodes, TPZVec<REAL> &h_s) 
@@ -349,8 +348,6 @@ void CoupledTest::InsertInterfaces(TPZGeoMesh * gmesh) {
                 count_neigh++;
                 neigh = neigh.Neighbour();
             }
-            gel->MaterialId() == fmatIdS;
-            gel->MaterialId() == fmatIdD;
             if (gel->MaterialId() == fmatIdS && gelside.Neighbour().Element()->MaterialId() == fmatIdS && count_neigh == 1)
             {
                 TPZGeoEl *elside = gelside.Element();

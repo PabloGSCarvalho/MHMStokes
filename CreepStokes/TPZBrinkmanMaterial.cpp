@@ -825,14 +825,8 @@ void TPZBrinkmanMaterial::ContributeBC(TPZVec<TPZMaterialData> &datavec, REAL we
                     for(int j = 0; j < nshapeV; j++){
 
                         ek(i,j) += weight * gBigNumber * phiV(j,0) * phiV(i,0);
-                        
                     }
-                    
-
-
                 }
-                
-                
                 
             }else{
                 
@@ -1791,7 +1785,6 @@ void TPZBrinkmanMaterial::ContributeInterface(TPZMaterialData &data, TPZVec<TPZM
 
 
 void TPZBrinkmanMaterial::ContributeBCInterface(TPZMaterialData &data, TPZVec<TPZMaterialData> &datavec, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef, TPZBndCond &bc){
-   
    
     STATE rhsnorm = Norm(ef);
     if(isnan(rhsnorm))
